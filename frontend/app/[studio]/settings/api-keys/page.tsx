@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl'
 import React, { useCallback, useEffect, useState } from 'react';
 import api from '@/services/api';
 import { Copy, Eye, EyeOff, Key, Plus, Trash2 } from 'lucide-react';
@@ -28,6 +29,7 @@ function formatDate(iso: string | null) {
 }
 
 export default function APIKeysPage() {
+    const t = useTranslations('StudioApiKeys')
     const [keys, setKeys] = useState<APIKey[]>([]);
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
@@ -95,7 +97,7 @@ export default function APIKeysPage() {
                     <div className="p-2 bg-primary/10 rounded-lg">
                         <Key className="h-5 w-5 text-primary" />
                     </div>
-                    <h1 className="text-2xl font-bold">API Keys</h1>
+                    <h1 className="text-2xl font-bold">{t('apiKeys')}</h1>
                 </div>
                 <p className="text-muted-foreground ml-12">
                     Generate keys for external integrations (e.g. 317booking) to authenticate against the StudioSync API.
@@ -123,7 +125,7 @@ export default function APIKeysPage() {
                         <button
                             onClick={copyKey}
                             className="p-2 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors"
-                            title="Copy"
+                            title={t('copy')}
                         >
                             <Copy className="h-4 w-4" />
                         </button>
@@ -171,7 +173,7 @@ export default function APIKeysPage() {
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                     >
                         <Plus className="h-4 w-4" />
-                        New API Key
+                        {t('newAPIKey')}
                     </button>
                 )}
             </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Navigation from '@/components/Navigation'
@@ -66,6 +67,7 @@ const benefits = [
 ]
 
 export default function CalendarPage() {
+    const t = useTranslations('PublicCalendar')
     return (
         <>
             <Navigation />
@@ -81,18 +83,18 @@ export default function CalendarPage() {
                         >
                             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-sm font-medium mb-6">
                                 <Calendar className="w-3.5 h-3.5" />
-                                Smart Scheduling
+                                {t('smartScheduling')}
                             </div>
 
                             <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight text-gray-900">
                                 Never miss{' '}
                                 <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                                    a beat
+                                    {t('aBeat')}
                                 </span>
                             </h1>
 
                             <p className="text-lg md:text-xl text-gray-500 mb-8 max-w-2xl mx-auto leading-relaxed">
-                                Intelligent scheduling that handles recurring lessons, prevents conflicts, and keeps everyone in sync.
+                                {t('intelligentSchedulingThatHandlesRecurringLessonsPreventsConflictsAndKeepsEveryoneInSync')}
                             </p>
 
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -100,14 +102,14 @@ export default function CalendarPage() {
                                     href="/signup"
                                     className="px-7 py-3.5 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors inline-flex items-center justify-center gap-2"
                                 >
-                                    Start Free Trial
+                                    {t('startFreeTrial')}
                                     <ArrowRight className="w-4 h-4" />
                                 </Link>
                                 <Link
                                     href="/login"
                                     className="px-7 py-3.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors inline-flex items-center justify-center gap-2"
                                 >
-                                    View Your Calendar
+                                    {t('viewYourCalendar')}
                                     <Calendar className="w-4 h-4" />
                                 </Link>
                             </div>
@@ -125,10 +127,10 @@ export default function CalendarPage() {
                             className="text-center mb-14"
                         >
                             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                                Scheduling made simple
+                                {t('schedulingMadeSimple')}
                             </h2>
                             <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-                                Everything you need to manage your studio's schedule efficiently
+                                {t('everythingYouNeedToManageYourStudioSScheduleEfficiently')}
                             </p>
                         </motion.div>
 
@@ -173,10 +175,10 @@ export default function CalendarPage() {
                             <div className="relative p-8 md:p-10">
                                 <div className="text-center mb-8">
                                     <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                                        Everything you need in one calendar
+                                        {t('everythingYouNeedInOneCalendar')}
                                     </h2>
                                     <p className="text-gray-400 max-w-xl mx-auto">
-                                        Powerful features that make scheduling lessons effortless
+                                        {t('powerfulFeaturesThatMakeSchedulingLessonsEffortless')}
                                     </p>
                                 </div>
 
@@ -212,28 +214,28 @@ export default function CalendarPage() {
                         >
                             <Sparkles className="w-12 h-12 mx-auto mb-5 text-indigo-500" />
                             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                                Ready to streamline your schedule?
+                                {t('readyToStreamlineYourSchedule')}
                             </h2>
                             <p className="text-lg text-gray-500 mb-8 max-w-xl mx-auto">
-                                Try StudioSync and manage your studio calendar efficiently.
+                                {t('tryStudioSyncAndManageYourStudioCalendarEfficiently')}
                             </p>
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <Link
                                     href="/signup"
                                     className="px-7 py-3.5 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors inline-flex items-center justify-center gap-2"
                                 >
-                                    Start Free Trial
+                                    {t('startFreeTrial')}
                                     <ArrowRight className="w-4 h-4" />
                                 </Link>
                                 <Link
                                     href="/pricing"
                                     className="px-7 py-3.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors inline-flex items-center justify-center"
                                 >
-                                    View Pricing
+                                    {t('viewPricing')}
                                 </Link>
                             </div>
                             <p className="text-sm text-gray-400 mt-5">
-                                No credit card required · 30-day free trial · Cancel anytime
+                                {t('noCreditCardRequired30DayFreeTrialCancelAnytime')}
                             </p>
                         </motion.div>
                     </div>

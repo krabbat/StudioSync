@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import api from '@/services/api'
 
 export default function PaymentSuccessPage() {
+    const t = useTranslations('PaymentSuccess')
     const searchParams = useSearchParams()
     const sessionId = searchParams.get('session_id')
     const [verifying, setVerifying] = useState(true)
@@ -44,7 +46,7 @@ export default function PaymentSuccessPage() {
                     </div>
                 </div>
 
-                <h1 className="text-2xl font-bold text-gray-900">Payment Successful!</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{t('paymentSuccessful')}</h1>
 
                 <p className="text-gray-600">
                     Thank you for your payment. Your transaction has been completed successfully.
@@ -55,7 +57,7 @@ export default function PaymentSuccessPage() {
                     <Link href="/dashboard/billing" className="w-full">
                         <Button className="w-full">
                             <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Billing
+                            {t('backToBilling')}
                         </Button>
                     </Link>
                 </div>

@@ -1240,5 +1240,70 @@
     "studioAdmin": "Studio & Admin",
     "features": "Features",
     "done": "Done"
+  },
+  "StudioPortal": {
+    "lessons": "Lessons",
+    "teachers": "Teachers",
+    "pricing": "Pricing",
+    "bookNow": "Book Now",
+    "masterYourMusicAt": "Master Your Music at",
+    "discoverYourPotentialWithWorldClassInstructorsPersonalizedLessonPlansAndACommunityThatInsp": "Discover your potential with world-class instructors, personalized lesson plans, and a community that inspires.",
+    "startYourJourney": "Start Your Journey",
+    "viewSchedule": "View Schedule",
+    "whyChooseUs": "Why Choose Us",
+    "elevateYourMusicalExperience": "Elevate Your Musical Experience",
+    "readyToFindYourRhythm": "Ready to find your rhythm?",
+    "joinHundredsOfStudentsWhoHaveFoundTheirPassionThroughOurStructuredYetFlexibleMusicPrograms": "Join hundreds of students who have found their passion through our structured yet flexible music programs.",
+    "newStudentSpecial": "New Student Special",
+    "firstMonth": "/ first month",
+    "includes4Private30MinuteLessonsAllLearningMaterialsAndYourFirstRecitalEntryFee": "Includes 4 private 30-minute lessons, all learning materials, and your first recital entry fee.",
+    "claimSpecialOffer": "Claim Special Offer",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "contact": "Contact",
+    "expertInstruction": "Expert Instruction",
+    "ourTeachersAreProfessionalMusiciansWithYearsOfStageAndTeachingExperience": "Our teachers are professional musicians with years of stage and teaching experience.",
+    "smartScheduling": "Smart Scheduling",
+    "easyOnlineBookingAndAutomatedRemindersSoYouNeverMissABeat": "Easy online booking and automated reminders so you never miss a beat.",
+    "vibrantCommunity": "Vibrant Community",
+    "joinGroupMasterclassesRecitalsAndConnectWithFellowStudents": "Join group masterclasses, recitals, and connect with fellow students."
+  },
+  "StudioTeachers": {
+    "teachers": "Teachers",
+    "pricing": "Pricing",
+    "bookNow": "Book Now",
+    "meetOurInstructors": "Meet Our Instructors",
+    "dedicatedProfessionalsCommittedToHelpingYouDiscoverYourPotential": "Dedicated professionals committed to helping you discover your potential.",
+    "noTeacherProfilesAvailableYet": "No teacher profiles available yet.",
+    "bookLesson": "Book Lesson"
+  },
+  "PublicCalendar": {
+    "smartScheduling": "Smart Scheduling",
+    "aBeat": "a beat",
+    "intelligentSchedulingThatHandlesRecurringLessonsPreventsConflictsAndKeepsEveryoneInSync": "Intelligent scheduling that handles recurring lessons, prevents conflicts, and keeps everyone in sync.",
+    "startFreeTrial": "Start Free Trial",
+    "viewYourCalendar": "View Your Calendar",
+    "schedulingMadeSimple": "Scheduling made simple",
+    "everythingYouNeedToManageYourStudioSScheduleEfficiently": "Everything you need to manage your studio's schedule efficiently",
+    "everythingYouNeedInOneCalendar": "Everything you need in one calendar",
+    "powerfulFeaturesThatMakeSchedulingLessonsEffortless": "Powerful features that make scheduling lessons effortless",
+    "readyToStreamlineYourSchedule": "Ready to streamline your schedule?",
+    "tryStudioSyncAndManageYourStudioCalendarEfficiently": "Try StudioSync and manage your studio calendar efficiently.",
+    "viewPricing": "View Pricing",
+    "noCreditCardRequired30DayFreeTrialCancelAnytime": "No credit card required · 30-day free trial · Cancel anytime"
+  },
+  "PaymentSuccess": {
+    "paymentSuccessful": "Payment Successful!",
+    "backToBilling": "Back to Billing"
+  },
+  "PaymentCancel": {
+    "paymentCancelled": "Payment Cancelled",
+    "yourPaymentWasCancelledAndYouHaveNotBeenCharged": "Your payment was cancelled and you have not been charged.",
+    "returnToBilling": "Return to Billing"
+  },
+  "StudioApiKeys": {
+    "apiKeys": "API Keys",
+    "copy": "Copy",
+    "newAPIKey": "New API Key"
   }
 }

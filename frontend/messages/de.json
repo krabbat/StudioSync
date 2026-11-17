@@ -1240,5 +1240,70 @@
     "studioAdmin": "Studio und Admin",
     "features": "Funktionen",
     "done": "Fertig"
+  },
+  "StudioPortal": {
+    "lessons": "Unterricht",
+    "teachers": "Lehrkräfte",
+    "pricing": "Preise",
+    "bookNow": "Jetzt buchen",
+    "masterYourMusicAt": "Entdecke deine Musik bei",
+    "discoverYourPotentialWithWorldClassInstructorsPersonalizedLessonPlansAndACommunityThatInsp": "Entwickle dein musikalisches Können mit persönlichem Unterricht und einem motivierenden Umfeld.",
+    "startYourJourney": "Jetzt starten",
+    "viewSchedule": "Kalender ansehen",
+    "whyChooseUs": "Warum wir?",
+    "elevateYourMusicalExperience": "Musikunterricht, der dich weiterbringt",
+    "readyToFindYourRhythm": "Bereit für deinen eigenen Rhythmus?",
+    "joinHundredsOfStudentsWhoHaveFoundTheirPassionThroughOurStructuredYetFlexibleMusicPrograms": "Entdecke deine Freude an der Musik mit individuellem Unterricht und flexibler Planung.",
+    "newStudentSpecial": "Angebot für neue Schüler",
+    "firstMonth": "/ erster Monat",
+    "includes4Private30MinuteLessonsAllLearningMaterialsAndYourFirstRecitalEntryFee": "Enthält 4 Einzelstunden à 30 Minuten, Lernmaterialien und Teilnahme am ersten Vorspiel.",
+    "claimSpecialOffer": "Angebot nutzen",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "contact": "Kontakt",
+    "expertInstruction": "Qualifizierter Unterricht",
+    "ourTeachersAreProfessionalMusiciansWithYearsOfStageAndTeachingExperience": "Unsere Lehrkräfte verbinden musikalische Praxis mit Unterrichtserfahrung.",
+    "smartScheduling": "Flexible Terminplanung",
+    "easyOnlineBookingAndAutomatedRemindersSoYouNeverMissABeat": "Einfache Online-Buchung und automatische Erinnerungen.",
+    "vibrantCommunity": "Musikalische Gemeinschaft",
+    "joinGroupMasterclassesRecitalsAndConnectWithFellowStudents": "Gemeinsam musizieren, bei Vorspielen auftreten und andere Schüler kennenlernen."
+  },
+  "StudioTeachers": {
+    "teachers": "Lehrkräfte",
+    "pricing": "Preise",
+    "bookNow": "Jetzt buchen",
+    "meetOurInstructors": "Unsere Lehrkräfte",
+    "dedicatedProfessionalsCommittedToHelpingYouDiscoverYourPotential": "Engagierte Lehrkräfte, die dich auf deinem musikalischen Weg begleiten.",
+    "noTeacherProfilesAvailableYet": "Noch keine Lehrkraftprofile vorhanden.",
+    "bookLesson": "Unterricht buchen"
+  },
+  "PublicCalendar": {
+    "smartScheduling": "Intelligente Terminplanung",
+    "aBeat": "den Takt",
+    "intelligentSchedulingThatHandlesRecurringLessonsPreventsConflictsAndKeepsEveryoneInSync": "Intelligente Planung für regelmäßigen Unterricht, mit Konfliktprüfung und Kalenderabgleich.",
+    "startFreeTrial": "Kostenlos testen",
+    "viewYourCalendar": "Deinen Kalender ansehen",
+    "schedulingMadeSimple": "Terminplanung leicht gemacht",
+    "everythingYouNeedToManageYourStudioSScheduleEfficiently": "Alles für eine effiziente Verwaltung deiner Unterrichtstermine",
+    "everythingYouNeedInOneCalendar": "Alle Termine in einem Kalender",
+    "powerfulFeaturesThatMakeSchedulingLessonsEffortless": "Praktische Funktionen für eine übersichtliche Unterrichtsplanung",
+    "readyToStreamlineYourSchedule": "Bereit für eine einfachere Terminplanung?",
+    "tryStudioSyncAndManageYourStudioCalendarEfficiently": "Teste StudioSync für eine übersichtliche Kalenderverwaltung.",
+    "viewPricing": "Preise ansehen",
+    "noCreditCardRequired30DayFreeTrialCancelAnytime": "Keine Kreditkarte erforderlich · 30 Tage kostenlos testen · jederzeit kündbar"
+  },
+  "PaymentSuccess": {
+    "paymentSuccessful": "Zahlung erfolgreich!",
+    "backToBilling": "Zurück zur Abrechnung"
+  },
+  "PaymentCancel": {
+    "paymentCancelled": "Zahlung abgebrochen",
+    "yourPaymentWasCancelledAndYouHaveNotBeenCharged": "Deine Zahlung wurde abgebrochen. Es wurde kein Betrag abgebucht.",
+    "returnToBilling": "Zurück zur Abrechnung"
+  },
+  "StudioApiKeys": {
+    "apiKeys": "API-Schlüssel",
+    "copy": "Kopieren",
+    "newAPIKey": "Neuer API-Schlüssel"
   }
 }

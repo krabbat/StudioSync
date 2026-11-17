@@ -1,9 +1,11 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { XCircle, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 export default function PaymentCancelPage() {
+    const t = useTranslations('PaymentCancel')
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
             <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-6">
@@ -13,10 +15,10 @@ export default function PaymentCancelPage() {
                     </div>
                 </div>
 
-                <h1 className="text-2xl font-bold text-gray-900">Payment Cancelled</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{t('paymentCancelled')}</h1>
 
                 <p className="text-gray-600">
-                    Your payment was cancelled and you have not been charged.
+                    {t('yourPaymentWasCancelledAndYouHaveNotBeenCharged')}
                 </p>
 
                 <div className="pt-4">
@@ -25,7 +27,7 @@ export default function PaymentCancelPage() {
                         className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gray-600 hover:bg-gray-700 transition-colors w-full"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Return to Billing
+                        {t('returnToBilling')}
                     </Link>
                 </div>
             </div>
