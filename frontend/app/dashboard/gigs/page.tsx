@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -99,6 +100,7 @@ function gigEarnings(gig: Gig) {
 }
 
 function PayBadge({ gig }: { gig: Gig }) {
+  const t = useTranslations('Gigs')
     const rate = parseFloat(gig.pay_rate || '0')
     return (
         <span className="flex items-center gap-1 font-bold text-emerald-700">
@@ -119,6 +121,7 @@ const lbl = 'block text-xs font-semibold text-gray-500 uppercase tracking-wider 
 const EMPTY_GIG = { title: '', description: '', venue_ref: '', scheduled_start: '', scheduled_end: '', pay_rate: '', pay_type: 'flat' as const }
 
 function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
+  const t = useTranslations('Gigs')
     const [form, setForm] = useState(EMPTY_GIG)
     const [venues, setVenues] = useState<Venue[]>([])
     const [saving, setSaving] = useState(false)
@@ -135,14 +138,14 @@ function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!form.venue_ref) { toast.error('Select a venue'); return }
+        if (!form.venue_ref) { toast.error(t('msgSelectAVenue')); return }
         if (new Date(form.scheduled_start) >= new Date(form.scheduled_end)) {
-            toast.error('End time must be after start time'); return
+            toast.error(t('msgEndTimeMustBeAfterStartTime')); return
         }
         setSaving(true)
         try {
             await api.post('/gigs/gigs/', { ...form, pay_rate: parseFloat(form.pay_rate) || 0 })
-            toast.success('Gig posted to the marketplace!')
+            toast.success(t('msgGigPostedToTheMarketplace'))
             onCreated(); onClose()
         } catch (err: any) {
             toast.error(err?.response?.data?.detail || 'Failed to post gig')
@@ -169,28 +172,28 @@ function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
                                             <Music className="w-4 h-4 text-primary" />
                                         </div>
                                         <div>
-                                            <h2 className="text-base font-bold text-gray-900">Post New Gig</h2>
-                                            <p className="text-xs text-gray-400">Release an open slot to the marketplace</p>
+                                            <h2 className="text-base font-bold text-gray-900">{t('postNewGig')}</h2>
+                                            <p className="text-xs text-gray-400">{t('releaseAnOpenSlotToTheMarketplace')}</p>
                                         </div>
                                     </div>
                                     <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"><X className="w-4 h-4" /></button>
                                 </div>
                                 <form onSubmit={submit} className="p-6 space-y-4">
                                     <div>
-                                        <label className={lbl}>Title <span className="text-red-400">*</span></label>
-                                        <input type="text" value={form.title} onChange={set('title')} placeholder="e.g. Saturday Night Jazz" className={inp} required />
+                                        <label className={lbl}>{t('title')} <span className="text-red-400">*</span></label>
+                                        <input type="text" value={form.title} onChange={set('title')} placeholder={t('eGSaturdayNightJazz')} className={inp} required />
                                     </div>
                                     <div>
-                                        <label className={lbl}>Venue <span className="text-red-400">*</span></label>
+                                        <label className={lbl}>{t('venue')} <span className="text-red-400">*</span></label>
                                         {venues.length === 0 ? (
                                             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
                                                 No venues set up yet.{' '}
-                                                <a href="/dashboard/settings/gig-venues/" className="underline font-bold">Add venues in Settings → Gig Venues</a>
+                                                <a href="/dashboard/settings/gig-venues/" className="underline font-bold">{t('addVenuesInSettingsGigVenues')}</a>
                                                 {' '}before posting gigs.
                                             </p>
                                         ) : (
                                             <select value={form.venue_ref} onChange={set('venue_ref')} className={inp} required>
-                                                <option value="">Select a venue…</option>
+                                                <option value="">{t('selectAVenue')}</option>
                                                 {venues.map(v => (
                                                     <option key={v.id} value={v.id}>
                                                         {v.name}{v.address ? ` — ${v.address}` : ''}
@@ -206,33 +209,33 @@ function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
                                     </div>
                                     <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-3">
                                         <div>
-                                            <label className={lbl}>Start <span className="text-red-400">*</span></label>
+                                            <label className={lbl}>{t('start')} <span className="text-red-400">*</span></label>
                                             <input type="datetime-local" value={form.scheduled_start} onChange={set('scheduled_start')} className={inp} required />
                                         </div>
                                         <div>
-                                            <label className={lbl}>End <span className="text-red-400">*</span></label>
+                                            <label className={lbl}>{t('end')} <span className="text-red-400">*</span></label>
                                             <input type="datetime-local" value={form.scheduled_end} onChange={set('scheduled_end')} className={inp} required />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className={lbl}>Pay Rate ($)</label>
+                                            <label className={lbl}>{t('payRate')}</label>
                                             <input type="number" min="0" step="0.01" value={form.pay_rate} onChange={set('pay_rate')} placeholder="0.00" className={inp} />
                                         </div>
                                         <div>
-                                            <label className={lbl}>Pay Type</label>
+                                            <label className={lbl}>{t('payType')}</label>
                                             <select value={form.pay_type} onChange={set('pay_type')} className={inp}>
-                                                <option value="flat">Flat Rate</option>
-                                                <option value="hourly">Hourly Rate</option>
+                                                <option value="flat">{t('flatRate')}</option>
+                                                <option value="hourly">{t('hourlyRate')}</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div>
-                                        <label className={lbl}>Notes for bands</label>
-                                        <textarea value={form.description} onChange={set('description')} placeholder="Dress code, gear requirements, load-in time..." rows={2} className={`${inp} resize-none`} />
+                                        <label className={lbl}>{t('notesForBands')}</label>
+                                        <textarea value={form.description} onChange={set('description')} placeholder={t('dressCodeGearRequirementsLoadInTime')} rows={2} className={`${inp} resize-none`} />
                                     </div>
                                     <div className="flex justify-end gap-3 pt-2">
-                                        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
+                                        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">{t('cancel')}</button>
                                         <button type="submit" disabled={saving || venues.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center gap-2">
                                             {saving && <Loader className="w-4 h-4 animate-spin" />} Post Gig
                                         </button>
@@ -251,6 +254,7 @@ function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
 function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
     gig: Gig | null; bands: Band[]; open: boolean; onClose: () => void; onClaimed: () => void
 }) {
+  const t = useTranslations('Gigs')
     const [bandId, setBandId] = useState('')
     const [notes, setNotes] = useState('')
     const [saving, setSaving] = useState(false)
@@ -261,11 +265,11 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!bandId) { toast.error('Select a band'); return }
+        if (!bandId) { toast.error(t('msgSelectABand')); return }
         setSaving(true)
         try {
             await api.post(`/gigs/gigs/${gig.id}/claim/`, { band_id: bandId, notes })
-            toast.success('Gig claimed! Waiting for approval.')
+            toast.success(t('msgGigClaimedWaitingForApproval'))
             onClaimed(); onClose()
         } catch (err: any) {
             toast.error(err?.response?.data?.detail || 'Failed to claim gig')
@@ -286,7 +290,7 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
                                 onClick={e => e.stopPropagation()}>
                                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                                     <div>
-                                        <h2 className="text-base font-bold text-gray-900">Claim This Gig</h2>
+                                        <h2 className="text-base font-bold text-gray-900">{t('claimThisGig')}</h2>
                                         <p className="text-xs text-gray-400 mt-0.5">{gig.title} · {gigVenue(gig)}</p>
                                     </div>
                                     <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"><X className="w-4 h-4" /></button>
@@ -301,18 +305,18 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
                                 </div>
                                 <form onSubmit={submit} className="p-6 space-y-4">
                                     <div>
-                                        <label className={lbl}>Claiming as <span className="text-red-400">*</span></label>
+                                        <label className={lbl}>{t('claimingAs')} <span className="text-red-400">*</span></label>
                                         <select value={bandId} onChange={e => setBandId(e.target.value)} className={inp} required>
-                                            <option value="">Select your band…</option>
+                                            <option value="">{t('selectYourBand')}</option>
                                             {bands.map(b => <option key={b.id} value={b.id}>{b.name}{b.genre ? ` (${b.genre})` : ''}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className={lbl}>Message to booker</label>
-                                        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any notes, questions, or context for the booker…" rows={3} className={`${inp} resize-none`} />
+                                        <label className={lbl}>{t('messageToBooker')}</label>
+                                        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('anyNotesQuestionsOrContextForTheBooker')} rows={3} className={`${inp} resize-none`} />
                                     </div>
                                     <div className="flex justify-end gap-3">
-                                        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
+                                        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">{t('cancel')}</button>
                                         <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center gap-2">
                                             {saving && <Loader className="w-4 h-4 animate-spin" />} Submit Claim
                                         </button>
@@ -331,6 +335,7 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
 function ApproveClaimModal({ gig, open, onClose, onApproved }: {
     gig: Gig | null; open: boolean; onClose: () => void; onApproved: () => void
 }) {
+  const t = useTranslations('Gigs')
     const [saving, setSaving] = useState<string | null>(null)
 
     if (!gig) return null
@@ -339,7 +344,7 @@ function ApproveClaimModal({ gig, open, onClose, onApproved }: {
         setSaving(claimId)
         try {
             await api.post(`/gigs/gigs/${gig.id}/approve_claim/`, { claim_id: claimId })
-            toast.success('Claim approved — gig assigned!')
+            toast.success(t('msgClaimApprovedGigAssigned'))
             onApproved(); onClose()
         } catch (err: any) {
             toast.error(err?.response?.data?.detail || 'Failed to approve claim')
@@ -360,14 +365,14 @@ function ApproveClaimModal({ gig, open, onClose, onApproved }: {
                                 onClick={e => e.stopPropagation()}>
                                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                                     <div>
-                                        <h2 className="text-base font-bold text-gray-900">Review Claims</h2>
+                                        <h2 className="text-base font-bold text-gray-900">{t('reviewClaims')}</h2>
                                         <p className="text-xs text-gray-400 mt-0.5">{gig.title} · {gigVenue(gig)} · {fmt(gig.scheduled_start)}</p>
                                     </div>
                                     <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"><X className="w-4 h-4" /></button>
                                 </div>
                                 <div className="p-6 space-y-3">
                                     {gig.claims.filter(c => c.status === 'pending').length === 0 ? (
-                                        <p className="text-sm text-center text-gray-400 py-8">No pending claims for this gig.</p>
+                                        <p className="text-sm text-center text-gray-400 py-8">{t('noPendingClaimsForThisGig')}</p>
                                     ) : (
                                         gig.claims.filter(c => c.status === 'pending').map(claim => (
                                             <div key={claim.id} className="flex items-start justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
@@ -401,6 +406,7 @@ function ApproveClaimModal({ gig, open, onClose, onApproved }: {
 function PayoutModal({ gig, open, onClose, onPaid }: {
     gig: Gig | null; open: boolean; onClose: () => void; onPaid: () => void
 }) {
+  const t = useTranslations('Gigs')
     const [amount, setAmount] = useState('')
     const [method, setMethod] = useState('bank_transfer')
     const [saving, setSaving] = useState(false)
@@ -441,7 +447,7 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
                                             <CreditCard className="w-4 h-4 text-emerald-600" />
                                         </div>
                                         <div>
-                                            <h2 className="text-base font-bold text-gray-900">Process Payout</h2>
+                                            <h2 className="text-base font-bold text-gray-900">{t('processPayout')}</h2>
                                             <p className="text-xs text-gray-400">For {gig.band_name}</p>
                                         </div>
                                     </div>
@@ -449,29 +455,29 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
                                 </div>
                                 <form onSubmit={submit} className="p-6 space-y-4">
                                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm space-y-1">
-                                        <div className="flex justify-between"><span className="text-gray-500">Gig</span><span className="font-semibold text-gray-800">{gig.title}</span></div>
-                                        <div className="flex justify-between"><span className="text-gray-500">Venue</span><span className="font-semibold text-gray-800">{gigVenue(gig)}</span></div>
-                                        <div className="flex justify-between"><span className="text-gray-500">Date</span><span className="font-semibold text-gray-800">{fmt(gig.scheduled_start)}</span></div>
-                                        <div className="flex justify-between"><span className="text-gray-500">Duration</span><span className="font-semibold text-gray-800">{gigHours(gig)} hrs</span></div>
-                                        <div className="flex justify-between"><span className="text-gray-500">Base rate</span><span className="font-semibold text-gray-800"><PayBadge gig={gig} /></span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500">{t('gig')}</span><span className="font-semibold text-gray-800">{gig.title}</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500">{t('venue')}</span><span className="font-semibold text-gray-800">{gigVenue(gig)}</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500">{t('date')}</span><span className="font-semibold text-gray-800">{fmt(gig.scheduled_start)}</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500">{t('duration')}</span><span className="font-semibold text-gray-800">{gigHours(gig)} hrs</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500">{t('baseRate')}</span><span className="font-semibold text-gray-800"><PayBadge gig={gig} /></span></div>
                                     </div>
                                     <div>
-                                        <label className={lbl}>Final Payout Amount ($)</label>
+                                        <label className={lbl}>{t('finalPayoutAmount')}</label>
                                         <input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className={inp} required />
                                     </div>
                                     <div>
-                                        <label className={lbl}>Payment Method</label>
+                                        <label className={lbl}>{t('paymentMethod')}</label>
                                         <select value={method} onChange={e => setMethod(e.target.value)} className={inp}>
-                                            <option value="bank_transfer">Bank Transfer</option>
-                                            <option value="check">Check</option>
-                                            <option value="cash">Cash</option>
-                                            <option value="venmo">Venmo</option>
-                                            <option value="zelle">Zelle</option>
+                                            <option value="bank_transfer">{t('bankTransfer')}</option>
+                                            <option value="check">{t('check')}</option>
+                                            <option value="cash">{t('cash')}</option>
+                                            <option value="venmo">{t('venmo')}</option>
+                                            <option value="zelle">{t('zelle')}</option>
                                         </select>
                                     </div>
-                                    <p className="text-xs text-gray-400">This will create an invoice and payment record in billing and mark the gig as completed.</p>
+                                    <p className="text-xs text-gray-400">{t('thisWillCreateAnInvoiceAndPaymentRecordInBillingAndMarkTheGigAsCompleted')}</p>
                                     <div className="flex justify-end gap-3">
-                                        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
+                                        <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">{t('cancel')}</button>
                                         <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 flex items-center gap-2">
                                             {saving && <Loader className="w-4 h-4 animate-spin" />} Pay ${parseFloat(amount || '0').toFixed(2)}
                                         </button>
@@ -490,6 +496,7 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
 function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
     gigs: Gig[]; bands: Band[]; isAdmin: boolean; onClaim: (g: Gig) => void; onRefresh: () => void
 }) {
+  const t = useTranslations('Gigs')
     const [search, setSearch] = useState('')
     const open = gigs.filter(g => g.status === 'open' &&
         (g.title.toLowerCase().includes(search.toLowerCase()) || gigVenue(g).toLowerCase().includes(search.toLowerCase()))
@@ -499,15 +506,15 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
         <div className="space-y-6">
             <div className="relative max-w-md">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="text" placeholder="Search by title or venue…" value={search} onChange={e => setSearch(e.target.value)}
+                <input type="text" placeholder={t('searchByTitleOrVenue')} value={search} onChange={e => setSearch(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary transition-colors" />
             </div>
 
             {open.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                     <Music2 className="w-10 h-10 text-gray-200 mb-4" />
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No open gigs right now</p>
-                    {isAdmin && <p className="text-xs text-gray-400 mt-2">Post a gig above to get started.</p>}
+                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{t('noOpenGigsRightNow')}</p>
+                    {isAdmin && <p className="text-xs text-gray-400 mt-2">{t('postAGigAboveToGetStarted')}</p>}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -542,7 +549,7 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
 
                                 <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                                     <div>
-                                        <p className="text-xs text-gray-400 mb-0.5">Est. earnings</p>
+                                        <p className="text-xs text-gray-400 mb-0.5">{t('estEarnings')}</p>
                                         <p className="text-lg font-black text-gray-900">
                                             ${gigEarnings(gig).toFixed(2)}
                                             <span className="text-xs font-normal text-gray-400 ml-1">
@@ -553,7 +560,7 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
                                     {!isAdmin && bands.length > 0 && (
                                         <button onClick={() => onClaim(gig)}
                                             className="px-4 py-2 rounded-xl text-sm font-bold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all">
-                                            Claim
+                                            {t('claim')}
                                         </button>
                                     )}
                                 </div>
@@ -570,6 +577,7 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
 function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
     gigs: Gig[]; onApprove: (g: Gig) => void; onPayout: (g: Gig) => void; onRefresh: () => void
 }) {
+  const t = useTranslations('Gigs')
     const [filter, setFilter] = useState<string>('all')
 
     const filtered = filter === 'all' ? gigs : gigs.filter(g => g.status === filter)
@@ -601,7 +609,7 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.length === 0 ? (
-                                <tr><td colSpan={7} className="px-5 py-16 text-center text-xs text-gray-400">No gigs in this category</td></tr>
+                                <tr><td colSpan={7} className="px-5 py-16 text-center text-xs text-gray-400">{t('noGigsInThisCategory')}</td></tr>
                             ) : filtered.map(gig => (
                                 <tr key={gig.id} className="hover:bg-gray-50/50 transition-colors">
                                     <td className="px-5 py-4 font-semibold text-sm text-gray-900 max-w-[160px]">
@@ -621,17 +629,17 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
                                             {gig.status === 'pending_approval' && (
                                                 <button onClick={() => onApprove(gig)}
                                                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
-                                                    <Users className="w-3 h-3" /> Review Claims
+                                                    <Users className="w-3 h-3" /> {t('reviewClaims')}
                                                 </button>
                                             )}
                                             {gig.status === 'assigned' && (
                                                 <button onClick={() => onPayout(gig)}
                                                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
-                                                    <CreditCard className="w-3 h-3" /> Pay Out
+                                                    <CreditCard className="w-3 h-3" /> {t('payOut')}
                                                 </button>
                                             )}
                                             {gig.status === 'completed' && (
-                                                <span className="flex items-center gap-1 text-xs text-gray-400"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Paid</span>
+                                                <span className="flex items-center gap-1 text-xs text-gray-400"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> {t('paid')}</span>
                                             )}
                                         </div>
                                     </td>
@@ -647,13 +655,14 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
 
 // ─── My Gigs Tab (band/student) ────────────────────────────────────────────────
 function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) {
+  const t = useTranslations('Gigs')
     const [releasing, setReleasing] = useState<string | null>(null)
 
     const release = async (gig: Gig) => {
         setReleasing(gig.id)
         try {
             await api.post(`/gigs/gigs/${gig.id}/release/`)
-            toast.success('Gig released back to the marketplace')
+            toast.success(t('msgGigReleasedBackToTheMarketplace'))
             onRefresh()
         } catch (err: any) {
             toast.error(err?.response?.data?.detail || 'Failed to release gig')
@@ -666,8 +675,8 @@ function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) 
         return (
             <div className="flex flex-col items-center justify-center py-20 text-center">
                 <Music2 className="w-10 h-10 text-gray-200 mb-4" />
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No gigs yet</p>
-                <p className="text-xs text-gray-400 mt-2">Head to Marketplace to claim open gigs.</p>
+                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{t('noGigsYet')}</p>
+                <p className="text-xs text-gray-400 mt-2">{t('headToMarketplaceToClaimOpenGigs')}</p>
             </div>
         )
     }
@@ -690,7 +699,7 @@ function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) 
                         </div>
                         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                             <div>
-                                <p className="text-xs text-gray-400 mb-0.5">Your earnings</p>
+                                <p className="text-xs text-gray-400 mb-0.5">{t('yourEarnings')}</p>
                                 <p className="text-base font-black text-gray-900">${gigEarnings(gig).toFixed(2)}</p>
                             </div>
                             {gig.status === 'assigned' && (
@@ -701,7 +710,7 @@ function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) 
                             )}
                             {gig.status === 'completed' && (
                                 <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
-                                    <CheckCircle2 className="w-4 h-4" /> Paid out
+                                    <CheckCircle2 className="w-4 h-4" /> {t('paidOut')}
                                 </span>
                             )}
                         </div>
@@ -714,6 +723,7 @@ function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) 
 
 // ─── Availability Tab ─────────────────────────────────────────────────────────
 function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }) {
+  const t = useTranslations('Gigs')
     const today = new Date()
     const [year, setYear] = useState(today.getFullYear())
     const [month, setMonth] = useState(today.getMonth()) // 0-indexed
@@ -806,7 +816,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
 
                 {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div> : (
                     <div className="space-y-4">
-                        {bands.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No bands found in this studio.</p>}
+                        {bands.length === 0 && <p className="text-sm text-gray-400 text-center py-8">{t('noBandsFoundInThisStudio')}</p>}
                         {bands.map(band => {
                             const ba = availMap[band.id]
                             const days = new Set<number>(ba?.availability_data?.available_days || [])
@@ -822,7 +832,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                                                 {ba.is_submitted ? 'Submitted' : 'Draft'}
                                             </span>
                                         ) : (
-                                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400">Not submitted</span>
+                                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400">{t('notSubmitted')}</span>
                                         )}
                                     </div>
                                     {ba ? (
@@ -838,7 +848,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-xs text-gray-300 text-center py-4">No availability submitted for this month.</p>
+                                        <p className="text-xs text-gray-300 text-center py-4">{t('noAvailabilitySubmittedForThisMonth')}</p>
                                     )}
                                 </div>
                             )
@@ -860,14 +870,14 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                 </div>
                 {avail?.is_submitted && (
                     <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-                        <CheckCircle2 className="w-4 h-4" /> Submitted
+                        <CheckCircle2 className="w-4 h-4" /> {t('submitted')}
                     </span>
                 )}
             </div>
 
             {bands.length > 1 && (
                 <div>
-                    <label className={lbl}>Band</label>
+                    <label className={lbl}>{t('band')}</label>
                     <select value={selectedBand} onChange={e => setSelectedBand(e.target.value)} className={inp}>
                         {bands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
@@ -877,7 +887,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
             {avail?.is_submitted && (
                 <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-800">
                     <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                    Availability has been submitted and is locked. Contact your studio if changes are needed.
+                    {t('availabilityHasBeenSubmittedAndIsLockedContactYourStudioIfChangesAreNeeded')}
                 </div>
             )}
 
@@ -906,8 +916,8 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                         ))}
                     </div>
                     <div className="flex items-center gap-3 mt-4 pt-3 border-t border-gray-50 text-xs text-gray-400">
-                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500 inline-block" /> Available</span>
-                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-100 inline-block" /> Unavailable</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500 inline-block" /> {t('available')}</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-100 inline-block" /> {t('unavailable')}</span>
                         <span className="ml-auto font-semibold text-gray-600">{activeDays.size} days selected</span>
                     </div>
                 </div>
@@ -916,9 +926,9 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
             {!avail?.is_submitted && (
                 <>
                     <div>
-                        <label className={lbl}>Notes (optional)</label>
+                        <label className={lbl}>{t('notesOptional')}</label>
                         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-                            placeholder="e.g. Available evenings only on weekdays, no Sundays in July…"
+                            placeholder={t('eGAvailableEveningsOnlyOnWeekdaysNoSundaysInJuly')}
                             className={`${inp} resize-none`} />
                     </div>
                     <div className="flex gap-3">
@@ -931,7 +941,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                             {submitting && <Loader className="w-4 h-4 animate-spin" />} Submit Availability
                         </button>
                     </div>
-                    {activeDays.size === 0 && <p className="text-xs text-center text-gray-400">Select at least one available day before submitting.</p>}
+                    {activeDays.size === 0 && <p className="text-xs text-center text-gray-400">{t('selectAtLeastOneAvailableDayBeforeSubmitting')}</p>}
                 </>
             )}
         </div>
@@ -940,6 +950,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function GigsPage() {
+  const t = useTranslations('Gigs')
     const { currentUser } = useUser()
     const isAdmin = currentUser?.role === 'admin'
 
@@ -961,7 +972,7 @@ export default function GigsPage() {
             ])
             setGigs(Array.isArray(gigsRes.data) ? gigsRes.data : gigsRes.data.results || [])
             setBands(Array.isArray(bandsRes.data) ? bandsRes.data : bandsRes.data.results || [])
-        } catch { toast.error('Failed to load gig data') }
+        } catch { toast.error(t('msgFailedToLoadGigData')) }
         finally { setLoading(false) }
     }, [])
 
@@ -982,7 +993,7 @@ export default function GigsPage() {
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Loading Marketplace…</p>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t('loadingMarketplace')}</p>
         </div>
     )
 
@@ -997,13 +1008,13 @@ export default function GigsPage() {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-4">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Gig Marketplace</h1>
-                        <p className="text-gray-500 text-sm mt-1">Bands pick up gigs, set their schedules, and get paid — no middleman.</p>
+                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{t('gigMarketplace')}</h1>
+                        <p className="text-gray-500 text-sm mt-1">{t('bandsPickUpGigsSetTheirSchedulesAndGetPaidNoMiddleman')}</p>
                     </div>
                     {isAdmin && (
                         <Button onClick={() => setPostOpen(true)}
                             className="gap-2 shadow-lg shadow-primary/20 font-bold">
-                            <Plus className="w-4 h-4" /> Post New Gig
+                            <Plus className="w-4 h-4" /> {t('postNewGig')}
                         </Button>
                     )}
                 </div>

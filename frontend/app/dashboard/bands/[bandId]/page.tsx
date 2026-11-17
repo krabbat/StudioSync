@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
@@ -59,6 +60,7 @@ interface ExternalEvent {
 }
 
 export default function BandDetailPage() {
+  const t = useTranslations('BandDetail')
     const params = useParams()
     const router = useRouter()
     const bandId = params.bandId as string
@@ -100,7 +102,7 @@ export default function BandDetailPage() {
             setExternalEvents(evts)
         } catch (error) {
             console.error('Failed to fetch band data:', error)
-            toast.error('Failed to load band details')
+            toast.error(t('msgFailedToLoadBandDetails'))
             router.push('/dashboard/bands')
         } finally {
             setLoading(false)
@@ -112,7 +114,7 @@ export default function BandDetailPage() {
         try {
             const res = await api.post('/gigs/external-events/sync/', { band_id: bandId })
             setExternalEvents(res.data.events ?? [])
-            toast.success('Calendar synced with 317booking')
+            toast.success(t('msgCalendarSyncedWith317booking'))
         } catch (err: any) {
             const msg = err.response?.data?.detail || 'Sync failed'
             toast.error(msg)
@@ -182,17 +184,17 @@ export default function BandDetailPage() {
 
     const handleUpload = async () => {
         if (!uploadForm.title) {
-            toast.error('Title required')
+            toast.error(t('msgTitleRequired'))
             return
         }
 
         if (uploadForm.resource_type === 'link' && !uploadForm.external_url) {
-            toast.error('External URL required')
+            toast.error(t('msgExternalURLRequired'))
             return
         }
 
         if (uploadForm.resource_type !== 'link' && !uploadForm.file) {
-            toast.error('File required')
+            toast.error(t('msgFileRequired'))
             return
         }
 
@@ -218,7 +220,7 @@ export default function BandDetailPage() {
                 }
             })
 
-            toast.success('Resource added to band repository')
+            toast.success(t('msgResourceAddedToBandRepository'))
             setShowUploadModal(false)
             setUploadForm({
                 title: '',
@@ -245,32 +247,32 @@ export default function BandDetailPage() {
         }
 
         if (!resource.file_url) {
-            toast.error('File URL unavailable')
+            toast.error(t('msgFileURLUnavailable'))
             return
         }
 
         try {
             await downloadAuthenticatedFile(resource.file_url, resource.title)
-            toast.success('Download initiated')
+            toast.success(t('msgDownloadInitiated'))
         } catch (error) {
             console.error('Download failed:', error)
-            toast.error('Download failed')
+            toast.error(t('msgDownloadFailed'))
         }
     }
 
     const handleDelete = async (resourceId: string) => {
-        if (!confirm('Are you sure you want to delete this resource?')) {
+        if (!confirm(t('msgAreYouSureYouWantToDeleteThisResource'))) {
             return
         }
 
         setDeleting(resourceId)
         try {
             await api.delete(`/resources/library/${resourceId}/`)
-            toast.success('Resource deleted')
+            toast.success(t('msgResourceDeleted'))
             fetchBandData()
         } catch (error) {
             console.error('Delete failed:', error)
-            toast.error('Delete failed')
+            toast.error(t('msgDeleteFailed'))
         } finally {
             setDeleting(null)
         }
@@ -296,7 +298,7 @@ export default function BandDetailPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Loading Band...</p>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t('loadingBand')}</p>
             </div>
         )
     }
@@ -314,7 +316,7 @@ export default function BandDetailPage() {
                 className="gap-2 text-gray-600 hover:text-gray-900 -ml-2"
             >
                 <ChevronLeft className="w-4 h-4" />
-                Back to Bands
+                {t('backToBands')}
             </Button>
 
             {/* Band Header */}
@@ -374,7 +376,7 @@ export default function BandDetailPage() {
                 <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
                     <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-6 flex items-center gap-3">
                         <UsersIcon className="w-6 h-6 text-primary" />
-                        Band Members
+                        {t('bandMembers')}
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {band.member_details.map((member) => (
@@ -424,7 +426,7 @@ export default function BandDetailPage() {
                             className="gap-2 text-gray-500 hover:text-primary text-xs font-bold uppercase tracking-widest"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-                            Sync Now
+                            {t('syncNow')}
                         </Button>
                     )}
                 </div>
@@ -432,14 +434,14 @@ export default function BandDetailPage() {
                 {!band?.ical_feed_url ? (
                     <div className="text-center py-10 text-gray-400">
                         <CalendarDays className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-bold uppercase tracking-widest">Not connected to 317booking</p>
-                        <p className="text-xs mt-1">Create this band in 317booking to start syncing confirmed gigs.</p>
+                        <p className="text-sm font-bold uppercase tracking-widest">{t('notConnectedTo317booking')}</p>
+                        <p className="text-xs mt-1">{t('createThisBandIn317bookingToStartSyncingConfirmedGigs')}</p>
                     </div>
                 ) : externalEvents.length === 0 ? (
                     <div className="text-center py-10 text-gray-400">
                         <CalendarDays className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-bold uppercase tracking-widest">No confirmed gigs</p>
-                        <p className="text-xs mt-1">Confirmed gigs from 317booking will appear here.</p>
+                        <p className="text-sm font-bold uppercase tracking-widest">{t('noConfirmedGigs')}</p>
+                        <p className="text-xs mt-1">{t('confirmedGigsFrom317bookingWillAppearHere')}</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -503,7 +505,7 @@ export default function BandDetailPage() {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-2">
                         <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                            Band Resources
+                            {t('bandResources')}
                             <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-black text-primary uppercase tracking-widest">
                                 {resources.length} Assets
                             </div>
@@ -515,7 +517,7 @@ export default function BandDetailPage() {
                         className="gap-2 hover:scale-105 shadow-xl shadow-primary/20 transition-all py-6 px-10 font-black uppercase tracking-widest text-[10px]"
                     >
                         <Upload className="w-4 h-4" />
-                        Add Resource
+                        {t('addResource')}
                     </Button>
                 </div>
 
@@ -525,7 +527,7 @@ export default function BandDetailPage() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search resources..."
+                            placeholder={t('searchResources')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all"
@@ -613,9 +615,9 @@ export default function BandDetailPage() {
                                 <BookOpen className="w-12 h-12 text-gray-200" />
                             </div>
                             <div className="space-y-2">
-                                <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">No Resources Yet</h3>
+                                <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">{t('noResourcesYet')}</h3>
                                 <p className="text-sm font-medium text-gray-500 max-w-sm mx-auto leading-relaxed">
-                                    This band doesn't have any resources yet. Upload files, sheet music, or links to get started.
+                                    {t('thisBandDoesnTHaveAnyResourcesYetUploadFilesSheetMusicOrLinksToGetStarted')}
                                 </p>
                             </div>
                             <Button
@@ -623,7 +625,7 @@ export default function BandDetailPage() {
                                 className="px-10 py-6 rounded-2xl shadow-lg shadow-primary/10"
                             >
                                 <Plus className="w-4 h-4 mr-1" />
-                                Add First Resource
+                                {t('addFirstResource')}
                             </Button>
                         </div>
                     </div>
@@ -636,12 +638,12 @@ export default function BandDetailPage() {
                 onOpenChange={setShowUploadModal}
                 size="lg"
             >
-                <DialogHeader title="Add Band Resource" />
+                <DialogHeader title={t('addBandResource')} />
                 <DialogContent>
                     <div className="space-y-8">
                         {/* Resource Type */}
                         <div className="space-y-4">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Resource Type</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('resourceType')}</label>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 {(['pdf', 'audio', 'video', 'image', 'link', 'other'] as ResourceType[]).map(type => (
                                     <button
@@ -665,7 +667,7 @@ export default function BandDetailPage() {
                         {/* File/Link Upload */}
                         {uploadForm.resource_type === 'link' ? (
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">External URL</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('externalURL')}</label>
                                 <div className="relative">
                                     <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                     <input
@@ -679,7 +681,7 @@ export default function BandDetailPage() {
                             </div>
                         ) : (
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">File Upload</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('fileUpload')}</label>
                                 <div
                                     onDragOver={handleDragOver}
                                     onDragLeave={handleDragLeave}
@@ -723,8 +725,8 @@ export default function BandDetailPage() {
                                                 <Upload className="w-6 h-6 text-gray-300 group-hover:text-primary transition-colors" />
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-black text-gray-900 uppercase tracking-widest">Drop file here</p>
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">or click to browse</p>
+                                                <p className="text-xs font-black text-gray-900 uppercase tracking-widest">{t('dropFileHere')}</p>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('orClickToBrowse')}</p>
                                             </div>
                                         </div>
                                     )}
@@ -735,22 +737,22 @@ export default function BandDetailPage() {
                         {/* Metadata */}
                         <div className="grid grid-cols-1 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Title</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('title')}</label>
                                 <input
                                     type="text"
                                     required
                                     value={uploadForm.title}
                                     onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
-                                    placeholder="Enter resource title..."
+                                    placeholder={t('enterResourceTitle')}
                                     className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-gray-900 transition-all"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('description')}</label>
                                 <textarea
                                     value={uploadForm.description}
                                     onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
-                                    placeholder="Add description..."
+                                    placeholder={t('addDescription')}
                                     rows={3}
                                     className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-gray-900 transition-all resize-none"
                                 />
@@ -764,7 +766,7 @@ export default function BandDetailPage() {
                         onClick={() => setShowUploadModal(false)}
                         className="flex-1"
                     >
-                        Cancel
+                        {t('cancel')}
                     </Button>
                     <Button
                         onClick={handleUpload}
@@ -774,12 +776,12 @@ export default function BandDetailPage() {
                         {uploading ? (
                             <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Uploading...
+                                {t('uploading')}
                             </>
                         ) : (
                             <>
                                 <Sparkles className="w-4 h-4" />
-                                Add Resource
+                                {t('addResource')}
                             </>
                         )}
                     </Button>

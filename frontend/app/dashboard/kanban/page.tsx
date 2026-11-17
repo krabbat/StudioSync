@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect } from 'react'
 import { Plus, Filter, Calendar as CalendarIcon, User, X, Edit2, Trash2, Loader2, HardDrive } from 'lucide-react'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
@@ -102,6 +103,7 @@ const mockColumns: Column[] = [
 const STORAGE_KEY = 'studiosync_kanban_v1'
 
 export default function KanbanPage() {
+  const t = useTranslations('Kanban')
     const [columns, setColumns] = useState<Column[]>(() => {
         if (typeof window === 'undefined') return mockColumns
         try {
@@ -222,8 +224,8 @@ export default function KanbanPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Project Board</h1>
-                    <p className="text-sm text-gray-500 font-medium mt-1 uppercase tracking-wider">Manage studio projects and tasks</p>
+                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t('projectBoard')}</h1>
+                    <p className="text-sm text-gray-500 font-medium mt-1 uppercase tracking-wider">{t('manageStudioProjectsAndTasks')}</p>
                 </div>
                 <div className="flex space-x-3">
                     <Button
@@ -231,14 +233,14 @@ export default function KanbanPage() {
                         className="gap-2"
                     >
                         <Filter className="w-4 h-4" />
-                        Filter
+                        {t('filter')}
                     </Button>
                     <Button
                         onClick={() => setShowAddModal(true)}
                         className="gap-2"
                     >
                         <Plus className="w-4 h-4" />
-                        Add Task
+                        {t('addTask')}
                     </Button>
                 </div>
             </div>
@@ -311,7 +313,7 @@ export default function KanbanPage() {
                                 onClick={() => setShowAddModal(true)}
                                 className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] hover:bg-white transition-all text-[10px] font-black uppercase tracking-widest active:scale-95"
                             >
-                                + Add Card
+                                {t('addCard')}
                             </button>
                         </div>
                     </div>
@@ -330,7 +332,7 @@ export default function KanbanPage() {
                         <DialogContent>
                             <div className="space-y-6">
                                 <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Description</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t('description')}</label>
                                     <p className="text-sm text-gray-700 font-medium bg-gray-50 p-4 rounded-xl border border-gray-100 italic leading-relaxed">
                                         "{selectedTask.description}"
                                     </p>
@@ -338,13 +340,13 @@ export default function KanbanPage() {
 
                                 <div className="grid grid-cols-3 gap-6">
                                     <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Priority</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t('priority')}</label>
                                         <div>{getPriorityBadge(selectedTask.priority)}</div>
                                     </div>
 
                                     {selectedTask.dueDate && (
                                         <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Due Date</label>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t('dueDate')}</label>
                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                 <CalendarIcon className="w-4 h-4 text-primary" />
                                                 {selectedTask.dueDate}
@@ -354,7 +356,7 @@ export default function KanbanPage() {
 
                                     {selectedTask.assignee && (
                                         <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Assignee</label>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t('assignee')}</label>
                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                 <User className="w-4 h-4 text-primary" />
                                                 {selectedTask.assignee}
@@ -366,11 +368,11 @@ export default function KanbanPage() {
                         </DialogContent>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setSelectedTask(null)} className="flex-1">
-                                Close
+                                {t('close')}
                             </Button>
                             <Button className="flex-1 gap-2">
                                 <Edit2 className="w-4 h-4" />
-                                Edit Task
+                                {t('editTask')}
                             </Button>
                         </DialogFooter>
                     </>
@@ -383,72 +385,72 @@ export default function KanbanPage() {
                 onOpenChange={setShowAddModal}
                 size="md"
             >
-                <DialogHeader title="Add New Task" />
+                <DialogHeader title={t('addNewTask')} />
                 <DialogContent>
                     <form id="add-task-form" onSubmit={handleAddCard} className="space-y-4">
                         <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Task Title</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{t('taskTitle')}</label>
                             <input
                                 required
                                 type="text"
                                 value={newTask.title}
                                 onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                                 className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all"
-                                placeholder="e.g. Schedule Studio Cleaning"
+                                placeholder={t('eGScheduleStudioCleaning')}
                             />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Description</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{t('description')}</label>
                             <textarea
                                 value={newTask.description}
                                 onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                                 className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all min-h-[100px] resize-none"
-                                placeholder="Detailed task description..."
+                                placeholder={t('detailedTaskDescription')}
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Priority</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{t('priority')}</label>
                                 <select
                                     value={newTask.priority}
                                     onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
                                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                                 >
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
+                                    <option value="low">{t('low')}</option>
+                                    <option value="medium">{t('medium')}</option>
+                                    <option value="high">{t('high')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Due Date</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{t('dueDate')}</label>
                                 <input
                                     type="text"
                                     value={newTask.dueDate}
                                     onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
                                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all"
-                                    placeholder="e.g. March 1"
+                                    placeholder={t('eGMarch1')}
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Assignee</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{t('assignee')}</label>
                             <input
                                 type="text"
                                 value={newTask.assignee}
                                 onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })}
                                 className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all"
-                                placeholder="Enter name..."
+                                placeholder={t('enterName')}
                             />
                         </div>
                     </form>
                 </DialogContent>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setShowAddModal(false)} className="flex-1">
-                        Cancel
+                        {t('cancel')}
                     </Button>
                     <Button type="submit" form="add-task-form" className="flex-[2] gap-2">
                         <Plus className="w-4 h-4" />
-                        Create Task
+                        {t('createTask')}
                     </Button>
                 </DialogFooter>
             </Dialog>

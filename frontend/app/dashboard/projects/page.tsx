@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useUsers } from '@/hooks/useDashboardData'
 import { LayoutGrid, Plus, X, Clock } from 'lucide-react'
 import { useState } from 'react'
@@ -93,6 +94,7 @@ const initialColumns: Column[] = [
 ]
 
 export default function ProjectsPage() {
+  const t = useTranslations('Projects')
     const { users } = useUsers()
     const [columns, setColumns] = useState<Column[]>(initialColumns)
     const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -234,8 +236,8 @@ export default function ProjectsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl md:text-4xl font-bold text-gray-900">Project Board</h1>
-                <p className="text-sm text-gray-600 mt-1">Manage studio tasks and projects</p>
+                <h1 className="text-2xl md:text-4xl font-bold text-gray-900">{t('projectBoard')}</h1>
+                <p className="text-sm text-gray-600 mt-1">{t('manageStudioTasksAndProjects')}</p>
             </div>
 
             {/* Add Task Button */}
@@ -244,29 +246,29 @@ export default function ProjectsPage() {
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors font-medium shadow-sm"
             >
                 <Plus className="w-5 h-5" />
-                Add Task
+                {t('addTask')}
             </button>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-600 uppercase">Total Tasks</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase">{t('totalTasks')}</p>
                     <p className="text-2xl font-bold text-gray-900 mt-1">{totalTasks}</p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-600 uppercase">To Do</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase">{t('toDo')}</p>
                     <p className="text-2xl font-bold text-gray-600 mt-1">
                         {columns.find(c => c.id === 'todo')?.tasks.length || 0}
                     </p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-600 uppercase">In Progress</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase">{t('inProgress')}</p>
                     <p className="text-2xl font-bold text-blue-600 mt-1">
                         {columns.find(c => c.id === 'in-progress')?.tasks.length || 0}
                     </p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-600 uppercase">Completed</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase">{t('completed')}</p>
                     <p className="text-2xl font-bold text-green-600 mt-1">
                         {columns.find(c => c.id === 'done')?.tasks.length || 0}
                     </p>
@@ -320,7 +322,7 @@ export default function ProjectsPage() {
                                 onClick={() => setShowAddTaskModal(true)}
                                 className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors text-sm font-medium"
                             >
-                                + Add Task
+                                {t('addTask')}
                             </button>
                         </div>
                     </div>
@@ -345,7 +347,7 @@ export default function ProjectsPage() {
                         ) : (
                             <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
                                 <LayoutGrid className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                <p className="text-sm text-gray-500">No tasks in this column</p>
+                                <p className="text-sm text-gray-500">{t('noTasksInThisColumn')}</p>
                             </div>
                         )}
 
@@ -353,7 +355,7 @@ export default function ProjectsPage() {
                             onClick={() => setShowAddTaskModal(true)}
                             className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors text-sm font-medium"
                         >
-                            + Add Task
+                            {t('addTask')}
                         </button>
                     </div>
                 ))}
@@ -364,7 +366,7 @@ export default function ProjectsPage() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                            <h2 className="text-xl font-bold text-gray-900">Add New Task</h2>
+                            <h2 className="text-xl font-bold text-gray-900">{t('addNewTask')}</h2>
                             <button
                                 onClick={() => setShowAddTaskModal(false)}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -375,44 +377,44 @@ export default function ProjectsPage() {
 
                         <form onSubmit={handleAddTask} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Task Title *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('taskTitle')}</label>
                                 <input
                                     type="text"
                                     required
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                                     value={newTask.title}
                                     onChange={e => setNewTask({ ...newTask, title: e.target.value })}
-                                    placeholder="Task title"
+                                    placeholder={t('taskTitle')}
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('description')}</label>
                                 <textarea
                                     rows={3}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                                     value={newTask.description}
                                     onChange={e => setNewTask({ ...newTask, description: e.target.value })}
-                                    placeholder="Task description"
+                                    placeholder={t('taskDescription')}
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('priority')}</label>
                                     <select
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                                         value={newTask.priority}
                                         onChange={e => setNewTask({ ...newTask, priority: e.target.value })}
                                     >
-                                        <option value="low">Low</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="high">High</option>
+                                        <option value="low">{t('low')}</option>
+                                        <option value="medium">{t('medium')}</option>
+                                        <option value="high">{t('high')}</option>
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('dueDate')}</label>
                                     <input
                                         type="date"
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
@@ -423,13 +425,13 @@ export default function ProjectsPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('assignee')}</label>
                                 <select
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                                     value={newTask.assignee}
                                     onChange={e => setNewTask({ ...newTask, assignee: e.target.value })}
                                 >
-                                    <option value="">Unassigned</option>
+                                    <option value="">{t('unassigned')}</option>
                                     {users.map((user: any) => (
                                         <option key={user.id} value={user.full_name || `${user.first_name} ${user.last_name}`}>
                                             {user.full_name || `${user.first_name} ${user.last_name}`} ({user.role})
@@ -444,13 +446,13 @@ export default function ProjectsPage() {
                                     onClick={() => setShowAddTaskModal(false)}
                                     className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                                 >
-                                    Cancel
+                                    {t('cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     className="flex-1 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors font-medium"
                                 >
-                                    Add Task
+                                    {t('addTask')}
                                 </button>
                             </div>
                         </form>
@@ -474,19 +476,19 @@ export default function ProjectsPage() {
 
                         <div className="p-6 space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Description</label>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">{t('description')}</label>
                                 <p className="text-gray-900">{selectedTask.description}</p>
                             </div>
 
                             <div className="grid grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Priority</label>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">{t('priority')}</label>
                                     <div className="mt-1">{getPriorityBadge(selectedTask.priority)}</div>
                                 </div>
 
                                 {selectedTask.dueDate && (
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Due Date</label>
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">{t('dueDate')}</label>
                                         <p className="text-gray-900 font-semibold flex items-center gap-2">
                                             <Clock className="w-4 h-4" /> {selectedTask.dueDate}
                                         </p>
@@ -495,7 +497,7 @@ export default function ProjectsPage() {
 
                                 {selectedTask.assignee && (
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Assignee</label>
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">{t('assignee')}</label>
                                         <p className="text-gray-900 font-semibold">{selectedTask.assignee}</p>
                                     </div>
                                 )}
@@ -503,10 +505,10 @@ export default function ProjectsPage() {
 
                             <div className="flex gap-3 pt-4 border-t border-gray-200">
                                 <button className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium transition-colors">
-                                    Edit Task
+                                    {t('editTask')}
                                 </button>
                                 <button className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">
-                                    Delete
+                                    {t('delete')}
                                 </button>
                             </div>
                         </div>
