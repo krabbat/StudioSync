@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Mail, Loader2, AlertCircle, CheckCircle, ArrowLeft, Send } from 'lucide-react'
 import Link from 'next/link'
 import { Logo } from '@/components/Logo'
@@ -35,6 +35,11 @@ export default function ForgotPasswordPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
+    const [isHydrated, setIsHydrated] = useState(false)
+
+    useEffect(() => {
+        setIsHydrated(true)
+    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -122,7 +127,7 @@ export default function ForgotPasswordPage() {
                             </Link>
                         </div>
                     ) : (
-                        <form className="space-y-5" onSubmit={handleSubmit}>
+                        <form method="post" className="space-y-5" onSubmit={handleSubmit}>
                             {error && (
                                 <div className="flex items-center gap-3 p-4 rounded-xl text-sm" style={{ backgroundColor: 'rgba(181,64,64,0.06)', border: '1px solid rgba(181,64,64,0.2)', color: '#b54040' }}>
                                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -151,7 +156,7 @@ export default function ForgotPasswordPage() {
                             </div>
 
                             <button
-                                type="submit" disabled={isLoading}
+                                type="submit" disabled={!isHydrated || isLoading}
                                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
                                 style={{ backgroundColor: A.amber, color: '#fff' }}
                                 onMouseEnter={e => { if (!isLoading) e.currentTarget.style.backgroundColor = A.amberDark }}
