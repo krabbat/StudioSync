@@ -526,6 +526,7 @@ class TeacherSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source="user.last_name", read_only=True)
     phone = serializers.CharField(source="user.phone", read_only=True)
     avatar = serializers.SerializerMethodField()
+    user_id = serializers.UUIDField(read_only=True)
     students_count = serializers.SerializerMethodField()
     user = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), write_only=True, required=False
@@ -539,6 +540,7 @@ class TeacherSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "user",
+            "user_id",
             "studio",
             "email",
             "first_name",
