@@ -163,16 +163,7 @@ export default function LoginPage() {
                                 {t('signIn')}
                             </h2>
                             <p className="text-sm" style={{ color: A.muted }}>
-                                {t('noAccount')}{' '}
-                                <Link
-                                    href="/signup"
-                                    className="font-semibold transition-colors"
-                                    style={{ color: A.amber }}
-                                    onMouseEnter={e => (e.currentTarget.style.color = A.amberDark)}
-                                    onMouseLeave={e => (e.currentTarget.style.color = A.amber)}
-                                >
-                                    {t('signUpFree')}
-                                </Link>
+                                {t('accountProvidedByTeacher')}
                             </p>
                         </div>
 
