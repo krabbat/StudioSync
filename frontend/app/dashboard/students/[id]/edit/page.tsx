@@ -29,6 +29,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
         last_name: '',
         email: '',
         phone: '',
+        address_line1: '',
+        postal_code: '',
+        city: '',
         instrument: '',
         instruments: [] as string[],
         birth_date: '',
@@ -59,6 +62,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                     last_name: lastName,
                     email: email,
                     phone: phone,
+                    address_line1: student.address_line1 || '',
+                    postal_code: student.postal_code || '',
+                    city: student.city || '',
                     instrument: '', // Used for input only
                     instruments: student.instruments || (student.instrument ? [student.instrument] : []),
                     birth_date: student.birth_date || '',
@@ -251,6 +257,25 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                                         <Info className="w-3 h-3" />
                                         Press Enter to add multiple entries
                                     </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Address for home lessons */}
+                        <section className="space-y-6">
+                            <h2 className="text-lg font-bold text-gray-900">Unterrichtsanschrift</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Straße und Hausnummer</label>
+                                    <input type="text" name="address_line1" value={formData.address_line1} onChange={handleChange} className={inputClass} autoComplete="street-address" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Postleitzahl</label>
+                                    <input type="text" name="postal_code" value={formData.postal_code} onChange={handleChange} className={inputClass} autoComplete="postal-code" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
+                                    <input type="text" name="city" value={formData.city} onChange={handleChange} className={inputClass} autoComplete="address-level2" />
                                 </div>
                             </div>
                         </section>
