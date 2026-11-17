@@ -83,6 +83,13 @@ export default function StudentsPage() {
     const { teachers } = useTeachers()
 
     // --- State ---
+    const [assignTeacherId, setAssignTeacherId] = useState('')
+    const [assigningStudentId, setAssigningStudentId] = useState<string | null>(null)
+
+    useEffect(() => {
+        const teacherId = new URLSearchParams(window.location.search).get('assign')
+        setAssignTeacherId(teacherId || '')
+    }, [])
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -135,6 +142,27 @@ export default function StudentsPage() {
         setIsEditModalOpen(true)
     }
 
+    const assignmentTeacher = teachers.find((teacher: any) => teacher.id === assignTeacherId)
+
+    const assignStudent = async (student: StudentData) => {
+        if (!assignmentTeacher) return
+        const currentId = typeof student.primary_teacher === 'object'
+            ? student.primary_teacher?.id
+            : student.primary_teacher
+        const nextId = currentId === assignmentTeacher.id ? null : assignmentTeacher.id
+        setAssigningStudentId(student.id)
+        try {
+            await api.patch(`/students/${student.id}/`, { primary_teacher: nextId })
+            toast.success(nextId ? t('assignmentSaved') : t('assignmentRemoved'))
+            refresh()
+        } catch (error: any) {
+            console.error('Teacher assignment failed:', error)
+            toast.error(error.response?.data?.detail || t('assignmentFailed'))
+        } finally {
+            setAssigningStudentId(null)
+        }
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!selectedStudent) return
@@ -144,6 +172,7 @@ export default function StudentsPage() {
             const { enrollment_date, ...otherFields } = formData
             await api.patch(`/students/${selectedStudent.id}/`, {
                 ...otherFields,
+                primary_teacher: formData.primary_teacher || null,
                 ...(enrollment_date ? { enrollment_date } : {})
             })
             toast.success(t('saved'))
@@ -202,6 +231,29 @@ export default function StudentsPage() {
                     {t('addStudent')}
                 </Button>
             </header>
+
+            {/* Teacher-centered assignment, opened from the faculty list. */}
+            {assignTeacherId && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+                    <div>
+                        <h2 className="font-bold text-gray-900">{t('assigningToTeacher')}</h2>
+                        <p className="text-sm text-gray-600">
+                            {assignmentTeacher
+                                ? `${assignmentTeacher.first_name} ${assignmentTeacher.last_name} – ${t('assignTeacherHint')}`
+                                : t('teacherNotFound')}
+                        </p>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            setAssignTeacherId('')
+                            router.replace('/dashboard/students')
+                        }}
+                    >
+                        {t('closeAssignment')}
+                    </Button>
+                </div>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -350,6 +402,23 @@ export default function StudentsPage() {
                                             >
                                                 <ChevronRight className="w-5 h-5" />
                                             </Button>
+                                            {assignmentTeacher && currentUser?.role === 'admin' && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => assignStudent(student)}
+                                                    disabled={assigningStudentId === student.id}
+                                                    className="text-xs whitespace-nowrap"
+                                                >
+                                                    {assigningStudentId === student.id
+                                                        ? t('assigning')
+                                                        : (typeof student.primary_teacher === 'object'
+                                                            ? student.primary_teacher?.id
+                                                            : student.primary_teacher) === assignmentTeacher.id
+                                                            ? t('removeAssignment')
+                                                            : t('assignNow')}
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
