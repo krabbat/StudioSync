@@ -38,88 +38,14 @@ class MeView(APIView):
 
 
 class RegisterView(APIView):
-    """
-    Public registration endpoint - creates users with 'student' role by default
-    Admin must manually upgrade to teacher/admin via admin panel
-    """
+    """Accounts are created by the studio owner; self-registration is disabled."""
 
     permission_classes = [permissions.AllowAny]
-    throttle_classes = [AuthAnonThrottle]
 
     def post(self, request):
-        email = request.data.get("email")
-        password = request.data.get("password")
-        password2 = request.data.get("password2")
-        first_name = request.data.get("first_name")
-        last_name = request.data.get("last_name")
-        if password2 is not None and password2 != password:
-            return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Validation
-        if not all([email, password, first_name, last_name]):
-            return Response(
-                {"error": "Email, password, first name, and last name are required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            validate_password(
-                password,
-                user=User(email=email, first_name=first_name, last_name=last_name),
-            )
-        except DjangoValidationError as exc:
-            return Response({"error": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if user exists
-        if User.objects.filter(email=email).exists():
-            return Response(
-                {"error": "A user with this email already exists"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Restriction: Users cannot self-promote to 'teacher' or 'admin'
-        actual_role = "student"
-        requested_role = request.data.get("role", "student")
-
-        # If they requested teacher/admin, we set them to student but notify admins
-        needs_approval = requested_role in ["teacher", "admin"]
-        if requested_role in ["student", "parent"]:
-            actual_role = requested_role
-
-        user = User.objects.create_user(
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            role=actual_role,
-            is_active=True,
-            is_approved=False,
-        )
-
-        # Notify student and admins
-        from apps.core.email_utils import (
-            send_admin_approval_notification,
-            send_registration_pending_email,
-        )
-        from apps.notifications.models import Notification
-
-        send_registration_pending_email(email, first_name)
-        send_admin_approval_notification(user, request=request)
-        Notification.notify_admin_new_student_registration(user)
-
-        if needs_approval:
-            try:
-                Notification.notify_admin_instructor_request(user)
-            except Exception:
-                pass
-
-        serializer = UserSerializer(user)
         return Response(
-            {
-                "message": "Account created successfully. Your account is pending approval. You will receive an email once an instructor or admin has approved your access.",
-                "user": serializer.data,
-            },
-            status=status.HTTP_201_CREATED,
+            {"detail": "Public registration is disabled. Contact your music teacher for access."},
+            status=status.HTTP_403_FORBIDDEN,
         )
 
 
