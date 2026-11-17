@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations, useLocale } from 'next-intl'
+import { useStudioFormatting } from '@/lib/useStudioFormatting'
 import { useState, useEffect } from 'react'
 import { useUser } from '@/contexts/UserContext'
 import { useInvoices, useSubscriptionPlans, useSubscriptions } from '@/hooks/useDashboardData'
@@ -54,6 +55,7 @@ interface Invoice {
 export default function BillingPage() {
   const tr = useTranslations('Billing')
   const locale = useLocale()
+  const { money, currency } = useStudioFormatting()
     const { currentUser } = useUser()
     const { invoices, loading: loadingInvoices, refetch: refetchInvoices } = useInvoices()
     const { plans, loading: loadingPlans } = useSubscriptionPlans()
@@ -329,8 +331,8 @@ export default function BillingPage() {
                             </div>
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('totalRevenue')}</p>
                             <div className="flex items-baseline gap-1">
-                                <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">${totalRevenue.toLocaleString()}</h3>
-                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">USD</span>
+                                <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">{money(totalRevenue)}</h3>
+                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">{currency}</span>
                             </div>
                         </div>
 
@@ -343,8 +345,8 @@ export default function BillingPage() {
                             </div>
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('expectedSoon')}</p>
                             <div className="flex items-baseline gap-1">
-                                <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">${pendingAmount.toLocaleString()}</h3>
-                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">USD</span>
+                                <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">{money(pendingAmount)}</h3>
+                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">{currency}</span>
                             </div>
                         </div>
 
@@ -357,8 +359,8 @@ export default function BillingPage() {
                             </div>
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('pastDue')}</p>
                             <div className="flex items-baseline gap-1">
-                                <h3 className="text-xl sm:text-3xl font-black text-red-600 tracking-tight">${overdueAmount.toLocaleString()}</h3>
-                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">USD</span>
+                                <h3 className="text-xl sm:text-3xl font-black text-red-600 tracking-tight">{money(overdueAmount)}</h3>
+                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">{currency}</span>
                             </div>
                         </div>
 
@@ -435,7 +437,7 @@ export default function BillingPage() {
                                                 {invoice.student_name || invoice.band_name || 'Generic Client'}
                                             </td>
                                             <td className="px-6 py-6 font-black text-gray-900 text-sm">
-                                                ${Number(invoice.total_amount).toFixed(2)}
+                                                {money(invoice.total_amount)}
                                             </td>
                                             <td className="px-6 py-6">
                                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(invoice.status)}`}>
@@ -529,7 +531,7 @@ export default function BillingPage() {
                                             {invoice.student_name || invoice.band_name || 'Generic Client'}
                                         </div>
                                         <div className="text-lg font-black text-gray-900">
-                                            ${Number(invoice.total_amount).toFixed(2)}
+                                            {money(invoice.total_amount)}
                                         </div>
                                     </div>
 
@@ -616,7 +618,7 @@ export default function BillingPage() {
                                                         }`}>
                                                         {statusLabels[sub.status] || sub.status}
                                                     </span>
-                                                    <span className="font-black text-gray-900">${sub.plan_details?.price}</span>
+                                                    <span className="font-black text-gray-900">{money(sub.plan_details?.price)}</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -643,7 +645,7 @@ export default function BillingPage() {
                                             <div>
                                                 <h3 className="font-black text-lg text-gray-900 mb-1">{plan.name}</h3>
                                                 <div className="flex items-baseline gap-1">
-                                                    <span className="text-3xl font-black tracking-tight">${plan.price}</span>
+                                                    <span className="text-3xl font-black tracking-tight">{money(plan.price)}</span>
                                                     <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">/ {intervalLabels[plan.interval] || plan.interval}</span>
                                                 </div>
                                                 <p className="text-xs font-medium text-gray-500 mt-2">{plan.description || tr('subscriptionPlanDescription')}</p>
@@ -784,7 +786,7 @@ export default function BillingPage() {
 
                         <div className="pt-6 border-t border-gray-100 flex justify-between items-center">
                             <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{tr('estimatedTotal')}</span>
-                            <span className="text-3xl font-black text-gray-900 tracking-tight">${modalTotal.toFixed(2)}</span>
+                            <span className="text-3xl font-black text-gray-900 tracking-tight">{money(modalTotal)}</span>
                         </div>
                     </form>
                 </DialogContent>
@@ -876,9 +878,9 @@ export default function BillingPage() {
                                                 <tr key={idx}>
                                                     <td className="px-6 py-4 text-sm font-bold text-gray-700">{item.description}</td>
                                                     <td className="px-6 py-4 text-sm font-bold text-gray-500 text-center">{item.quantity}</td>
-                                                    <td className="px-6 py-4 text-sm font-bold text-gray-500 text-right">${Number(item.unit_price).toFixed(2)}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-gray-500 text-right">{money(item.unit_price)}</td>
                                                     <td className="px-6 py-4 text-sm font-black text-gray-900 text-right">
-                                                        ${Number(item.total_price || (item.quantity * Number(item.unit_price))).toFixed(2)}
+                                                        {money(item.total_price || (item.quantity * Number(item.unit_price)))}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -891,8 +893,8 @@ export default function BillingPage() {
                                             <div key={idx} className="p-4 space-y-2">
                                                 <div className="font-bold text-gray-900 text-sm leading-tight">{item.description}</div>
                                                 <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                                    <span>{item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
-                                                    <span className="text-gray-900">${Number(item.total_price || (item.quantity * Number(item.unit_price))).toFixed(2)}</span>
+                                                    <span>{item.quantity} × {money(item.unit_price)}</span>
+                                                    <span className="text-gray-900">{money(item.total_price || (item.quantity * Number(item.unit_price)))}</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -914,8 +916,8 @@ export default function BillingPage() {
                                         )}
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-4xl font-black tracking-tight">${Number(viewingInvoice.total_amount).toFixed(2)}</span>
-                                        <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">USD</p>
+                                        <span className="text-4xl font-black tracking-tight">{money(viewingInvoice.total_amount)}</span>
+                                        <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">{currency}</p>
                                     </div>
                                 </div>
                             </div>

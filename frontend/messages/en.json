@@ -817,7 +817,7 @@
     "manageYourStudioEquipment": "Manage your studio equipment",
     "addItem": "Add Item",
     "items": "Items",
-    "value": "Value ($)",
+    "value": "Value ({currency})",
     "lowStock": "Low Stock",
     "repairs": "Repairs",
     "item": "Item",
@@ -848,7 +848,14 @@
     "additionalNotes": "Additional notes...",
     "msgItemUpdated": "Item updated!",
     "msgItemAdded": "Item added!",
-    "msgFailedToSaveItem": "Failed to save item"
+    "msgFailedToSaveItem": "Failed to save item",
+    "filterAll": "All",
+    "filterInstruments": "Instruments",
+    "filterEquipment": "Equipment",
+    "filterSheetMusic": "Sheet Music",
+    "conditionExcellent": "Excellent",
+    "conditionGood": "Good",
+    "conditionFair": "Fair"
   },
   "GeneralSettings": {
     "settings": "Settings",

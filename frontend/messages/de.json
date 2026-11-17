@@ -817,7 +817,7 @@
     "manageYourStudioEquipment": "Instrumente, Geräte und Materialien verwalten",
     "addItem": "Eintrag hinzufügen",
     "items": "Einträge",
-    "value": "Wert ($)",
+    "value": "Wert ({currency})",
     "lowStock": "Geringer Bestand",
     "repairs": "Reparaturen",
     "item": "Gegenstand",
@@ -848,7 +848,14 @@
     "additionalNotes": "Weitere Notizen…",
     "msgItemUpdated": "Inventareintrag aktualisiert",
     "msgItemAdded": "Inventareintrag hinzugefügt",
-    "msgFailedToSaveItem": "Inventareintrag konnte nicht gespeichert werden"
+    "msgFailedToSaveItem": "Inventareintrag konnte nicht gespeichert werden",
+    "filterAll": "Alle",
+    "filterInstruments": "Instrumente",
+    "filterEquipment": "Geräte",
+    "filterSheetMusic": "Notenmaterial",
+    "conditionExcellent": "Sehr gut",
+    "conditionGood": "Gut",
+    "conditionFair": "Befriedigend"
   },
   "GeneralSettings": {
     "settings": "Einstellungen",

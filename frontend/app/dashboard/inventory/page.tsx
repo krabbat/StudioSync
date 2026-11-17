@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useStudioFormatting } from '@/lib/useStudioFormatting'
 import { useState } from 'react'
 import {
     Plus, Search, Package, Music, BookOpen, Headphones,
@@ -29,6 +30,7 @@ interface InventoryItem {
 
 export default function InventoryPage() {
   const t = useTranslations('Inventory')
+  const { money, currency } = useStudioFormatting()
     const { items, loading, refresh } = useInventoryItems()
     const [searchQuery, setSearchQuery] = useState('')
     const [filterCategory, setFilterCategory] = useState<string>('all')
@@ -40,10 +42,10 @@ export default function InventoryPage() {
     const itemsPerPage = 10
 
     const categories = [
-        { value: 'all', label: 'All', icon: Package },
-        { value: 'instrument', label: 'Instruments', icon: Music },
-        { value: 'equipment', label: 'Equipment', icon: Headphones },
-        { value: 'sheet-music', label: 'Sheet Music', icon: BookOpen },
+        { value: 'all', label: t('filterAll'), icon: Package },
+        { value: 'instrument', label: t('filterInstruments'), icon: Music },
+        { value: 'equipment', label: t('filterEquipment'), icon: Headphones },
+        { value: 'sheet-music', label: t('filterSheetMusic'), icon: BookOpen },
     ]
 
     const filteredItems = items.filter(item => {
@@ -69,7 +71,7 @@ export default function InventoryPage() {
             'needs-repair': 'bg-red-50 text-red-700 border-red-200',
         }
         const style = styles[condition as keyof typeof styles] || styles.good
-        const label = condition === 'needs-repair' ? 'Needs Repair' : condition.charAt(0).toUpperCase() + condition.slice(1)
+        const label = condition === 'needs-repair' ? t('needsRepair') : condition === 'excellent' ? t('conditionExcellent') : condition === 'fair' ? t('conditionFair') : t('conditionGood')
 
         return (
             <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${style}`}>
@@ -151,8 +153,8 @@ export default function InventoryPage() {
                 </div>
 
                 <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">{t('value')}</div>
-                    <div className="text-lg sm:text-xl md:text-2xl font-black text-gray-900">${totalValue.toLocaleString()}</div>
+                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">{t('value', {currency})}</div>
+                    <div className="text-lg sm:text-xl md:text-2xl font-black text-gray-900">{money(totalValue)}</div>
                 </div>
 
                 <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
@@ -221,7 +223,7 @@ export default function InventoryPage() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('location')}</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('condition')}</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('qty')}</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('value')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('value', {currency})}</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('actions')}</th>
                             </tr>
                         </thead>
@@ -252,7 +254,7 @@ export default function InventoryPage() {
                                         {item.quantity}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        ${Number(item.value).toLocaleString()}
+                                        {money(item.value)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                         <button
@@ -312,8 +314,8 @@ export default function InventoryPage() {
                                     <p className="text-gray-900 font-medium">{item.quantity}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500 text-xs">{t('value')}</p>
-                                    <p className="text-gray-900 font-medium">${Number(item.value).toLocaleString()}</p>
+                                    <p className="text-gray-500 text-xs">{t('value', {currency})}</p>
+                                    <p className="text-gray-900 font-medium">{money(item.value)}</p>
                                 </div>
                                 <div>
                                     <p className="text-gray-500 text-xs mb-1">{t('condition')}</p>
@@ -414,7 +416,7 @@ export default function InventoryPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('value')}</label>
+                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('value', {currency})}</label>
                                 <input
                                     name="value"
                                     type="number"
