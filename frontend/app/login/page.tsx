@@ -51,6 +51,12 @@ export default function LoginPage() {
     const [isHydrated, setIsHydrated] = useState(false)
 
     useEffect(() => {
+        // Older unhydrated versions could submit credentials as URL parameters.
+        // Remove them from the current browser history entry before enabling login.
+        const url = new URL(window.location.href)
+        if (['email', 'password', 'confirmPassword'].some(key => url.searchParams.has(key))) {
+            window.history.replaceState(window.history.state, '', url.pathname + url.hash)
+        }
         setIsHydrated(true)
     }, [])
 
