@@ -36,7 +36,7 @@ export default function UsersPage() {
         email: '',
         first_name: '',
         last_name: '',
-        role: 'student',
+        role: 'teacher',
         is_active: true,
         band_ids: [] as string[],
         family_id: '',
@@ -106,7 +106,7 @@ export default function UsersPage() {
                 email: '',
                 first_name: '',
                 last_name: '',
-                role: 'student',
+                role: 'teacher',
                 is_active: true,
                 band_ids: [],
                 family_id: '',
@@ -552,7 +552,7 @@ export default function UsersPage() {
                                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                                     className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all appearance-none"
                                 >
-                                    <option value="student">{t('student')}</option>
+                                    {selectedUser && <option value="student">{t('student')}</option>}
                                     <option value="teacher">{t('instructor')}</option>
                                     <option value="parent">{t('parent')}</option>
                                     <option value="admin">{t('administrator')}</option>
@@ -574,6 +574,10 @@ export default function UsersPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {!selectedUser && (
+                            <p className="text-sm text-gray-500">{t('studentAccountsFromRoster')}</p>
+                        )}
 
                         {/* Student Fields */}
                         {formData.role === 'student' && (
