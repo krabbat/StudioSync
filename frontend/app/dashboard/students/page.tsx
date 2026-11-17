@@ -45,6 +45,9 @@ interface StudentData {
     last_name?: string
     avatar?: string | null
     enrollment_date?: string | null
+    address_line1?: string
+    postal_code?: string
+    city?: string
 }
 
 // --- Helper Functions ---
@@ -108,6 +111,9 @@ export default function StudentsPage() {
         instruments: [] as string[],
         primary_teacher: '',
         enrollment_date: '',
+        address_line1: '',
+        postal_code: '',
+        city: '',
         is_active: true
     })
 
@@ -139,6 +145,9 @@ export default function StudentsPage() {
                 ? student.primary_teacher.id
                 : (student.primary_teacher || student.teacher_id || ''),
             enrollment_date: student.enrollment_date || '',
+            address_line1: student.address_line1 || '',
+            postal_code: student.postal_code || '',
+            city: student.city || '',
             is_active: student.is_active ?? true
         })
         setIsEditModalOpen(true)
@@ -537,6 +546,30 @@ export default function StudentsPage() {
                                     onChange={e => setFormData({ ...formData, enrollment_date: e.target.value })}
                                     className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none"
                                 />
+                            </div>
+                        </div>
+
+                        <div className="p-6 rounded-2xl border border-gray-200 space-y-4">
+                            <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest">{t('teachingAddress')}</h3>
+                            <div>
+                                <label htmlFor="edit-student-street" className="text-xs font-bold text-gray-500">{t('streetAddress')}</label>
+                                <input id="edit-student-street" type="text" value={formData.address_line1}
+                                    onChange={e => setFormData({ ...formData, address_line1: e.target.value })}
+                                    className="w-full px-4 py-3 border rounded-xl" autoComplete="street-address" />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="edit-student-postal" className="text-xs font-bold text-gray-500">{t('postalCode')}</label>
+                                    <input id="edit-student-postal" type="text" value={formData.postal_code}
+                                        onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
+                                        className="w-full px-4 py-3 border rounded-xl" autoComplete="postal-code" />
+                                </div>
+                                <div>
+                                    <label htmlFor="edit-student-city" className="text-xs font-bold text-gray-500">{t('city')}</label>
+                                    <input id="edit-student-city" type="text" value={formData.city}
+                                        onChange={e => setFormData({ ...formData, city: e.target.value })}
+                                        className="w-full px-4 py-3 border rounded-xl" autoComplete="address-level2" />
+                                </div>
                             </div>
                         </div>
 
