@@ -57,6 +57,11 @@ export default function SignupPage() {
     })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+    const [isHydrated, setIsHydrated] = useState(false)
+
+    useEffect(() => {
+        setIsHydrated(true)
+    }, [])
     const [selectedPlan, setSelectedPlan] = useState('starter')
 
     useEffect(() => {
@@ -210,7 +215,7 @@ export default function SignupPage() {
                             </div>
                         )}
 
-                        <form className="space-y-4" onSubmit={handleSubmit}>
+                        <form method="post" className="space-y-4" onSubmit={handleSubmit}>
                             {error && (
                                 <div className="flex items-start gap-2.5 p-3.5 rounded-xl text-sm" style={{ backgroundColor: 'rgba(181,64,64,0.06)', border: '1px solid rgba(181,64,64,0.2)', color: '#b54040' }}>
                                     <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -324,7 +329,7 @@ export default function SignupPage() {
                             </div>
 
                             <button
-                                type="submit" disabled={loading}
+                                type="submit" disabled={!isHydrated || loading}
                                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{ backgroundColor: A.amber, color: '#fff' }}
                                 onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = A.amberDark }}
