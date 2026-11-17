@@ -55,7 +55,7 @@ interface Invoice {
 export default function BillingPage() {
   const tr = useTranslations('Billing')
   const locale = useLocale()
-  const { money, currency } = useStudioFormatting()
+  const { money } = useStudioFormatting()
     const { currentUser } = useUser()
     const { invoices, loading: loadingInvoices, refetch: refetchInvoices } = useInvoices()
     const { plans, loading: loadingPlans } = useSubscriptionPlans()
@@ -332,7 +332,7 @@ export default function BillingPage() {
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('totalRevenue')}</p>
                             <div className="flex items-baseline gap-1">
                                 <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">{money(totalRevenue)}</h3>
-                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">{currency}</span>
+                                
                             </div>
                         </div>
 
@@ -346,7 +346,7 @@ export default function BillingPage() {
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('expectedSoon')}</p>
                             <div className="flex items-baseline gap-1">
                                 <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">{money(pendingAmount)}</h3>
-                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">{currency}</span>
+                                
                             </div>
                         </div>
 
@@ -360,7 +360,7 @@ export default function BillingPage() {
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('pastDue')}</p>
                             <div className="flex items-baseline gap-1">
                                 <h3 className="text-xl sm:text-3xl font-black text-red-600 tracking-tight">{money(overdueAmount)}</h3>
-                                <span className="text-[10px] sm:text-xs font-bold text-gray-400">{currency}</span>
+                                
                             </div>
                         </div>
 
@@ -917,7 +917,7 @@ export default function BillingPage() {
                                     </div>
                                     <div className="text-right">
                                         <span className="text-4xl font-black tracking-tight">{money(viewingInvoice.total_amount)}</span>
-                                        <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">{currency}</p>
+                                        
                                     </div>
                                 </div>
                             </div>

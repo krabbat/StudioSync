@@ -216,7 +216,7 @@ function SortableWidget({ widget, children, isEditing, onToggleVisibility }: Sor
 // --- Main Page Component ---
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
-  const { money, currency } = useStudioFormatting();
+  const { money } = useStudioFormatting();
   const router = useRouter();
   const { currentUser } = useUser();
   const { updateProfile } = useSettings();
@@ -359,7 +359,6 @@ export default function DashboardPage() {
       <MetricCard
         title={t("monthlyRevenue")}
         value={money(overview.monthly_revenue?.value || 0)}
-        subtitle={currency}
         trend={{
           value: localizeTrend(overview.monthly_revenue?.trend),
           positive: !!overview.monthly_revenue?.positive,
