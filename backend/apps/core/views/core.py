@@ -253,6 +253,11 @@ class UserViewSet(viewsets.ModelViewSet):
         data = request.data
         email = data.get("email")
         role = data.get("role", "student")
+        if role == "student":
+            return Response(
+                {"detail": "Student accounts are created together with student profiles. Set their password in the student profile."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         first_name = data.get("first_name", "")
         last_name = data.get("last_name", "")
 
