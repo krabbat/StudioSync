@@ -30,6 +30,13 @@ export default function AddStudentPage() {
     const [primaryTeacherId, setPrimaryTeacherId] = useState('')
     const [teacherChoiceTouched, setTeacherChoiceTouched] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [isHydrated, setIsHydrated] = useState(false)
+    const [password, setPassword] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
+
+    useEffect(() => {
+        setIsHydrated(true)
+    }, [])
     const [cropImage, setCropImage] = useState<string | null>(null)
     const [avatar, setAvatar] = useState<Blob | null>(null)
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -92,13 +99,19 @@ export default function AddStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (password !== confirmPassword) {
+            toast.error(tr('passwordMismatch'))
+            return
+        }
         setLoading(true)
         try {
             // Student creation returns the linked user ID, so photo upload works
             // independently of the student detail endpoint.
             const { data: createdStudent } = await api.post('/students/', {
                 ...formData,
+                birth_date: formData.birth_date || null,
                 instrument: formData.instruments[0] || formData.instrument.trim(),
+                ...(password ? { password, confirm_password: confirmPassword } : {}),
                 ...(teacherChoiceTouched || primaryTeacherId
                     ? { primary_teacher: primaryTeacherId || null }
                     : {})
@@ -122,7 +135,11 @@ export default function AddStudentPage() {
             router.push('/dashboard/students')
         } catch (error: any) {
             console.error('Failed to create student:', error)
-            const errorMsg = error.response?.data?.email?.[0] || tr('createFailed')
+            const details = error.response?.data
+            const fieldMessage = details && Object.values(details).find(value =>
+                typeof value === 'string' || (Array.isArray(value) && typeof value[0] === 'string')
+            ) as string | string[] | undefined
+            const errorMsg = (Array.isArray(fieldMessage) ? fieldMessage[0] : fieldMessage) || tr('createFailed')
             toast.error(errorMsg)
         } finally {
             setLoading(false)
@@ -156,7 +173,7 @@ export default function AddStudentPage() {
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                    <form onSubmit={handleSubmit} className="space-y-8">
+                    <form method="post" onSubmit={handleSubmit} className="space-y-8">
 
                         {/* ── Personal Information ── */}
                         <section>
@@ -242,6 +259,26 @@ export default function AddStudentPage() {
                                             </p>
                                         )}
                                     </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* ── Student login ── */}
+                        <section className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-900">{tr('studentLogin')}</h2>
+                            <p className="text-xs text-gray-500">{tr('studentLoginHint')}</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="new-student-password" className="block text-sm font-medium text-gray-700 mb-1">{tr('newPassword')}</label>
+                                    <input id="new-student-password" type="password" autoComplete="new-password"
+                                        value={password} onChange={e => setPassword(e.target.value)}
+                                        className={inputClass} />
+                                </div>
+                                <div>
+                                    <label htmlFor="new-student-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">{tr('confirmPassword')}</label>
+                                    <input id="new-student-confirm-password" type="password" autoComplete="new-password"
+                                        value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                                        className={inputClass} />
                                 </div>
                             </div>
                         </section>
@@ -394,7 +431,7 @@ export default function AddStudentPage() {
                             </button>
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={!isHydrated || loading}
                                 className="flex-1 px-6 py-2.5 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? tr('creating') : tr('submit')}
