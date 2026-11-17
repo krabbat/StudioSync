@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl'
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import {
@@ -17,87 +18,90 @@ import {
     MapPin,
 } from 'lucide-react';
 
+
+
+export default function SettingsHubPage() {
+    const tr = useTranslations('SettingsHub')
 const SECTIONS = [
     {
-        title: 'Account',
-        description: 'Profile photo, name, bio, and primary instrument',
+        title: tr('sectionAccount'),
+        description: tr('sectionAccountDescription'),
         icon: User,
         href: '/dashboard/settings/general/?tab=profile',
         roles: ['admin', 'teacher', 'student', 'parent'],
     },
     {
-        title: 'Security',
-        description: 'Change your password and manage login settings',
+        title: tr('sectionSecurity'),
+        description: tr('sectionSecurityDescription'),
         icon: ShieldAlert,
         href: '/dashboard/settings/general/?tab=security',
         roles: ['admin', 'teacher', 'student', 'parent'],
     },
     {
-        title: 'Studio',
-        description: 'Studio name, address, timezone, currency, and instruments',
+        title: tr('sectionStudio'),
+        description: tr('sectionStudioDescription'),
         icon: Building2,
         href: '/dashboard/settings/general/?tab=studio',
         roles: ['admin'],
     },
     {
-        title: 'Appearance',
-        description: 'Theme, primary color, font size, and compact mode',
+        title: tr('sectionAppearance'),
+        description: tr('sectionAppearanceDescription'),
         icon: Palette,
         href: '/dashboard/settings/general/?tab=appearance',
         roles: ['admin', 'teacher', 'student', 'parent'],
     },
     {
-        title: 'Notifications',
-        description: 'Channels, alert types, and quiet hours',
+        title: tr('sectionNotifications'),
+        description: tr('sectionNotificationsDescription'),
         icon: Bell,
         href: '/dashboard/settings/general/?tab=notifications',
         roles: ['admin', 'teacher', 'student', 'parent'],
     },
     {
-        title: 'Communication',
-        description: 'Email and SMS notification preferences',
+        title: tr('sectionCommunication'),
+        description: tr('sectionCommunicationDescription'),
         icon: Mail,
         href: '/dashboard/settings/general/?tab=communication',
         roles: ['admin', 'teacher', 'student', 'parent'],
     },
     {
-        title: 'Features',
-        description: 'Enable or disable modules such as billing, messaging, and inventory',
+        title: tr('sectionFeatures'),
+        description: tr('sectionFeaturesDescription'),
         icon: Layers,
         href: '/dashboard/settings/features/',
         roles: ['admin'],
     },
     {
-        title: 'API Keys',
-        description: 'Generate keys for external integrations like 317booking',
+        title: tr('sectionApiKeys'),
+        description: tr('sectionApiKeysDescription'),
         icon: Key,
         href: '/dashboard/settings/api-keys/',
         roles: ['admin'],
     },
     {
-        title: 'Gig Venues',
-        description: 'Manage venues and control who can post gigs for each',
+        title: tr('sectionGigVenues'),
+        description: tr('sectionGigVenuesDescription'),
         icon: MapPin,
         href: '/dashboard/settings/gig-venues/',
         roles: ['admin'],
     },
     {
-        title: 'Technical',
-        description: 'SMTP email server and SMS provider configuration',
+        title: tr('sectionTechnical'),
+        description: tr('sectionTechnicalDescription'),
         icon: Server,
         href: '/dashboard/settings/general/?tab=technical',
         roles: ['admin'],
     },
     {
-        title: 'Maintenance',
-        description: 'Export and import your full studio data for backup or migration',
+        title: tr('sectionMaintenance'),
+        description: tr('sectionMaintenanceDescription'),
         icon: Database,
         href: '/dashboard/settings/general/?tab=maintenance',
         roles: ['admin'],
     },
 ];
 
-export default function SettingsHubPage() {
     const { currentUser } = useUser();
 
     const visible = SECTIONS.filter(
@@ -107,8 +111,8 @@ export default function SettingsHubPage() {
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <header className="pt-8 pb-8">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Settings</h1>
-                <p className="text-gray-500 mt-1 font-medium">Manage your account, studio, and integrations.</p>
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight">{tr('settings')}</h1>
+                <p className="text-gray-500 mt-1 font-medium">{tr('manageYourAccountStudioAndIntegrations')}</p>
             </header>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

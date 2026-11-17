@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations, useLocale } from 'next-intl'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bell, CheckCheck, Trash2, Filter, Loader2, ExternalLink } from 'lucide-react'
@@ -9,32 +10,38 @@ import { toast } from 'react-hot-toast'
 
 type FilterType = 'all' | 'unread' | string
 
+
+
+
+
+export default function NotificationsPage() {
+    const tr = useTranslations('NotificationsPage')
+    const locale = useLocale()
 const TYPE_LABELS: Record<string, string> = {
-    welcome: 'Welcome',
-    lesson_scheduled: 'Lesson Scheduled',
-    lesson_reminder: 'Lesson Reminder',
-    lesson_cancelled: 'Lesson Cancelled',
-    new_student: 'New Student',
-    new_message: 'New Message',
-    payment_received: 'Payment',
-    payment_due: 'Payment Due',
-    document_pending: 'Document',
-    document_signed: 'Document Signed',
-    system_update: 'System',
-    inventory_request: 'Inventory',
-    practice_room_reserved: 'Room Reserved',
+    welcome: tr('typeWelcome'),
+    lesson_scheduled: tr('typeLessonScheduled'),
+    lesson_reminder: tr('typeLessonReminder'),
+    lesson_cancelled: tr('typeLessonCancelled'),
+    new_student: tr('typeNewStudent'),
+    new_message: tr('typeNewMessage'),
+    payment_received: tr('typePayment'),
+    payment_due: tr('typePaymentDue'),
+    document_pending: tr('typeDocument'),
+    document_signed: tr('typeDocumentSigned'),
+    system_update: tr('typeSystem'),
+    inventory_request: tr('typeInventory'),
+    practice_room_reserved: tr('typeRoomReserved'),
 }
 
 const FILTER_GROUPS: { label: string; value: FilterType }[] = [
-    { label: 'All', value: 'all' },
-    { label: 'Unread', value: 'unread' },
-    { label: 'Lessons', value: 'lesson_scheduled' },
-    { label: 'Messages', value: 'new_message' },
-    { label: 'Payments', value: 'payment_received' },
-    { label: 'System', value: 'system_update' },
+    { label: tr('typeAll'), value: 'all' },
+    { label: tr('typeUnread'), value: 'unread' },
+    { label: tr('typeLessons'), value: 'lesson_scheduled' },
+    { label: tr('typeMessages'), value: 'new_message' },
+    { label: tr('typePayments'), value: 'payment_received' },
+    { label: tr('typeSystem'), value: 'system_update' },
 ]
 
-export default function NotificationsPage() {
     const router = useRouter()
     const { notifications, unreadCount, loading, markRead, markAllRead, clearAll, refetch } = useNotifications()
     const [filter, setFilter] = useState<FilterType>('all')
@@ -50,13 +57,13 @@ export default function NotificationsPage() {
 
     const handleMarkAllRead = async () => {
         await markAllRead()
-        toast.success('All notifications marked as read')
+        toast.success(tr('markedAll'))
     }
 
     const handleClearAll = async () => {
-        if (!confirm('Clear all notifications? This cannot be undone.')) return
+        if (!confirm(tr('confirmClear'))) return
         await clearAll()
-        toast.success('Notifications cleared')
+        toast.success(tr('cleared'))
     }
 
     const handleClick = async (n: Notification) => {
@@ -69,7 +76,7 @@ export default function NotificationsPage() {
 
     const formatDate = (iso: string) => {
         const d = new Date(iso)
-        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        return d.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     }
 
     // Group notifications by date (Today, Yesterday, Older)
@@ -79,9 +86,9 @@ export default function NotificationsPage() {
         const yesterday = new Date(today.getTime() - 86400000)
 
         const groups: { label: string; items: Notification[] }[] = [
-            { label: 'Today', items: [] },
-            { label: 'Yesterday', items: [] },
-            { label: 'Older', items: [] },
+            { label: tr('typeToday'), items: [] },
+            { label: tr('typeYesterday'), items: [] },
+            { label: tr('typeOlder'), items: [] },
         ]
 
         items.forEach((n) => {
@@ -109,11 +116,11 @@ export default function NotificationsPage() {
                         Notifications
                         {unreadCount > 0 && (
                             <span className="bg-red-500 text-white text-xs font-black px-2 py-0.5 rounded-full">
-                                {unreadCount} unread
+                                {tr('unreadCount', {count: unreadCount})}
                             </span>
                         )}
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Stay up to date with your studio activity</p>
+                    <p className="text-sm text-gray-500 mt-1">{tr('stayUpToDateWithYourStudioActivity')}</p>
                 </div>
 
                 {/* Actions */}
@@ -126,7 +133,7 @@ export default function NotificationsPage() {
                             className="gap-2 text-xs"
                         >
                             <CheckCheck className="w-4 h-4" />
-                            Mark all read
+                            {tr('markAllRead')}
                         </Button>
                     )}
                     {notifications.length > 0 && (
@@ -137,7 +144,7 @@ export default function NotificationsPage() {
                             className="gap-2 text-xs text-red-600 hover:bg-red-50 hover:border-red-200 hover:text-red-700"
                         >
                             <Trash2 className="w-4 h-4" />
-                            Clear all
+                            {tr('clearAll')}
                         </Button>
                     )}
                 </div>
@@ -169,7 +176,7 @@ export default function NotificationsPage() {
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                     <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    <p className="text-sm text-gray-500 font-medium">Loading notifications...</p>
+                    <p className="text-sm text-gray-500 font-medium">{tr('loadingNotifications')}</p>
                 </div>
             ) : grouped.length === 0 ? (
                 <div className="bg-white border border-gray-200 rounded-2xl p-16 text-center">
@@ -177,14 +184,14 @@ export default function NotificationsPage() {
                         🔔
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
-                        {filter === 'unread' ? 'All caught up!' : 'No notifications'}
+                        {filter === 'unread' ? tr('allCaughtUp') : tr('noNotifications')}
                     </h3>
                     <p className="text-sm text-gray-500">
                         {filter === 'unread'
-                            ? 'You have no unread notifications.'
+                            ? tr('noUnread')
                             : filter === 'all'
-                            ? "When things happen in your studio, you'll see them here."
-                            : 'No notifications in this category.'}
+                            ? tr('emptyAll')
+                            : tr('emptyCategory')}
                     </p>
                 </div>
             ) : (
@@ -244,7 +251,7 @@ export default function NotificationsPage() {
                                                     <span className="text-[11px] text-gray-400">{formatDate(n.created_at)}</span>
                                                     {n.link && (
                                                         <span className="text-[11px] text-primary font-semibold flex items-center gap-0.5 group-hover:underline">
-                                                            View <ExternalLink className="w-3 h-3" />
+                                                            {tr('view')} <ExternalLink className="w-3 h-3" />
                                                         </span>
                                                     )}
                                                 </div>
@@ -261,8 +268,8 @@ export default function NotificationsPage() {
             {/* Footer summary */}
             {!loading && notifications.length > 0 && (
                 <p className="text-center text-xs text-gray-400 pb-4">
-                    Showing {filteredNotifications.length} notification{filteredNotifications.length !== 1 ? 's' : ''}
-                    {filter !== 'all' && ` · ${filter === 'unread' ? 'unread only' : FILTER_GROUPS.find(f => f.value === filter)?.label ?? filter}`}
+                    {tr('showingCount', {count: filteredNotifications.length})}
+                    {filter !== 'all' && ` · ${filter === 'unread' ? tr('unreadOnly') : FILTER_GROUPS.find(f => f.value === filter)?.label ?? filter}`}
                 </p>
             )}
         </div>

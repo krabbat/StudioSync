@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -13,6 +14,7 @@ import { toast } from 'react-hot-toast'
 import { formatPhoneNumber } from '@/lib/utils'
 
 export default function StudentProfilePage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+    const tr = useTranslations('StudentProfile')
     const params = use(paramsPromise)
     const studentId = params.id
     const router = useRouter()
@@ -26,7 +28,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                 setStudent(response.data)
             } catch (error) {
                 console.error('Failed to load student:', error)
-                toast.error('Failed to load student profile')
+                toast.error(tr('loadFailed'))
                 router.push('/dashboard/students')
             } finally {
                 setLoading(false)
@@ -46,8 +48,8 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                         </div>
                     </div>
                     <div className="space-y-1 text-center">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Profile Access</p>
-                        <p className="text-sm font-bold text-gray-900">Gathering the student details...</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">{tr('profileAccess')}</p>
+                        <p className="text-sm font-bold text-gray-900">{tr('gatheringTheStudentDetails')}</p>
                     </div>
                 </div>
             </div>
@@ -76,7 +78,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                             <ArrowLeft className="w-4 h-4 text-gray-400 group-hover:text-white" />
                         </div>
                         <span className="text-[10px] font-black text-gray-400 group-hover:text-gray-900 uppercase tracking-[0.2em] transition-colors">
-                            Return to Student Roster
+                            {tr('returnToStudentRoster')}
                         </span>
                     </button>
                     <div className="flex items-center gap-4">
@@ -86,7 +88,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                             className="h-12 rounded-2xl gap-3 font-bold px-8 border-gray-200 hover:border-primary hover:text-primary transition-all shadow-sm"
                         >
                             <Edit className="w-4 h-4" />
-                            Update Profile
+                            {tr('updateProfile')}
                         </Button>
                     </div>
                 </div>
@@ -117,11 +119,11 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                     {student.is_active ? (
                                         <div className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-100 shadow-sm shadow-emerald-100/50">
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                            Active Member
+                                            {tr('activeMember')}
                                         </div>
                                     ) : (
                                         <span className="px-4 py-1.5 bg-gray-50 text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-full border border-gray-200">
-                                            Currently Away
+                                            {tr('currentlyAway')}
                                         </span>
                                     )}
                                 </div>
@@ -136,7 +138,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                     ) : (
                                         <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-500 rounded-xl border border-gray-100">
                                             <Music className="w-4 h-4 text-gray-300" />
-                                            <span className="text-sm font-bold uppercase tracking-wider">Foundation Scholar</span>
+                                            <span className="text-sm font-bold uppercase tracking-wider">{tr('foundationScholar')}</span>
                                         </div>
                                     )}
                                 </div>
@@ -154,12 +156,12 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                 <div className="w-10 h-10 bg-blue-50/50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
                                     <User className="w-5 h-5" />
                                 </div>
-                                The Essentials
+                                {tr('theEssentials')}
                             </h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
                                 <div className="space-y-2 group">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">Reach out at</p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">{tr('reachOutAt')}</p>
                                     <p className="font-bold text-lg text-gray-900 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                                             <Mail className="w-4 h-4 text-gray-300 group-hover:text-blue-400" />
@@ -168,7 +170,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                     </p>
                                 </div>
                                 <div className="space-y-2 group">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">Call or Text</p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">{tr('callOrText')}</p>
                                     <p className="font-bold text-lg text-gray-900 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                                             <Phone className="w-4 h-4 text-gray-300 group-hover:text-blue-400" />
@@ -177,7 +179,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                     </p>
                                 </div>
                                 <div className="space-y-2 group">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">Celebration Day</p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">{tr('celebrationDay')}</p>
                                     <p className="font-bold text-lg text-gray-900 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                                             <Calendar className="w-4 h-4 text-gray-300 group-hover:text-blue-400" />
@@ -196,16 +198,16 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                         <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm">
                                             <AlertCircle className="w-5 h-5" />
                                         </div>
-                                        Family & Safety
+                                        {tr('familySafety')}
                                     </h2>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     <div className="space-y-2">
-                                        <p className="text-[10px] font-black text-amber-700/50 uppercase tracking-widest">Primary Guardian</p>
+                                        <p className="text-[10px] font-black text-amber-700/50 uppercase tracking-widest">{tr('primaryGuardian')}</p>
                                         <p className="text-xl font-black text-gray-900">{student.emergency_contact_name || 'Not listed yet'}</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <p className="text-[10px] font-black text-amber-700/50 uppercase tracking-widest">Emergency Line</p>
+                                        <p className="text-[10px] font-black text-amber-700/50 uppercase tracking-widest">{tr('emergencyLine')}</p>
                                         <p className="text-xl font-black text-gray-900">{formatPhoneNumber(student.emergency_contact_phone) || 'Not listed yet'}</p>
                                     </div>
                                 </div>
@@ -219,17 +221,17 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                             {/* Decorative element */}
                             <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/20 rounded-full blur-2xl group-hover:bg-primary/30 transition-all duration-700" />
 
-                            <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] relative z-10">Studio Journey</h2>
+                            <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] relative z-10">{tr('studioJourney')}</h2>
                             <div className="space-y-8 relative z-10">
                                 <div className="space-y-2">
-                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Part of the family since</span>
+                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('partOfTheFamilySince')}</span>
                                     <p className="text-2xl font-black">{student.created_at ? new Date(student.created_at).getFullYear() : '2024'}</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Milestones Achieved</span>
+                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('milestonesAchieved')}</span>
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-4xl font-black text-primary">12</span>
-                                        <span className="text-xs font-bold text-gray-400 lowercase tracking-normal italic">shared lessons</span>
+                                        <span className="text-xs font-bold text-gray-400 lowercase tracking-normal italic">{tr('sharedLessons')}</span>
                                     </div>
                                 </div>
                                 <div className="pt-8 border-t border-white/5 space-y-4">
@@ -237,11 +239,11 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                         <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
                                             <Clock className="w-4 h-4" />
                                         </div>
-                                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Upcoming Lesson</span>
+                                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{tr('upcomingLesson')}</span>
                                     </div>
                                     <div className="bg-white/5 p-5 rounded-2xl border border-white/5 group-hover:border-primary/20 transition-all">
-                                        <p className="font-black text-lg">Next Tuesday</p>
-                                        <p className="text-primary text-sm font-bold">4:00 PM Sharp</p>
+                                        <p className="font-black text-lg">{tr('nextTuesday')}</p>
+                                        <p className="text-primary text-sm font-bold">{tr('400PMSharp')}</p>
                                     </div>
                                 </div>
                             </div>
