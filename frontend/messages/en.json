@@ -303,7 +303,8 @@
     "cancelEnrollment": "Cancel editing",
     "enrollmentRequired": "Please select an enrollment date.",
     "enrollmentSaved": "Enrollment date saved.",
-    "enrollmentSaveFailed": "Could not save enrollment date."
+    "enrollmentSaveFailed": "Could not save enrollment date.",
+    "assignedTeacher": "Assigned teacher"
   },
   "SettingsHub": {
     "sectionAccount": "Account",
