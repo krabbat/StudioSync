@@ -448,3 +448,103 @@ def test_admin_user_creation_cannot_duplicate_student(authenticated_client, stud
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert User.objects.count() == before
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_new_student_password_activates_existing_linked_account(authenticated_client, studio):
+    """Enrolling a pupil with a password makes one student and one login."""
+    from apps.core.models import User
+
+    before = User.objects.count()
+    response = authenticated_client.post(
+        "/api/students/",
+        {
+            "first_name": "New",
+            "last_name": "Pupil",
+            "email": "new-pupil-with-login@example.test",
+            "instrument": "Violin",
+            "password": "rS7!qT93#pV6",
+            "confirm_password": "rS7!qT93#pV6",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    assert User.objects.count() == before + 1
+    student = Student.objects.get(pk=response.data["id"])
+    assert str(student.user_id) == str(response.data["user"])
+    assert student.user.is_approved
+    assert student.user.check_password("rS7!qT93#pV6")
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_new_student_without_password_has_no_login_yet(authenticated_client):
+    """An enrollment may be saved without enabling access immediately."""
+    response = authenticated_client.post(
+        "/api/students/",
+        {
+            "first_name": "New",
+            "last_name": "No Login",
+            "email": "new-pupil-without-login@example.test",
+            "instrument": "Piano",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    student = Student.objects.get(pk=response.data["id"])
+    assert not student.user.has_usable_password()
+    assert not student.user.is_approved
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_creation_rejects_password_mismatch_without_creating_account(
+    authenticated_client,
+):
+    from apps.core.models import User
+
+    before = User.objects.count()
+    response = authenticated_client.post(
+        "/api/students/",
+        {
+            "first_name": "Mismatch",
+            "last_name": "Pupil",
+            "email": "mismatch-pupil@example.test",
+            "password": "rS7!qT93#pV6",
+            "confirm_password": "wrong",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert User.objects.count() == before
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_failed_student_profile_creation_rolls_back_user(
+    authenticated_client, monkeypatch,
+):
+    """A server-side error during student insertion must not leave an orphan User."""
+    from apps.core.models import User
+
+    before = User.objects.count()
+
+    def fail_student_insert(*args, **kwargs):
+        raise RuntimeError("Simulated student insertion failure")
+
+    monkeypatch.setattr(Student.objects, "create", fail_student_insert)
+    with pytest.raises(RuntimeError, match="Simulated student insertion failure"):
+        authenticated_client.post(
+            "/api/students/",
+            {
+                "first_name": "Rollback",
+                "last_name": "Pupil",
+                "email": "rollback-pupil@example.test",
+                "instrument": "Flute",
+                "password": "rS7!qT93#pV6",
+                "confirm_password": "rS7!qT93#pV6",
+            },
+            format="json",
+        )
+    assert User.objects.count() == before
