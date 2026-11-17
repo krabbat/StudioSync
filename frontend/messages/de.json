@@ -1716,5 +1716,15 @@
     "immediatelyAfterSetupYouCanAlwaysSkipThisAndConfigureItLaterInTheTechnicalSettings": "direkt nach der Einrichtung. Du kannst diesen Schritt überspringen und die Angaben später unter Technik ergänzen.",
     "back": "Zurück",
     "proceed": "Weiter"
+  },
+  "ChatProvider": {
+    "invalidResponse": "Der Nachrichtendienst hat eine ungültige Antwort gesendet.",
+    "missingKeys": "Nachrichten sind derzeit nicht verfügbar: Die Stream-Chat-Anbindung ist nicht eingerichtet.",
+    "requestFailed": "Der Nachrichtendienst konnte nicht erreicht werden (HTTP {status}).",
+    "unavailable": "Nachrichten sind derzeit nicht verfügbar.",
+    "configureIntro": "Für die externe Stream-Chat-Anbindung müssen",
+    "and": "und",
+    "configureOutro": "auf dem Server konfiguriert sein.",
+    "checkBackend": "Bitte die Serverprotokolle des Nachrichtendienstes prüfen."
   }
 }

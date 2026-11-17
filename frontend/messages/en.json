@@ -1716,5 +1716,15 @@
     "immediatelyAfterSetupYouCanAlwaysSkipThisAndConfigureItLaterInTheTechnicalSettings": "immediately after setup. You can always skip this and configure it later in the Technical Settings.",
     "back": "Back",
     "proceed": "Proceed"
+  },
+  "ChatProvider": {
+    "invalidResponse": "The messaging service returned an invalid response.",
+    "missingKeys": "Messages are unavailable: Stream Chat has not been configured.",
+    "requestFailed": "The messaging service request failed (HTTP {status}).",
+    "unavailable": "Messaging is currently unavailable.",
+    "configureIntro": "To enable external Stream Chat messaging, configure",
+    "and": "and",
+    "configureOutro": "on the server.",
+    "checkBackend": "Check the messaging backend server logs."
   }
 }

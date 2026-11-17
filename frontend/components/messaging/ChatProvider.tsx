@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Chat, useCreateChatClient } from "stream-chat-react";
 import "stream-chat-react/dist/css/v2/index.css";
 import { useUser } from "@/contexts/UserContext";
@@ -49,10 +50,12 @@ const ChatClientProvider: React.FC<ChatClientProviderProps> = ({ children, user,
 };
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
+    const tr = useTranslations("ChatProvider");
     const { currentUser: user } = useUser();
     const [token, setToken] = useState<string | null>(null);
     const [apiKey, setApiKey] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [configurationMissing, setConfigurationMissing] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -67,13 +70,19 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                     setToken(response.data.token);
                     setApiKey(response.data.apiKey);
                 } else if (mounted) {
-                    setError("Messaging service returned an invalid response.");
+                    setError(tr('invalidResponse'))
                 }
             } catch (err: any) {
                 if (mounted) {
-                    const msg = err?.response?.data?.error || "Messaging service is not configured.";
-                    setError(msg);
-                    console.error("Failed to fetch Stream token", err);
+                    const missingKeys = err?.response?.data?.error === "Stream Chat API keys are not configured.";
+                    setConfigurationMissing(missingKeys);
+                    setError(missingKeys ? tr('missingKeys') : tr('requestFailed', { status: String(err?.response?.status ?? '?') }));
+                    // The server can intentionally return 500 for missing integration keys.
+                    // Avoid logging a handled AxiosError as an uncaught Next.js dev-overlay error.
+                    console.warn("Messaging token request failed", {
+                        status: err?.response?.status,
+                        reason: err?.response?.data?.error
+                    });
                 }
             } finally {
                 if (mounted) setLoading(false);
@@ -99,10 +108,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return (
             <div className="flex w-full h-full items-center justify-center p-8">
                 <div className="text-center max-w-sm">
-                    <p className="text-gray-500 text-sm">{error || "Messaging is unavailable."}</p>
+                    <p className="text-gray-500 text-sm">{error || tr('unavailable')}</p>
                     <p className="text-gray-400 text-xs mt-2">
-                        Set <code className="bg-gray-100 px-1 rounded">STREAM_API_KEY</code> and{" "}
-                        <code className="bg-gray-100 px-1 rounded">STREAM_API_SECRET</code> to enable messaging.
+                        {configurationMissing ? (
+                            <>
+                                {tr('configureIntro')} <code className="bg-gray-100 px-1 rounded">STREAM_API_KEY</code> {tr('and')} <code className="bg-gray-100 px-1 rounded">STREAM_API_SECRET</code> {tr('configureOutro')}
+                            </>
+                        ) : tr('checkBackend')}
                     </p>
                 </div>
             </div>
