@@ -392,7 +392,7 @@ export default function InstructorsPage() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            onClick={() => handleOpenEdit(teacher)
+                                            onClick={() => handleOpenEdit(teacher)}
                                             className="text-gray-300 hover:text-primary rounded-xl opacity-0 group-hover:opacity-100 transition-all"
                                         >
                                             <Edit className="w-4 h-4" />
