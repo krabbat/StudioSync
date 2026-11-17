@@ -22,13 +22,14 @@ export default function InstructorsPage() {
     const tr = useTranslations('Teachers')
     const { money } = useStudioFormatting()
     const router = useRouter()
-    const { currentUser } = useUser()
+    const { currentUser, checkAuth } = useUser()
     const { teachers, loading, refresh } = useTeachers()
 
     const [searchQuery, setSearchQuery] = useState('')
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [selectedTeacher, setSelectedTeacher] = useState<any>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [soloSaving, setSoloSaving] = useState(false)
     const [newInstrument, setNewInstrument] = useState('')
     const [cropImage, setCropImage] = useState<string | null>(null)
     const [avatarFile, setAvatarFile] = useState<Blob | null>(null)
@@ -87,6 +88,41 @@ export default function InstructorsPage() {
         reader.readAsDataURL(cropped)
     }
 
+    const soloMode = Boolean(currentUser?.studio?.settings?.solo_teacher_mode)
+    const ownTeacher = teachers.find((teacher: any) => teacher.user_id === currentUser?.id)
+
+    const handleToggleSoloMode = async () => {
+        const enabled = !soloMode
+        const payload: { enabled: boolean; teacher_id?: string } = { enabled }
+
+        // If the owner already has a separate teacher login under the same
+        // name, offer to keep its teacher record and existing student links.
+        if (enabled && !ownTeacher) {
+            const ownerName = `${currentUser?.first_name || ''} ${currentUser?.last_name || ''}`.trim().toLocaleLowerCase()
+            const matching = teachers.find((teacher: any) =>
+                ownerName &&
+                `${teacher.first_name || ''} ${teacher.last_name || ''}`.trim().toLocaleLowerCase() === ownerName
+            )
+            if (matching && matching.user_id !== currentUser?.id) {
+                if (!window.confirm(tr('claimProfileConfirm', { email: matching.email }))) return
+                payload.teacher_id = matching.id
+            }
+        }
+
+        setSoloSaving(true)
+        try {
+            await api.post('/core/teachers/solo-mode/', payload)
+            await checkAuth()
+            await refresh()
+            toast.success(enabled ? tr('soloEnabled') : tr('soloDisabled'))
+        } catch (error: any) {
+            console.error('Solo teaching mode could not be changed:', error)
+            toast.error(error.response?.data?.detail || tr('soloFailed'))
+        } finally {
+            setSoloSaving(false)
+        }
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
@@ -105,7 +141,7 @@ export default function InstructorsPage() {
 
             await api.patch(`/core/teachers/${selectedTeacher.id}/`, {
                 specialties: formData.specialties,
-                hourly_rate: formData.hourly_rate,
+                hourly_rate: formData.hourly_rate.trim() || null,
                 is_active: formData.is_active
             })
 
@@ -205,6 +241,25 @@ export default function InstructorsPage() {
                     </Button>
                 )}
             </header>
+
+            {currentUser?.role === 'admin' && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5">
+                    <div>
+                        <h2 className="font-semibold text-gray-900">{tr('soloModeTitle')}</h2>
+                        <p className="text-sm text-gray-600">
+                            {soloMode ? tr('soloModeActiveDescription') : tr('soloModeDescription')}
+                        </p>
+                    </div>
+                    <Button
+                        type="button"
+                        variant={soloMode ? 'outline' : 'default'}
+                        disabled={soloSaving}
+                        onClick={handleToggleSoloMode}
+                    >
+                        {soloSaving ? tr('soloSaving') : soloMode ? tr('soloDisable') : tr('soloEnable')}
+                    </Button>
+                </div>
+            )}
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -323,14 +378,26 @@ export default function InstructorsPage() {
                                         </span>
                                     </td>
                                     <td className="px-8 py-6 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                            {currentUser?.role === 'admin' && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.push(`/dashboard/students?assign=${teacher.id}`)}
+                                                    className="text-xs whitespace-nowrap"
+                                                >
+                                                    {tr('assignStudents')}
+                                                </Button>
+                                            )}
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            onClick={() => handleOpenEdit(teacher)}
+                                            onClick={() => handleOpenEdit(teacher)
                                             className="text-gray-300 hover:text-primary rounded-xl opacity-0 group-hover:opacity-100 transition-all"
                                         >
                                             <Edit className="w-4 h-4" />
                                         </Button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
