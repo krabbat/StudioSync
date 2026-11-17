@@ -42,7 +42,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
             }
         }
         if (studentId) fetchStudent()
-    }, [studentId, router, tr])
+    }, [studentId, router])
 
     const saveEnrollmentDate = async () => {
         if (!enrollmentDraft) {

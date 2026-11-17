@@ -140,10 +140,11 @@ export default function StudentsPage() {
         if (!selectedStudent) return
         setIsSubmitting(true)
         try {
-            // Leave enrollment untouched if the list was loaded from an older API.
+            // An older API may not send enrollment_date; do not overwrite it with an empty string.
+            const { enrollment_date, ...otherFields } = formData
             await api.patch(`/students/${selectedStudent.id}/`, {
-                ...formData,
-                ...(formData.enrollment_date ? { enrollment_date: formData.enrollment_date } : {})
+                ...otherFields,
+                ...(enrollment_date ? { enrollment_date } : {})
             })
             toast.success(t('saved'))
             setIsEditModalOpen(false)
