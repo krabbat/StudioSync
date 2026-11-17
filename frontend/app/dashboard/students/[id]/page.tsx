@@ -5,7 +5,7 @@ import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import {
     ArrowLeft, User, Mail, Phone, Music,
-    Calendar, Edit, Trash2, Clock,
+    Calendar, Edit, Trash2, Clock, GraduationCap,
     CheckCircle2, AlertCircle, MapPin, Save, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -219,6 +219,15 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                             <Calendar className="w-4 h-4 text-gray-300 group-hover:text-blue-400" />
                                         </div>
                                         {student.birth_date ? new Date(`${student.birth_date}T00:00:00`).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' }) : tr('notProvided')}
+                                    </div>
+                                </div>
+                                <div className="space-y-2 group">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('assignedTeacher')}</p>
+                                    <div className="font-bold text-lg text-gray-900 flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+                                            <GraduationCap className="w-4 h-4 text-gray-400" />
+                                        </div>
+                                        {student.teacher?.name || tr('notProvided')}
                                     </div>
                                 </div>
                             </div>
