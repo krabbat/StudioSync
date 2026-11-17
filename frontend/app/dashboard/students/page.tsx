@@ -142,6 +142,21 @@ export default function StudentsPage() {
         setIsEditModalOpen(true)
     }
 
+    // The detail page links to ?edit=<student id>. Open the existing editor
+    // once the roster arrives, then clear the parameter to avoid reopening it.
+    useEffect(() => {
+        if (!students.length) return
+        const url = new URL(window.location.href)
+        const editId = url.searchParams.get('edit')
+        if (!editId) return
+        const target = students.find((student: any) => student.id === editId)
+        if (target) {
+            handleOpenEdit(target)
+            url.searchParams.delete('edit')
+            window.history.replaceState(null, '', url.pathname + url.search)
+        }
+    }, [students])
+
     const assignmentTeacher = teachers.find((teacher: any) => teacher.id === assignTeacherId)
 
     const assignStudent = async (student: StudentData) => {
