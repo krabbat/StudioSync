@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useRef } from 'react'
 import { motion, useScroll, useSpring, useInView, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
@@ -237,6 +238,7 @@ function FeatureModal({
   isOpen: boolean
   onClose: () => void
 }) {
+  const t = useTranslations('Home')
   if (!feature) return null
 
   return (
@@ -300,7 +302,7 @@ function FeatureModal({
                         className="text-xs font-semibold uppercase tracking-widest mb-3"
                         style={{ color: C.amber }}
                       >
-                        Overview
+                        {t('overview')}
                       </p>
                       <p className="text-sm leading-relaxed" style={{ color: C.muted }}>
                         {feature.details.overview}
@@ -312,7 +314,7 @@ function FeatureModal({
                         className="text-xs font-semibold uppercase tracking-widest mb-4"
                         style={{ color: C.amber }}
                       >
-                        Capabilities
+                        {t('capabilities')}
                       </p>
                       <div className="space-y-2.5">
                         {feature.details.capabilities.map((cap, i) => (
@@ -336,7 +338,7 @@ function FeatureModal({
                         className="text-xs font-semibold uppercase tracking-widest mb-4"
                         style={{ color: C.amber }}
                       >
-                        Key Benefits
+                        {t('keyBenefits')}
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {feature.details.benefits.map((b, i) => (
@@ -361,7 +363,7 @@ function FeatureModal({
                         className="inline-flex items-center gap-2 rounded-xl px-6 py-3 font-semibold text-sm"
                         style={{ backgroundColor: C.amber, color: C.white }}
                       >
-                        Get started
+                        {t('getStarted')}
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
@@ -386,6 +388,7 @@ function FeatureCard({
   index: number
   onClick: () => void
 }) {
+  const t = useTranslations('Home')
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
 
@@ -430,7 +433,7 @@ function FeatureCard({
         className="flex items-center gap-0.5 text-sm font-semibold"
         style={{ color: C.amber }}
       >
-        Learn more
+        {t('learnMore')}
         <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
       </div>
     </motion.button>
@@ -439,8 +442,21 @@ function FeatureCard({
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function Home() {
+  const t = useTranslations('Home')
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 })
+
+
+  // Localize feature cards and their overview without modifying source metadata.
+  const localizedFeatures = features.map((feature, index) => ({
+    ...feature,
+    title: t(`feature${index}Title`),
+    description: t(`feature${index}Description`),
+    details: {
+      ...feature.details,
+      overview: t(`feature${index}Overview`)
+    }
+  }))
 
   const [selectedFeature, setSelectedFeature] = useState<(typeof features)[0] | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -504,7 +520,7 @@ export default function Home() {
                 }}
               >
                 <Music className="w-3 h-3" />
-                Open source · Self-hosted
+                {t('openSourceSelfHosted')}
               </div>
 
               {/* Headline */}
@@ -520,8 +536,8 @@ export default function Home() {
                   maxWidth: '14ch',
                 }}
               >
-                Run your studio,{' '}
-                <span style={{ color: C.amber }}>focus on the music.</span>
+                {t('runStudio')}{' '}
+                <span style={{ color: C.amber }}>{t('focusOnTheMusic')}</span>
               </h1>
 
               {/* Sub */}
@@ -535,8 +551,7 @@ export default function Home() {
                   fontFamily: 'Manrope, sans-serif',
                 }}
               >
-                Students, scheduling, billing, and communication — all in tune, all in one
-                place. Free and open source.
+                {t('heroDescription')}
               </p>
 
               {/* CTAs */}
@@ -552,7 +567,7 @@ export default function Home() {
                     (e.currentTarget.style.backgroundColor = C.amber)
                   }
                 >
-                  Get started free
+                  {t('getStartedFree')}
                   <ArrowRight className="w-4 h-4" />
                 </Link>
 
@@ -568,12 +583,12 @@ export default function Home() {
                   }}
                 >
                   <Github className="w-4 h-4" />
-                  View on GitHub
+                  {t('viewOnGitHub')}
                 </a>
               </div>
 
               <p className="text-xs" style={{ color: C.faint }}>
-                Free & open source · GPL-3.0 · Docker ready in minutes
+                {t('freeOpenSourceGPL30DockerReadyInMinutes')}
               </p>
             </motion.div>
 
@@ -630,7 +645,7 @@ export default function Home() {
                 <div className="aspect-[16/9] relative">
                   <Image
                     src="/dashboard_preview.png"
-                    alt="StudioSync Dashboard"
+                    alt={t('studiosyncDashboard')}
                     fill
                     className="object-cover object-left-top scale-[1.01]"
                     priority
@@ -655,10 +670,10 @@ export default function Home() {
                 </div>
                 <div>
                   <div className="text-xs font-bold" style={{ color: C.text }}>
-                    Lesson confirmed
+                    {t('lessonConfirmed')}
                   </div>
                   <div className="text-[11px]" style={{ color: C.muted }}>
-                    Sarah · Piano · 3 PM
+                    {t('sarahPiano3PM')}
                   </div>
                 </div>
               </motion.div>
@@ -679,7 +694,7 @@ export default function Home() {
                 </div>
                 <div>
                   <div className="text-xs font-bold" style={{ color: C.text }}>
-                    Invoice paid
+                    {t('invoicePaid')}
                   </div>
                   <div className="text-[11px] font-semibold" style={{ color: C.amber }}>
                     +$240.00
@@ -700,9 +715,9 @@ export default function Home() {
         >
           <div className="max-w-6xl mx-auto px-6 py-5 flex flex-wrap justify-center gap-x-14 gap-y-4">
             {[
-              { label: 'Free & open source', sub: 'GPL-3.0 licensed' },
-              { label: 'Self-hosted', sub: 'Your data, your server' },
-              { label: 'Docker ready', sub: 'Up in minutes' },
+              { label: t('licenseFree'), sub: t('gplLicensed') },
+              { label: t('selfHosted'), sub: t('yourData') },
+              { label: t('dockerReady'), sub: t('upInMinutes') },
             ].map(({ label, sub }) => (
               <div key={label} className="flex items-center gap-2.5">
                 <div
@@ -735,7 +750,7 @@ export default function Home() {
                 className="text-xs font-semibold uppercase tracking-widest mb-4"
                 style={{ color: C.amber }}
               >
-                Features
+                {t('features')}
               </p>
               <h2
                 className="text-3xl md:text-5xl font-extrabold leading-tight mb-4"
@@ -745,18 +760,18 @@ export default function Home() {
                   fontFamily: 'Outfit, sans-serif',
                 }}
               >
-                Everything in tune
+                {t('everythingInTune')}
               </h2>
               <p
                 className="text-lg max-w-lg"
                 style={{ color: C.muted, fontFamily: 'Manrope, sans-serif' }}
               >
-                Seven modules that work in harmony — from first lesson to final invoice.
+                {t('sevenModulesThatWorkInHarmonyFromFirstLessonToFinalInvoice')}
               </p>
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {features.map((f, i) => (
+              {localizedFeatures.map((f, i) => (
                 <FeatureCard key={i} feature={f} index={i} onClick={() => openFeature(f)} />
               ))}
             </div>
@@ -781,7 +796,7 @@ export default function Home() {
                   className="text-xs font-semibold uppercase tracking-widest mb-4"
                   style={{ color: C.amber }}
                 >
-                  Open source
+                  {t('openSource')}
                 </p>
                 <h2
                   className="text-2xl md:text-4xl font-extrabold mb-4"
@@ -791,14 +806,13 @@ export default function Home() {
                     fontFamily: 'Outfit, sans-serif',
                   }}
                 >
-                  Deploy in under five minutes.
+                  {t('deployInUnderFiveMinutes')}
                 </h2>
                 <p
                   className="text-base mb-8 max-w-lg"
                   style={{ color: C.muted, fontFamily: 'Manrope, sans-serif', lineHeight: 1.7 }}
                 >
-                  One command spins up the full stack — PostgreSQL, Django, and Next.js. Your
-                  data stays on your server, always.
+                  {t('selfHostingInfo')}
                 </p>
 
                 <div
@@ -830,7 +844,7 @@ export default function Home() {
                       (e.currentTarget.style.backgroundColor = C.amber)
                     }
                   >
-                    Create your studio
+                    {t('createYourStudio')}
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                   <a
@@ -845,7 +859,7 @@ export default function Home() {
                     }}
                   >
                     <Github className="w-4 h-4" />
-                    Star on GitHub
+                    {t('starOnGitHub')}
                   </a>
                 </div>
               </div>
