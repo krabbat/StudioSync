@@ -73,6 +73,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(source="user.phone", read_only=True)
     avatar = serializers.SerializerMethodField()
     teacher = serializers.SerializerMethodField()
+    login_enabled = serializers.SerializerMethodField()
     family_name = serializers.CharField(
         source="family.primary_parent.last_name", read_only=True, allow_null=True
     )
@@ -85,6 +86,10 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         if obj.user.avatar:
             return obj.user.avatar.url
         return None
+
+    def get_login_enabled(self, obj):
+        account = obj.user
+        return account.is_active and account.is_approved and account.has_usable_password()
 
     def get_teacher(self, obj):
         if obj.primary_teacher:
