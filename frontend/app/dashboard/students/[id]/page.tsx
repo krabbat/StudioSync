@@ -187,39 +187,39 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                     <div className="lg:col-span-2 space-y-8">
                         <section className="bg-white p-12 rounded-[3rem] border border-gray-100 shadow-xl shadow-gray-200/30 space-y-10">
                             <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-4">
-                                <div className="w-10 h-10 bg-blue-50/50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                                <span className="w-10 h-10 bg-blue-50/50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
                                     <User className="w-5 h-5" />
-                                </div>
+                                </span>
                                 {tr('theEssentials')}
                             </h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
                                 <div className="space-y-2 group">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">{tr('reachOutAt')}</p>
-                                    <p className="font-bold text-lg text-gray-900 flex items-center gap-3">
+                                    <div className="font-bold text-lg text-gray-900 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                                             <Mail className="w-4 h-4 text-gray-300 group-hover:text-blue-400" />
                                         </div>
                                         {email}
-                                    </p>
+                                    </div>
                                 </div>
                                 <div className="space-y-2 group">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">{tr('callOrText')}</p>
-                                    <p className="font-bold text-lg text-gray-900 flex items-center gap-3">
+                                    <div className="font-bold text-lg text-gray-900 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                                             <Phone className="w-4 h-4 text-gray-300 group-hover:text-blue-400" />
                                         </div>
                                         {formatPhoneNumber(phone)}
-                                    </p>
+                                    </div>
                                 </div>
                                 <div className="space-y-2 group">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">{tr('celebrationDay')}</p>
-                                    <p className="font-bold text-lg text-gray-900 flex items-center gap-3">
+                                    <div className="font-bold text-lg text-gray-900 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                                             <Calendar className="w-4 h-4 text-gray-300 group-hover:text-blue-400" />
                                         </div>
                                         {student.birth_date ? new Date(`${student.birth_date}T00:00:00`).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' }) : tr('notProvided')}
-                                    </p>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -229,9 +229,9 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                             <section className="bg-gradient-to-br from-amber-50/80 to-orange-50/50 p-12 rounded-[3rem] border border-amber-100/50 space-y-10 shadow-lg shadow-amber-100/20">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-xs font-black text-amber-700/60 uppercase tracking-[0.3em] flex items-center gap-4">
-                                        <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm">
+                                        <span className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm">
                                             <AlertCircle className="w-5 h-5" />
-                                        </div>
+                                        </span>
                                         {tr('familySafety')}
                                     </h2>
                                 </div>
