@@ -44,10 +44,10 @@ class DashboardStatsView(APIView):
                 avg_attendance = "100%"
             else:
                 # 1. Total Students — all active students for admins in their studio
-                total_students = Student.objects.filter(studio=studio, is_active=True).count()
+                total_students = Student.objects.filter(studio=studio, is_active=True, user__role="student").count()
                 # Growth should be compared to start of month
                 students_before_month = Student.objects.filter(
-                    studio=studio, is_active=True, created_at__lt=start_of_month
+                    studio=studio, is_active=True, user__role="student", created_at__lt=start_of_month
                 ).count()
                 student_growth = total_students - students_before_month
 
