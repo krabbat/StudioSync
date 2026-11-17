@@ -337,33 +337,41 @@ class DashboardAnalyticsView(APIView):
 
             revenue_trend.append({"month": month_label, "revenue": float(revenue_map.get(key, 0))})
 
-        # 2. Student Growth (Last 6 Months enrollment)
-        # This is strictly "New Students" per month, or Total Active?
-        # The chart title says "Student Growth - Monthly enrollment", implying new students.
+        # 2. Student Growth: monthly enrollments, using the editable enrollment
+        # date and the same student-role / active filters as the dashboard counter.
+        # Count six actual calendar months, not 30-day approximations.
         student_growth = []
+        current_month_index = today.year * 12 + today.month - 1
+        months = [
+            ((current_month_index - offset) // 12, (current_month_index - offset) % 12 + 1)
+            for offset in range(5, -1, -1)
+        ]
+        first_year, first_month = months[0]
+        from datetime import date
 
         enrollment_qs = (
             Student.objects.filter(
                 studio=studio,
-                created_at__gte=six_months_ago,
-                is_active=True,  # We might want historical here, but active is okay for now
+                user__role="student",
+                is_active=True,
+                enrollment_date__gte=date(first_year, first_month, 1),
+                enrollment_date__lte=today.date(),
             )
-            .annotate(month=TruncMonth("created_at"))
+            .annotate(month=TruncMonth("enrollment_date"))
             .values("month")
             .annotate(new_students=Count("id"))
             .order_by("month")
         )
-
         enrollment_map = {
             item["month"].strftime("%Y-%m"): item["new_students"] for item in enrollment_qs
         }
 
-        for i in range(5, -1, -1):
-            date = today - timedelta(days=i * 30)
-            key = date.strftime("%Y-%m")
-            month_label = date.strftime("%b")
-
-            student_growth.append({"month": month_label, "students": enrollment_map.get(key, 0)})
+        for year, month in months:
+            month_date = date(year, month, 1)
+            student_growth.append({
+                "month": month_date.strftime("%b"),
+                "students": enrollment_map.get(month_date.strftime("%Y-%m"), 0),
+            })
 
         # 3. Lesson Attendance (This Month Breakdown)
         start_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
