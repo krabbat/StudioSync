@@ -103,8 +103,10 @@ ASGI_APPLICATION = "config.asgi.application"
 
 # Database
 DATABASES = {
+    # ASGI/Uvicorn: disable persistent ORM connections to avoid exhausting
+    # PostgreSQL's connection slots under concurrent requests.
     "default": dj_database_url.config(
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}', conn_max_age=600
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}', conn_max_age=0
     )
 }
 
