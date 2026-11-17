@@ -73,8 +73,8 @@ export default function AddStudentPage() {
         e.preventDefault()
         setLoading(true)
         try {
-            // The student creation response contains a student ID.
-            // Retrieving that student exposes its linked user ID for avatar upload.
+            // Student creation returns the linked user ID, so photo upload works
+            // independently of the student detail endpoint.
             const { data: createdStudent } = await api.post('/students/', {
                 ...formData,
                 instrument: formData.instruments[0] || formData.instrument.trim()
@@ -82,12 +82,10 @@ export default function AddStudentPage() {
 
             if (avatar) {
                 try {
-                    if (!createdStudent?.id) throw new Error('Missing student ID')
-                    const { data: studentDetails } = await api.get(`/students/${createdStudent.id}/`)
-                    if (!studentDetails?.user) throw new Error('Missing linked user ID')
+                    if (!createdStudent?.user) throw new Error('Missing linked user ID in student creation response')
                     const uploadData = new FormData()
                     uploadData.append('avatar', avatar, 'student-avatar.jpg')
-                    await api.patch(`/core/users/${studentDetails.user}/`, uploadData)
+                    await api.patch(`/core/users/${createdStudent.user}/`, uploadData)
                 } catch (uploadError) {
                     // Student creation succeeded; avoid any duplicate submission.
                     console.error('Student saved but avatar upload failed', uploadError)
