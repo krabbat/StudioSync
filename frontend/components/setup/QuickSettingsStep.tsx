@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl'
 import React from 'react'
 import { SetupWizardData, QuickSettings } from '@/types/setup'
 import { HelpTooltip } from '@/components/ui/help-tooltip'
@@ -10,6 +11,7 @@ interface StepProps {
 }
 
 export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }: StepProps) => {
+  const t = useTranslations('SetupQuick')
     const { quick_settings } = data
 
     // Allow any time range, including overnight (e.g. 4 PM to 2 AM)
@@ -23,9 +25,9 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
     return (
         <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl mx-auto py-4 animate-in fade-in slide-in-from-right-8 duration-500">
             <div className="border-b border-gray-200 pb-6">
-                <h2 className="text-2xl font-bold leading-7 text-gray-900">Quick Configuration</h2>
+                <h2 className="text-2xl font-bold leading-7 text-gray-900">{t('quickConfiguration')}</h2>
                 <p className="mt-1 text-sm leading-6 text-gray-600">
-                    Set up some basics to get your schedule ready.
+                    {t('setUpSomeBasicsToGetYourScheduleReady')}
                 </p>
             </div>
 
@@ -33,10 +35,10 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
                 
                 {/* Section: Scheduling Rules */}
                 <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                    <h3 className="text-sm font-medium text-gray-900 border-b border-gray-200 pb-2">Scheduling Rules</h3>
+                    <h3 className="text-sm font-medium text-gray-900 border-b border-gray-200 pb-2">{t('schedulingRules')}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Business Start Hour</label>
+                            <label className="block text-sm font-medium text-gray-700">{t('businessStartHour')}</label>
                             <select
                                 value={quick_settings.business_start_hour}
                                 onChange={(e) => updateQuickSettings({ business_start_hour: parseInt(e.target.value) })}
@@ -50,7 +52,7 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Business End Hour</label>
+                            <label className="block text-sm font-medium text-gray-700">{t('businessEndHour')}</label>
                             <select
                                 value={quick_settings.business_end_hour}
                                 onChange={(e) => updateQuickSettings({ business_end_hour: parseInt(e.target.value) })}
@@ -71,7 +73,7 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
 
                         <div>
                             <label className="block text-sm flex items-center font-medium text-gray-700">
-                                Default Lesson Duration (min)
+                                {t('defaultLessonDurationMin')}
                                 <HelpTooltip content="The standard length for a new lesson booking." />
                             </label>
                             <input
@@ -90,7 +92,7 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
 
                         <div>
                             <label className="block text-sm flex items-center font-medium text-gray-700">
-                                Cancellation Notice (Hours)
+                                {t('cancellationNoticeHours')}
                                 <HelpTooltip content="Minimum hours required to cancel without penalty." />
                             </label>
                             <input
@@ -106,10 +108,10 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
 
                 {/* Section: Billing Settings */}
                 <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                    <h3 className="text-sm font-medium text-gray-900 border-b border-gray-200 pb-2">Billing Settings</h3>
+                    <h3 className="text-sm font-medium text-gray-900 border-b border-gray-200 pb-2">{t('billingSettings')}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Default Rate / Hour</label>
+                            <label className="block text-sm font-medium text-gray-700">{t('defaultRateHour')}</label>
                             <div className="relative mt-1 rounded-md shadow-sm">
                                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                 <span className="text-gray-500 sm:text-sm">$</span>
@@ -125,7 +127,7 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
                         </div>
                         <div>
                             <label className="block text-sm flex items-center font-medium text-gray-700">
-                                Tax Rate (%)
+                                {t('taxRate')}
                                 <HelpTooltip content="Percentage tax applied to taxable invoice items." />
                             </label>
                             <div className="flex items-center space-x-2">
@@ -147,11 +149,11 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
                                     onChange={(e) => updateQuickSettings({ charge_tax_on_lessons: e.target.checked })}
                                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
                                 />
-                                <label htmlFor="tax_lessons" className="text-xs text-gray-500">Apply to Lessons</label>
+                                <label htmlFor="tax_lessons" className="text-xs text-gray-500">{t('applyToLessons')}</label>
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Invoice Due (Days)</label>
+                            <label className="block text-sm font-medium text-gray-700">{t('invoiceDueDays')}</label>
                             <input
                                 type="number"
                                 min="0"
@@ -161,10 +163,10 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
                             />
                         </div>
                         <div className="col-span-1 sm:col-span-3">
-                            <label className="block text-sm font-medium text-gray-700">Invoice Footer Note</label>
+                            <label className="block text-sm font-medium text-gray-700">{t('invoiceFooterNote')}</label>
                             <input
                                 type="text"
-                                placeholder="Thank you for your business!"
+                                placeholder={t('thankYouForYourBusiness')}
                                 value={quick_settings.invoice_footer_text ?? ''}
                                 onChange={(e) => updateQuickSettings({ invoice_footer_text: e.target.value })}
                                 className="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
@@ -175,10 +177,10 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
 
                 {/* Section: Event Settings */}
                 <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                     <h3 className="text-sm font-medium text-gray-900 border-b border-gray-200 pb-2">Event Settings</h3>
+                     <h3 className="text-sm font-medium text-gray-900 border-b border-gray-200 pb-2">{t('eventSettings')}</h3>
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Default Event Duration (min)</label>
+                            <label className="block text-sm font-medium text-gray-700">{t('defaultEventDurationMin')}</label>
                             <input
                                 type="number"
                                 min="15"
@@ -196,7 +198,7 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
                                 onChange={(e) => updateQuickSettings({ enable_online_booking: e.target.checked })}
                                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
                             />
-                            <label htmlFor="online_booking" className="text-sm font-medium text-gray-900">Enable Online Booking</label>
+                            <label htmlFor="online_booking" className="text-sm font-medium text-gray-900">{t('enableOnlineBooking')}</label>
                         </div>
                      </div>
                 </div>
@@ -208,14 +210,14 @@ export const QuickSettingsStep = ({ data, updateQuickSettings, onNext, onBack }:
                     onClick={onBack}
                     className="text-sm font-semibold leading-6 text-gray-900 hover:text-gray-700"
                 >
-                    Back
+                    {t('back')}
                 </button>
                 <button
                     type="submit"
                     disabled={!isValid}
                     className="rounded-md bg-indigo-600 px-8 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
-                    Continue
+                    {t('continue')}
                 </button>
             </div>
         </form>
