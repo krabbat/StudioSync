@@ -210,7 +210,11 @@
     "recentLessons": "Recent Lessons",
     "lessonsInfo": "Visit your lessons page to see full notes and assignments.",
     "viewAllLessons": "View All Lessons",
-    "noRecentActivity": "No recent activity found."
+    "noRecentActivity": "No recent activity found.",
+    "newThisMonth": "{count} new this month",
+    "trendScheduled": "Scheduled",
+    "trendThisMonth": "This month",
+    "trendActive": "Active"
   },
   "StudentAdd": {
     "backToStudents": "Back to Students",
@@ -1768,5 +1772,13 @@
     "and": "and",
     "configureOutro": "on the server.",
     "checkBackend": "Check the messaging backend server logs."
+  },
+  "Charts": {
+    "attended": "Attended",
+    "canceled": "Canceled",
+    "noShow": "No-show",
+    "scheduled": "Scheduled",
+    "studentCount": "{count, plural, one {# student} other {# students}}",
+    "lessonCount": "{count, plural, one {# lesson} other {# lessons}}"
   }
 }

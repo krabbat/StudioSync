@@ -2,6 +2,8 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { motion } from 'framer-motion'
+import { useStudioFormatting } from '@/lib/useStudioFormatting'
+import { useTranslations } from 'next-intl'
 
 interface StudentGrowthChartProps {
   data: Array<{ month: string; students: number }>
@@ -10,11 +12,14 @@ interface StudentGrowthChartProps {
 const COLORS = ['#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6']
 
 export function StudentGrowthChart({ data }: StudentGrowthChartProps) {
+  const t = useTranslations('Charts')
+  const { monthLabel } = useStudioFormatting()
+  const localizedData = data.map(point => ({ ...point, month: monthLabel(point.month) }))
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white px-4 py-2 rounded-lg shadow-lg border border-gray-200">
-          <p className="text-sm font-semibold text-gray-900">{payload[0].value} students</p>
+          <p className="text-sm font-semibold text-gray-900">{t('studentCount', {count: payload[0].value})}</p>
           <p className="text-xs text-gray-600">{payload[0].payload.month}</p>
         </div>
       )
@@ -30,7 +35,7 @@ export function StudentGrowthChart({ data }: StudentGrowthChartProps) {
       className="w-full h-full"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
+        <BarChart data={localizedData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis
             dataKey="month"

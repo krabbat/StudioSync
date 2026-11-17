@@ -2,6 +2,7 @@
 
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { motion } from 'framer-motion'
+import { useStudioFormatting } from '@/lib/useStudioFormatting'
 
 interface RevenueChartProps {
   data: Array<{ month: string; revenue: number }>
@@ -9,11 +10,13 @@ interface RevenueChartProps {
 }
 
 export function RevenueChart({ data, variant = 'area' }: RevenueChartProps) {
+  const { money, compactMoney, monthLabel } = useStudioFormatting()
+  const localizedData = data.map(point => ({ ...point, month: monthLabel(point.month) }))
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white px-4 py-2 rounded-lg shadow-lg border border-gray-200">
-          <p className="text-sm font-semibold text-gray-900">${payload[0].value.toLocaleString()}</p>
+          <p className="text-sm font-semibold text-gray-900">{money(payload[0].value)}</p>
           <p className="text-xs text-gray-600">{payload[0].payload.month}</p>
         </div>
       )
@@ -30,7 +33,7 @@ export function RevenueChart({ data, variant = 'area' }: RevenueChartProps) {
     >
       <ResponsiveContainer width="100%" height="100%">
         {variant === 'area' ? (
-          <AreaChart data={data}>
+          <AreaChart data={localizedData}>
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
@@ -46,7 +49,7 @@ export function RevenueChart({ data, variant = 'area' }: RevenueChartProps) {
             <YAxis
               stroke="#999"
               style={{ fontSize: '12px', fontFamily: 'Manrope' }}
-              tickFormatter={(value) => `$${value / 1000}k`}
+              tickFormatter={(value) => compactMoney(value)}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area
@@ -59,7 +62,7 @@ export function RevenueChart({ data, variant = 'area' }: RevenueChartProps) {
             />
           </AreaChart>
         ) : (
-          <LineChart data={data}>
+          <LineChart data={localizedData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis
               dataKey="month"
@@ -69,7 +72,7 @@ export function RevenueChart({ data, variant = 'area' }: RevenueChartProps) {
             <YAxis
               stroke="#999"
               style={{ fontSize: '12px', fontFamily: 'Manrope' }}
-              tickFormatter={(value) => `$${value / 1000}k`}
+              tickFormatter={(value) => compactMoney(value)}
             />
             <Tooltip content={<CustomTooltip />} />
             <Line

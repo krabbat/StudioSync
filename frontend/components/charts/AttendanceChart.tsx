@@ -2,6 +2,7 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import { motion } from 'framer-motion'
+import { useTranslations } from 'next-intl'
 
 interface AttendanceChartProps {
   data: Array<{ name: string; value: number }>
@@ -10,12 +11,25 @@ interface AttendanceChartProps {
 const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#6b7280']
 
 export function AttendanceChart({ data }: AttendanceChartProps) {
+  const t = useTranslations('Charts')
+  const statusLabels: Record<string, string> = {
+    attended: t('attended'),
+    canceled: t('canceled'),
+    cancelled: t('canceled'),
+    'no-show': t('noShow'),
+    no_show: t('noShow'),
+    scheduled: t('scheduled')
+  }
+  const localizedData = data.map(item => ({
+    ...item,
+    name: statusLabels[item.name.toLowerCase()] || item.name
+  }))
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white px-4 py-2 rounded-lg shadow-lg border border-gray-200">
           <p className="text-sm font-semibold text-gray-900">{payload[0].name}</p>
-          <p className="text-xs text-gray-600">{payload[0].value} lessons</p>
+          <p className="text-xs text-gray-600">{t('lessonCount', {count: payload[0].value})}</p>
         </div>
       )
     }
@@ -32,7 +46,7 @@ export function AttendanceChart({ data }: AttendanceChartProps) {
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={localizedData}
             cx="50%"
             cy="50%"
             innerRadius={60}

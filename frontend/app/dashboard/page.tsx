@@ -29,7 +29,7 @@ import {
   EyeOff,
   TrendingUp,
   Users,
-  DollarSign as DollarSignIcon,
+  Euro as DollarSignIcon,
   Calendar,
   GraduationCap,
   Music,
@@ -43,6 +43,7 @@ import { StudentGrowthChart } from "@/components/charts/StudentGrowthChart";
 import { AttendanceChart } from "@/components/charts/AttendanceChart";
 import { DashboardSkeleton } from "@/components/SkeletonLoader";
 import { useTranslations } from "next-intl";
+import { useStudioFormatting } from "@/lib/useStudioFormatting";
 
 // --- Types ---
 type WidgetId =
@@ -215,6 +216,7 @@ function SortableWidget({ widget, children, isEditing, onToggleVisibility }: Sor
 // --- Main Page Component ---
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
+  const { money, currency } = useStudioFormatting();
   const router = useRouter();
   const { currentUser } = useUser();
   const { updateProfile } = useSettings();
@@ -306,6 +308,18 @@ export default function DashboardPage() {
   const studentGrowthData = analytics?.student_growth || [];
   const attendanceData = analytics?.attendance || [];
 
+  const localizeTrend = (value: unknown): string => {
+    const text = String(value ?? '')
+    const match = /^([+-]?\d+)\s+new this month$/i.exec(text)
+    if (match) return t('newThisMonth', { count: match[1] })
+    switch (text.toLowerCase()) {
+      case 'scheduled': return t('trendScheduled')
+      case 'this month': return t('trendThisMonth')
+      case 'active': return t('trendActive')
+      default: return text
+    }
+  }
+
   const overview = stats.overview;
 
   // Widgets mapped by ID
@@ -317,7 +331,7 @@ export default function DashboardPage() {
         value={overview.total_students?.value || 0}
         subtitle={t("students")}
         trend={{
-          value: String(overview.total_students?.trend || ""),
+          value: localizeTrend(overview.total_students?.trend),
           positive: !!overview.total_students?.positive,
         }}
         color="blue"
@@ -332,7 +346,7 @@ export default function DashboardPage() {
         value={overview.weekly_lessons?.value || 0}
         subtitle={t("scheduled")}
         trend={{
-          value: String(overview.weekly_lessons?.trend || ""),
+          value: localizeTrend(overview.weekly_lessons?.trend),
           positive: !!overview.weekly_lessons?.positive,
         }}
         color="blue"
@@ -344,10 +358,10 @@ export default function DashboardPage() {
     monthly_revenue: (
       <MetricCard
         title={t("monthlyRevenue")}
-        value={`$${overview.monthly_revenue?.value || 0}`}
-        subtitle="USD"
+        value={money(overview.monthly_revenue?.value || 0)}
+        subtitle={currency}
         trend={{
-          value: String(overview.monthly_revenue?.trend || ""),
+          value: localizeTrend(overview.monthly_revenue?.trend),
           positive: !!overview.monthly_revenue?.positive,
         }}
         color="blue"
@@ -362,7 +376,7 @@ export default function DashboardPage() {
         value={overview.active_teachers?.value || 0}
         subtitle={t("instructors")}
         trend={{
-          value: String(overview.active_teachers?.trend || ""),
+          value: localizeTrend(overview.active_teachers?.trend),
           positive: !!overview.active_teachers?.positive,
         }}
         color="blue"
@@ -377,7 +391,7 @@ export default function DashboardPage() {
         value={overview.unpaid_invoices?.value || 0}
         subtitle={t("overdue")}
         trend={{
-          value: String(overview.unpaid_invoices?.trend || ""),
+          value: localizeTrend(overview.unpaid_invoices?.trend),
           positive: !!overview.unpaid_invoices?.positive,
         }}
         color="red"
@@ -392,7 +406,7 @@ export default function DashboardPage() {
         value={overview.avg_attendance?.value || "0%"}
         subtitle={t("engagement")}
         trend={{
-          value: String(overview.avg_attendance?.trend || ""),
+          value: localizeTrend(overview.avg_attendance?.trend),
           positive: !!overview.avg_attendance?.positive,
         }}
         color="blue"
@@ -406,7 +420,7 @@ export default function DashboardPage() {
         value={overview.new_enquiries?.value || 0}
         subtitle={t("newLeads")}
         trend={{
-          value: String(overview.new_enquiries?.trend || ""),
+          value: localizeTrend(overview.new_enquiries?.trend),
           positive: !!overview.new_enquiries?.positive,
         }}
         color="blue"
@@ -478,9 +492,9 @@ export default function DashboardPage() {
     balance_due: (
       <MetricCard
         title={t("balanceDue")}
-        value={overview.balance_due?.value || "$0.00"}
+        value={money(overview.balance_due?.value || 0)}
         subtitle={overview.balance_due?.label || t("allPaid")}
-        color={String(overview.balance_due?.value || "").includes("$0") ? "blue" : "red"}
+        color={Number(String(overview.balance_due?.value ?? 0).replace(/[^0-9.-]/g, "")) === 0 ? "blue" : "red"}
         icon={<DollarSignIcon className="w-6 h-6" />}
         onClick={() => !isEditing && router.push("/dashboard/billing")}
         className={isEditing ? "pointer-events-none" : ""}

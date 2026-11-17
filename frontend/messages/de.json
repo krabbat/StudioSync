@@ -210,7 +210,11 @@
     "recentLessons": "Letzte Unterrichtsstunden",
     "lessonsInfo": "Auf der Unterrichtsseite findest du alle Notizen und Aufgaben.",
     "viewAllLessons": "Alle Unterrichtsstunden ansehen",
-    "noRecentActivity": "Keine aktuellen Aktivitäten."
+    "noRecentActivity": "Keine aktuellen Aktivitäten.",
+    "newThisMonth": "{count} neu in diesem Monat",
+    "trendScheduled": "Geplant",
+    "trendThisMonth": "Diesen Monat",
+    "trendActive": "Aktiv"
   },
   "StudentAdd": {
     "backToStudents": "Zurück zur Schülerliste",
@@ -1768,5 +1772,13 @@
     "and": "und",
     "configureOutro": "auf dem Server konfiguriert sein.",
     "checkBackend": "Bitte die Serverprotokolle des Nachrichtendienstes prüfen."
+  },
+  "Charts": {
+    "attended": "Teilgenommen",
+    "canceled": "Abgesagt",
+    "noShow": "Nicht erschienen",
+    "scheduled": "Geplant",
+    "studentCount": "{count, plural, one {# Schüler} other {# Schüler}}",
+    "lessonCount": "{count, plural, one {# Unterrichtsstunde} other {# Unterrichtsstunden}}"
   }
 }
