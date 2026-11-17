@@ -10,10 +10,11 @@ import { toast } from 'react-hot-toast'
 import {
     X, Loader2, UserPlus, Music, Link as LinkIcon, Edit, UserCog, Trash2,
     Search, ChevronLeft, ChevronRight, Users as UsersIcon, Mail, Shield,
-    User, CheckCircle2, AlertCircle, Sparkles, Filter
+    User, CheckCircle2, AlertCircle, Sparkles, Filter, Camera
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import ImageCropper from '@/components/ImageCropper'
 
 export default function UsersPage() {
   const t = useTranslations('Users')
@@ -27,6 +28,9 @@ export default function UsersPage() {
     const [isUserModalOpen, setIsUserModalOpen] = useState(false)
     const [selectedUser, setSelectedUser] = useState<any>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [cropImage, setCropImage] = useState<string | null>(null)
+    const [avatarFile, setAvatarFile] = useState<Blob | null>(null)
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
     const [formData, setFormData] = useState({
         email: '',
@@ -80,6 +84,9 @@ export default function UsersPage() {
     const { users: parentOptions } = useUsers({ role: 'parent' })
 
     const handleOpenModal = (user: any = null) => {
+        setCropImage(null)
+        setAvatarFile(null)
+        setAvatarPreview(null)
         if (user) {
             setSelectedUser(user)
             setFormData({
@@ -110,10 +117,36 @@ export default function UsersPage() {
         setIsUserModalOpen(true)
     }
 
+    const handlePhotoSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        event.target.value = ''
+        if (!file) return
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            toast.error(t('invalidPhoto'))
+            return
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error(t('photoTooLarge'))
+            return
+        }
+        const reader = new FileReader()
+        reader.onload = () => setCropImage(reader.result as string)
+        reader.readAsDataURL(file)
+    }
+
+    const handlePhotoCrop = (blob: Blob) => {
+        setCropImage(null)
+        setAvatarFile(blob)
+        const reader = new FileReader()
+        reader.onload = () => setAvatarPreview(reader.result as string)
+        reader.readAsDataURL(blob)
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
         try {
+            let updatedAccountId: string | null = null
             if (selectedUser) {
                 const { data: updatedUser } = await api.patch(`/core/users/${selectedUser.id}/`, {
                     first_name: formData.first_name,
@@ -121,6 +154,7 @@ export default function UsersPage() {
                     role: formData.role,
                     is_active: formData.is_active
                 })
+                updatedAccountId = updatedUser.id
 
                 if (formData.role === 'student' || updatedUser.role === 'student') {
                     const originalBandIds = selectedUser.student_profile?.bands?.map((b: any) => b.id) || []
@@ -153,11 +187,26 @@ export default function UsersPage() {
                     })
                 }
 
-                toast.success(t('msgUserUpdatedSuccessfully'))
             } else {
-                await api.post('/core/users/', formData)
-                toast.success(t('msgUserCreatedSuccessfully'))
+                const { data: createdUser } = await api.post('/core/users/', formData)
+                updatedAccountId = createdUser.id
             }
+            if (avatarFile) {
+                try {
+                    if (!updatedAccountId) throw new Error('Missing created account ID')
+                    const form = new FormData()
+                    form.append('avatar', avatarFile, 'profile-avatar.jpg')
+                    await api.patch(`/core/users/${updatedAccountId}/`, form)
+                } catch (photoError) {
+                    // The account already exists; do not prompt for a second creation.
+                    console.error('User saved but photo upload failed', photoError)
+                    toast.error(t('userSavedPhotoFailed'))
+                    setIsUserModalOpen(false)
+                    if (refresh) refresh()
+                    return
+                }
+            }
+            toast.success(selectedUser ? t('msgUserUpdatedSuccessfully') : t('msgUserCreatedSuccessfully'))
             setIsUserModalOpen(false)
             if (refresh) refresh()
         } catch (error: any) {
@@ -434,6 +483,28 @@ export default function UsersPage() {
                 <DialogHeader title={selectedUser ? t('editMember') : t('newMember')} />
                 <DialogContent>
                     <form id="user-onboarding-form" onSubmit={handleSubmit} className="space-y-8">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="w-20 h-20 rounded-full overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center">
+                                {avatarPreview || selectedUser?.avatar ? (
+                                    <img src={avatarPreview || selectedUser.avatar} alt={t('photoPreview')} className="w-full h-full object-cover" />
+                                ) : (
+                                    <User className="w-8 h-8 text-gray-400" />
+                                )}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <label className="block text-sm font-semibold text-gray-800">{t('profilePhoto')}</label>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <label htmlFor="member-avatar" className="inline-flex cursor-pointer items-center gap-2 border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        <Camera className="w-4 h-4" /> {t('choosePhoto')}
+                                    </label>
+                                    <input id="member-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoSelection} className="hidden" />
+                                    {avatarFile && (
+                                        <button type="button" onClick={() => { setAvatarFile(null); setAvatarPreview(null) }} className="text-sm text-red-600 hover:underline">{t('discardNewPhoto')}</button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500">{t('photoInfo')}</p>
+                            </div>
+                        </div>
                         {/* Basic Info */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -664,6 +735,9 @@ export default function UsersPage() {
                     </Button>
                 </DialogFooter>
             </Dialog>
+            {cropImage && (
+                <ImageCropper imageSrc={cropImage} onCropComplete={handlePhotoCrop} onCancel={() => setCropImage(null)} />
+            )}
         </div>
     )
 }

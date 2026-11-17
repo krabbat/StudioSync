@@ -754,7 +754,15 @@
     "authorized": "Freigeschaltet",
     "suspended": "Gesperrt",
     "saveMember": "Änderungen speichern",
-    "createMember": "Benutzer anlegen"
+    "createMember": "Benutzer anlegen",
+    "profilePhoto": "Profilbild (optional)",
+    "choosePhoto": "Foto auswählen",
+    "photoPreview": "Vorschau des Profilbilds",
+    "discardNewPhoto": "Auswahl verwerfen",
+    "photoInfo": "JPG, PNG oder WebP bis 5 MB; vor dem Speichern zuschneidbar.",
+    "invalidPhoto": "Bitte ein JPG-, PNG- oder WebP-Bild auswählen.",
+    "photoTooLarge": "Das Foto darf höchstens 5 MB groß sein.",
+    "userSavedPhotoFailed": "Das Benutzerkonto wurde gespeichert, aber das Profilfoto konnte nicht hochgeladen werden."
   },
   "Resources": {
     "loadingLibrary": "Materialien werden geladen…",
