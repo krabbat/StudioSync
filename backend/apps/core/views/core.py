@@ -620,6 +620,67 @@ class TeacherViewSet(viewsets.ModelViewSet):
             return TeacherSerializer
         return PublicTeacherSerializer
 
+    @action(detail=False, methods=["post"], url_path="solo-mode")
+    def solo_mode(self, request):
+        """Let the studio owner teach under their existing admin login.
+
+        Enabling may create an owner-linked teacher profile or explicitly claim
+        an existing profile. It never deletes accounts or reassigns lessons.
+        """
+        from django.db import transaction
+
+        studio = studio_for_request(request)
+        if request.user.role != "admin" or studio is None or studio.owner_id != request.user.id:
+            raise PermissionDenied("Only the studio owner can configure individual teaching.")
+
+        enabled = request.data.get("enabled")
+        if not isinstance(enabled, bool):
+            return Response({"enabled": ["Expected true or false."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            owner_teacher = Teacher.objects.filter(user=request.user).first()
+            if owner_teacher is not None and owner_teacher.studio_id != studio.id:
+                return Response(
+                    {"detail": "Your account already has a teacher profile in another studio."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if enabled:
+                existing_teacher_id = request.data.get("teacher_id")
+                if existing_teacher_id:
+                    candidate = get_object_or_404(
+                        Teacher.objects.select_related("user"), pk=existing_teacher_id, studio=studio
+                    )
+                    if owner_teacher is not None and owner_teacher.pk != candidate.pk:
+                        return Response(
+                            {"detail": "Your account already has a different teacher profile."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    if candidate.user_id != request.user.pk:
+                        # Reassigning another person's teacher record is prohibited.
+                        own_name = request.user.get_full_name().strip().casefold()
+                        candidate_name = candidate.user.get_full_name().strip().casefold()
+                        if not own_name or own_name != candidate_name:
+                            return Response(
+                                {"detail": "Only a teacher profile bearing your own name can be taken over."},
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                        candidate.user = request.user
+                        candidate.save(update_fields=["user"])
+                    owner_teacher = candidate
+                elif owner_teacher is None:
+                    owner_teacher = Teacher.objects.create(user=request.user, studio=studio)
+
+            studio_settings = dict(studio.settings or {})
+            studio_settings["solo_teacher_mode"] = enabled
+            studio.settings = studio_settings
+            studio.save(update_fields=["settings"])
+
+        return Response({
+            "solo_teacher_mode": enabled,
+            "teacher_id": str(owner_teacher.pk) if owner_teacher else None,
+        })
+
     def get_queryset(self):
         return Teacher.objects.filter(studio__in=studios_for_request(self.request)).select_related(
             "user", "studio"
