@@ -8,7 +8,7 @@ import {
     UserPlus, Search, Edit, Mail, Phone,
     GraduationCap, Music, Users, Loader2, X,
     CheckCircle, Download, ChevronRight,
-    DollarSign, Briefcase, Award, Zap
+    DollarSign, Briefcase, Award, Zap, Camera
 } from 'lucide-react'
 import { useUser } from '@/contexts/UserContext'
 import { useTeachers } from '@/hooks/useDashboardData'
@@ -16,6 +16,7 @@ import api from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import ImageCropper from '@/components/ImageCropper'
 
 export default function InstructorsPage() {
     const tr = useTranslations('Teachers')
@@ -29,6 +30,9 @@ export default function InstructorsPage() {
     const [selectedTeacher, setSelectedTeacher] = useState<any>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [newInstrument, setNewInstrument] = useState('')
+    const [cropImage, setCropImage] = useState<string | null>(null)
+    const [avatarFile, setAvatarFile] = useState<Blob | null>(null)
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -42,6 +46,9 @@ export default function InstructorsPage() {
 
     const handleOpenEdit = (teacher: any) => {
         setSelectedTeacher(teacher)
+        setCropImage(null)
+        setAvatarFile(null)
+        setAvatarPreview(null)
         setFormData({
             first_name: teacher.first_name || '',
             last_name: teacher.last_name || '',
@@ -55,11 +62,84 @@ export default function InstructorsPage() {
         setIsEditModalOpen(true)
     }
 
+    const handlePhotoSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const photo = e.target.files?.[0]
+        e.target.value = ''
+        if (!photo) return
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(photo.type)) {
+            toast.error(tr('invalidPhoto'))
+            return
+        }
+        if (photo.size > 5 * 1024 * 1024) {
+            toast.error(tr('photoTooLarge'))
+            return
+        }
+        const reader = new FileReader()
+        reader.onload = () => setCropImage(reader.result as string)
+        reader.readAsDataURL(photo)
+    }
+
+    const handlePhotoCrop = (cropped: Blob) => {
+        setAvatarFile(cropped)
+        setCropImage(null)
+        const reader = new FileReader()
+        reader.onload = () => setAvatarPreview(reader.result as string)
+        reader.readAsDataURL(cropped)
+    }
+
+    // Teacher records expose an avatar but not the linked user ID.
+    // Look up the exact teacher account in this studio before updating its avatar or phone.
+    const findTeacherAccountId = async (): Promise<string> => {
+        const response = await api.get('/core/users/', {
+            params: { role: 'teacher', search: selectedTeacher.email }
+        })
+        const accounts: any[] = Array.isArray(response.data)
+            ? response.data
+            : response.data?.results || []
+        const account = accounts.find((candidate: any) =>
+            candidate.role === 'teacher' &&
+            candidate.email?.toLowerCase() === selectedTeacher.email?.toLowerCase()
+        )
+        if (!account?.id) throw new Error(tr('accountNotFound'))
+        return account.id
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
         try {
-            await api.patch(`/core/teachers/${selectedTeacher.id}/`, formData)
+            const userDetailsChanged = !!avatarFile ||
+                formData.phone !== (selectedTeacher.phone || '') ||
+                formData.first_name !== (selectedTeacher.first_name || '') ||
+                formData.last_name !== (selectedTeacher.last_name || '')
+            // Resolve before saving either record, to avoid a partial save when
+            // the linked account is not available.
+            const accountId = userDetailsChanged ? await findTeacherAccountId() : null
+
+            await api.patch(`/core/teachers/${selectedTeacher.id}/`, {
+                specialties: formData.specialties,
+                hourly_rate: formData.hourly_rate,
+                is_active: formData.is_active
+            })
+
+            if (accountId) {
+                const update = new FormData()
+                if (formData.phone !== (selectedTeacher.phone || '')) update.append('phone', formData.phone)
+                if (formData.first_name !== (selectedTeacher.first_name || '')) update.append('first_name', formData.first_name)
+                if (formData.last_name !== (selectedTeacher.last_name || '')) update.append('last_name', formData.last_name)
+                if (avatarFile) update.append('avatar', avatarFile, 'teacher-avatar.jpg')
+                try {
+                    await api.patch(`/core/users/${accountId}/`, update)
+                } catch (avatarError) {
+                    // The teacher record has already been saved.
+                    console.error('Teacher saved but account/profile update failed', avatarError)
+                    toast.error(tr('accountDetailsFailedAfterSave'))
+                    setIsEditModalOpen(false)
+                    if (refresh) refresh()
+                    return
+                }
+            }
+
             toast.success(tr('updated'))
             setIsEditModalOpen(false)
             if (refresh) refresh()
@@ -281,6 +361,28 @@ export default function InstructorsPage() {
                 <DialogHeader title={tr('facultyProfileEnhancement')} />
                 <DialogContent>
                     <form id="edit-faculty-form" onSubmit={handleSubmit} className="space-y-8">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="w-20 h-20 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
+                                {avatarPreview || selectedTeacher?.avatar ? (
+                                    <img src={avatarPreview || selectedTeacher?.avatar} alt={tr('photoPreview')} className="w-full h-full object-cover" />
+                                ) : (
+                                    <Camera className="w-8 h-8 text-gray-400" />
+                                )}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <label className="block text-sm font-semibold text-gray-800">{tr('profilePhoto')}</label>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <label htmlFor="teacher-avatar" className="inline-flex cursor-pointer items-center gap-2 px-4 py-2 bg-white rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        <Camera className="w-4 h-4" /> {tr('choosePhoto')}
+                                    </label>
+                                    <input id="teacher-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoSelection} className="hidden" />
+                                    {avatarFile && (
+                                        <button type="button" onClick={() => { setAvatarFile(null); setAvatarPreview(null) }} className="text-sm text-red-600 hover:underline">{tr('discardNewPhoto')}</button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500">{tr('photoInfo')}</p>
+                            </div>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('publicFirstName')}</label>
@@ -315,13 +417,24 @@ export default function InstructorsPage() {
                             />
                         </div>
 
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('phoneNumber')}</label>
+                            <input
+                                type="tel"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                placeholder={tr('phoneExample')}
+                                className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all"
+                            />
+                        </div>
+
                         <div className="space-y-4 p-8 bg-primary/5 rounded-3xl border border-primary/10">
                             <div className="flex items-center justify-between mb-2">
                                 <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Award className="w-4 h-4" />
                                     {tr('pedagogicalSpecializations')}
                                 </label>
-                                <span className="text-[10px] font-black text-gray-400">{formData.specialties.length} Total</span>
+                                <span className="text-[10px] font-black text-gray-400">{tr('specialtyCount', {count: formData.specialties.length})}</span>
                             </div>
                             
                             <div className="flex flex-wrap gap-2">
@@ -445,6 +558,9 @@ export default function InstructorsPage() {
                     </Button>
                 </DialogFooter>
             </Dialog>
+            {cropImage && (
+                <ImageCropper imageSrc={cropImage} onCropComplete={handlePhotoCrop} onCancel={() => setCropImage(null)} />
+            )}
         </div>
     )
 }

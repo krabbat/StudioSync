@@ -438,7 +438,19 @@
     "statusActive": "Active",
     "statusInactive": "Inactive",
     "authorizedFaculty": "Authorized Faculty",
-    "saveProfile": "Execute Profile Update"
+    "saveProfile": "Execute Profile Update",
+    "profilePhoto": "Profile photo",
+    "choosePhoto": "Choose photo",
+    "photoPreview": "Profile photo preview",
+    "discardNewPhoto": "Discard selection",
+    "photoInfo": "JPG, PNG or WebP up to 5 MB; photo can be cropped.",
+    "invalidPhoto": "Choose a JPG, PNG or WebP photo.",
+    "photoTooLarge": "Photo must be 5 MB or less.",
+    "accountNotFound": "The associated teacher account could not be found.",
+    "accountDetailsFailedAfterSave": "Teacher saved, but the photo or contact details could not be updated.",
+    "phoneNumber": "Phone number",
+    "phoneExample": "+49 30 1234567",
+    "specialtyCount": "{count, plural, one {# specialization} other {# specializations}}"
   },
   "Lessons": {
     "synchronizingLessons": "Synchronizing Lessons...",

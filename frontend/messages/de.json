@@ -438,7 +438,19 @@
     "statusActive": "Aktiv",
     "statusInactive": "Inaktiv",
     "authorizedFaculty": "Lehrkraft freigegeben",
-    "saveProfile": "Profiländerungen speichern"
+    "saveProfile": "Profiländerungen speichern",
+    "profilePhoto": "Profilbild",
+    "choosePhoto": "Foto auswählen",
+    "photoPreview": "Vorschau des Profilbilds",
+    "discardNewPhoto": "Auswahl verwerfen",
+    "photoInfo": "JPG, PNG oder WebP bis 5 MB; das Bild kann zugeschnitten werden.",
+    "invalidPhoto": "Bitte ein Foto im Format JPG, PNG oder WebP wählen.",
+    "photoTooLarge": "Das Foto darf höchstens 5 MB groß sein.",
+    "accountNotFound": "Das zugehörige Benutzerkonto der Lehrkraft wurde nicht gefunden.",
+    "accountDetailsFailedAfterSave": "Die Lehrkraft wurde gespeichert, aber Foto oder Kontaktdaten konnten nicht aktualisiert werden.",
+    "phoneNumber": "Telefonnummer",
+    "phoneExample": "+49 30 1234567",
+    "specialtyCount": "{count, plural, one {# Schwerpunkt} other {# Schwerpunkte}}"
   },
   "Lessons": {
     "synchronizingLessons": "Unterrichtsstunden werden geladen…",
