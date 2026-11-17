@@ -222,14 +222,14 @@ export default function GeneralSettingsPage() {
     })
 
     const tabs = [
-        { id: 'profile', label: 'Profile', icon: User },
-        { id: 'security', label: 'Security', icon: ShieldAlert },
-        { id: 'studio', label: 'Studio', icon: Building2, roles: ['admin'] },
-        { id: 'communication', label: 'Communication', icon: Mail },
-        { id: 'appearance', label: 'Appearance', icon: Palette },
-        { id: 'notifications', label: 'Notifications', icon: Bell },
-        { id: 'technical', label: 'Technical', icon: Server, roles: ['admin'] },
-        { id: 'maintenance', label: 'Maintenance', icon: Database, roles: ['admin'] },
+        { id: 'profile', label: t('tabProfile'), icon: User },
+        { id: 'security', label: t('tabSecurity'), icon: ShieldAlert },
+        { id: 'studio', label: t('tabStudio'), icon: Building2, roles: ['admin'] },
+        { id: 'communication', label: t('tabCommunication'), icon: Mail },
+        { id: 'appearance', label: t('tabAppearance'), icon: Palette },
+        { id: 'notifications', label: t('tabNotifications'), icon: Bell },
+        { id: 'technical', label: t('tabTechnical'), icon: Server, roles: ['admin'] },
+        { id: 'maintenance', label: t('tabMaintenance'), icon: Database, roles: ['admin'] },
     ]
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -510,7 +510,7 @@ export default function GeneralSettingsPage() {
             {/* Header */}
             <header className="space-y-2">
                 <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">
-                    {tabs.find(t => t.id === activeTab)?.label ?? 'Settings'}
+                    {tabs.find(tab => tab.id === activeTab)?.label ?? t('settings')}
                 </h1>
             </header>
 
@@ -584,7 +584,7 @@ export default function GeneralSettingsPage() {
                                 <div className="relative group">
                                     <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200">
                                         {currentUser?.avatar ? (
-                                            <img src={currentUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                            <img src={currentUser.avatar} alt={t('avatarAlt')} className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-gray-400 text-xl font-bold">
                                                 {currentUser?.first_name?.[0]}{currentUser?.last_name?.[0]}
@@ -678,7 +678,7 @@ export default function GeneralSettingsPage() {
                                         value={formData.phone}
                                         onChange={e => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })}
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                        placeholder="+1 (555) 123-4567"
+                                        placeholder={t('examplePhone')}
                                     />
                                 </div>
 
@@ -805,7 +805,7 @@ export default function GeneralSettingsPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('studioPhone')}</label>
-                                        <input type="tel" value={studioSettings.studio_phone} onChange={e => setStudioSettings({ ...studioSettings, studio_phone: formatPhoneNumber(e.target.value) })} placeholder="+1 (555) 000-0000" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                        <input type="tel" value={studioSettings.studio_phone} onChange={e => setStudioSettings({ ...studioSettings, studio_phone: formatPhoneNumber(e.target.value) })} placeholder={t('exampleStudioPhone')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                     </div>
                                 </div>
 
@@ -863,19 +863,19 @@ export default function GeneralSettingsPage() {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('defaultLessonDuration')}</label>
                                         <select value={studioSettings.default_lesson_duration} onChange={e => setStudioSettings({ ...studioSettings, default_lesson_duration: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                                            <option value="30">30 minutes</option>
-                                            <option value="45">45 minutes</option>
-                                            <option value="60">60 minutes</option>
-                                            <option value="90">90 minutes</option>
+                                            <option value="30">{t('durationMinutes', {count: 30})}</option>
+                                            <option value="45">{t('durationMinutes', {count: 45})}</option>
+                                            <option value="60">{t('durationMinutes', {count: 60})}</option>
+                                            <option value="90">{t('durationMinutes', {count: 90})}</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('cancellationNotice')}</label>
                                         <select value={studioSettings.cancellation_notice} onChange={e => setStudioSettings({ ...studioSettings, cancellation_notice: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                                            <option value="12">12 hours</option>
-                                            <option value="24">24 hours</option>
-                                            <option value="48">48 hours</option>
-                                            <option value="168">1 week</option>
+                                            <option value="12">{t('durationHours', {count: 12})}</option>
+                                            <option value="24">{t('durationHours', {count: 24})}</option>
+                                            <option value="48">{t('durationHours', {count: 48})}</option>
+                                            <option value="168">{t('durationOneWeek')}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -897,7 +897,7 @@ export default function GeneralSettingsPage() {
                                         {instrumentList.map(name => (
                                             <span key={name} className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold rounded-full">
                                                 {name}
-                                                <button type="button" onClick={() => handleRemoveInstrument(name)} className="hover:text-red-500 transition-colors" aria-label={`Remove ${name}`}>
+                                                <button type="button" onClick={() => handleRemoveInstrument(name)} className="hover:text-red-500 transition-colors" aria-label={t('removeInstrument', {name})}>
                                                     <X className="w-3 h-3" />
                                                 </button>
                                             </span>
@@ -912,7 +912,7 @@ export default function GeneralSettingsPage() {
                                     <div className="mt-3">
                                         <button type="button" onClick={handleSaveInstruments} disabled={instrumentLoading} className="flex items-center gap-2 px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors font-medium text-sm disabled:opacity-50">
                                             {instrumentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                            {instrumentLoading ? 'Saving...' : 'Save Instrument List'}
+                                            {instrumentLoading ? t('instrumentSaving') : t('instrumentSave')}
                                         </button>
                                     </div>
                                 </div>
@@ -935,9 +935,9 @@ export default function GeneralSettingsPage() {
                                     <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('emailNotifications')}</h3>
                                     <div className="space-y-2">
                                         {[
-                                            { key: 'email_lessons', label: 'Lesson confirmations and changes' },
-                                            { key: 'email_messages', label: 'New messages from students/teachers' },
-                                            { key: 'email_payments', label: 'Payment receipts and reminders' }
+                                            { key: 'email_lessons', label: t('commLessonChanges') },
+                                            { key: 'email_messages', label: t('commNewMessages') },
+                                            { key: 'email_payments', label: t('commPaymentMessages') }
                                         ].map(item => (
                                             <label key={item.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                                                 <span className="text-sm text-gray-700">{item.label}</span>
@@ -956,10 +956,10 @@ export default function GeneralSettingsPage() {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('reminderTiming')}</label>
                                         <select value={commSettings.reminder_hours} onChange={e => setCommSettings({ ...commSettings, reminder_hours: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                                            <option value={1}>1 hour before</option>
-                                            <option value={3}>3 hours before</option>
-                                            <option value={24}>24 hours before</option>
-                                            <option value={48}>48 hours before</option>
+                                            <option value={1}>{t('reminderHoursBefore', {count: 1})}</option>
+                                            <option value={3}>{t('reminderHoursBefore', {count: 3})}</option>
+                                            <option value={24}>{t('reminderHoursBefore', {count: 24})}</option>
+                                            <option value={48}>{t('reminderHoursBefore', {count: 48})}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -994,7 +994,7 @@ export default function GeneralSettingsPage() {
                                     <div className="grid grid-cols-3 gap-3">
                                         {['light', 'dark', 'auto'].map(theme => (
                                             <button key={theme} onClick={() => setAppearanceSettings({ ...appearanceSettings, theme })} className={`p-4 border-2 rounded-lg capitalize transition-all text-sm font-medium ${appearanceSettings.theme === theme ? 'border-primary bg-orange-50 text-primary' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}>
-                                                {theme}
+                                                {theme === 'light' ? t('themeLight') : theme === 'dark' ? t('themeDark') : t('themeAuto')}
                                                 {appearanceSettings.theme === theme && <Check className="w-4 h-4 mx-auto mt-2" />}
                                             </button>
                                         ))}
@@ -1015,14 +1015,14 @@ export default function GeneralSettingsPage() {
                                     <p className="text-xs text-gray-500 mb-4">{t('chooseYourPreferredAccentColorForButtonsLinksAndHighlights')}</p>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         {[
-                                            { value: 'orange', color: '#F39C12', name: 'Orange' },
-                                            { value: 'blue', color: '#3498DB', name: 'Blue' },
-                                            { value: 'green', color: '#2ECC71', name: 'Green' },
-                                            { value: 'purple', color: '#9B59B6', name: 'Purple' },
-                                            { value: 'red', color: '#E74C3C', name: 'Red' },
-                                            { value: 'teal', color: '#1ABC9C', name: 'Teal' },
-                                            { value: 'indigo', color: '#34495E', name: 'Indigo' },
-                                            { value: 'pink', color: '#EC7063', name: 'Pink' }
+                                            { value: 'orange', color: '#F39C12', name: t('colorOrange') },
+                                            { value: 'blue', color: '#3498DB', name: t('colorBlue') },
+                                            { value: 'green', color: '#2ECC71', name: t('colorGreen') },
+                                            { value: 'purple', color: '#9B59B6', name: t('colorPurple') },
+                                            { value: 'red', color: '#E74C3C', name: t('colorRed') },
+                                            { value: 'teal', color: '#1ABC9C', name: t('colorTeal') },
+                                            { value: 'indigo', color: '#34495E', name: t('colorIndigo') },
+                                            { value: 'pink', color: '#EC7063', name: t('colorPink') }
                                         ].map(scheme => (
                                             <button key={scheme.value} type="button" onClick={() => { const s = { ...appearanceSettings, color_scheme: scheme.value }; setAppearanceSettings(s); handleSaveSettings('Appearance', s); }} className={`p-3 border-2 rounded-lg transition-all hover:scale-105 ${appearanceSettings.color_scheme === scheme.value ? 'border-gray-900 shadow-md' : 'border-gray-200 hover:border-gray-400'}`}>
                                                 <div className="w-12 h-12 rounded-full mx-auto mb-2 shadow-inner border-2 border-white" style={{ backgroundColor: scheme.color }}></div>
@@ -1061,9 +1061,9 @@ export default function GeneralSettingsPage() {
                                     <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('notificationChannels')}</h3>
                                     <div className="space-y-2">
                                         {[
-                                            { key: 'push_enabled', label: 'Push notifications', desc: 'In-app notifications' },
-                                            { key: 'email_enabled', label: 'Email notifications', desc: 'Receive notifications via email' },
-                                            { key: 'sms_enabled', label: 'SMS notifications', desc: 'Text message alerts' }
+                                            { key: 'push_enabled', label: t('notifyPush'), desc: t('notifyPushDescription') },
+                                            { key: 'email_enabled', label: t('notifyEmail'), desc: t('notifyEmailDescription') },
+                                            { key: 'sms_enabled', label: t('notifySms'), desc: t('notifySmsDescription') }
                                         ].map(item => (
                                             <label key={item.key} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                                                 <div className="flex-1 pr-4">
@@ -1080,10 +1080,10 @@ export default function GeneralSettingsPage() {
                                     <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('notificationTypes')}</h3>
                                     <div className="space-y-2">
                                         {[
-                                            { key: 'lesson_reminders', label: 'Lesson reminders' },
-                                            { key: 'payment_alerts', label: 'Payment alerts' },
-                                            { key: 'new_messages', label: 'New messages' },
-                                            { key: 'student_updates', label: 'Student updates' }
+                                            { key: 'lesson_reminders', label: t('notifyTypeLessonReminders') },
+                                            { key: 'payment_alerts', label: t('notifyTypePaymentAlerts') },
+                                            { key: 'new_messages', label: t('notifyTypeNewMessages') },
+                                            { key: 'student_updates', label: t('notifyTypeStudentUpdates') }
                                         ].map(item => (
                                             <label key={item.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                                                 <span className="text-sm text-gray-700">{item.label}</span>
