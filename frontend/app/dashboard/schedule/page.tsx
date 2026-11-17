@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
 import {
@@ -91,13 +91,14 @@ interface LessonBooking {
 
 export default function SchedulePage() {
   const tr = useTranslations('Schedule')
+  const locale = useLocale()
   const { currentUser } = useUser();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [colorMode, setColorMode] = useState<"status" | "student" | "instrument">("status");
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
-  const [use24Hour, setUse24Hour] = useState(false);
+  const [use24Hour, setUse24Hour] = useState(locale === "de");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
@@ -202,7 +203,7 @@ export default function SchedulePage() {
       await fetchExternalEvents();
     } catch (err: any) {
       const detail = err?.response?.data?.url?.[0] || err?.response?.data?.detail || tr('messageFailedToAddCalendar');
-      toast.error(typeof detail === "string" ? detail : "Failed to add calendar");
+      toast.error(typeof detail === "string" ? detail : tr("messageFailedToAddCalendar"));
     } finally {
       setAddingFeed(false);
     }
@@ -212,7 +213,7 @@ export default function SchedulePage() {
     setRefreshingFeedId(feedId);
     try {
       const resp = await api.post(`/lessons/external-feeds/${feedId}/refresh/`);
-      toast.success(`Synced ${resp.data.events_synced} events`);
+      toast.success(tr("syncedEvents", {count: resp.data.events_synced}));
       await fetchExternalFeeds();
       await fetchExternalEvents();
     } catch (err: any) {
@@ -512,7 +513,7 @@ export default function SchedulePage() {
       console.error(error);
       const detail =
         error?.response?.data?.detail || Object.values(error?.response?.data || {})?.[0];
-      toast.error(typeof detail === "string" ? detail : `Failed to ${editingLessonId ? "update" : "create"} booking`);
+      toast.error(typeof detail === "string" ? detail : tr(editingLessonId ? "bookingUpdateFailed" : "bookingCreateFailed"));
     } finally {
       setBookingLoading(false);
     }
@@ -595,7 +596,7 @@ export default function SchedulePage() {
             variant="outline"
             onClick={() => setUse24Hour(!use24Hour)}
             className="gap-2 w-full"
-            title={`Timezone: ${localTimeZone}`}
+            title={tr("timezoneLabel", {timezone: localTimeZone})}
           >
             <Clock className="w-4 h-4" />
             <span className="hidden sm:inline">
@@ -682,11 +683,11 @@ export default function SchedulePage() {
         </Button>
         <div className="text-center">
           <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-            {viewMode === "week" ? format(weekStart, "MMMM yyyy") : format(monthStart, "MMMM yyyy")}
+            {new Intl.DateTimeFormat(locale, {month: "long", year: "numeric"}).format(viewMode === "week" ? weekStart : monthStart)}
           </h2>
           {viewMode === "week" && (
             <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">
-              {format(weekStart, "MMM d")} — {format(addDays(weekStart, 6), "MMM d")}
+              {new Intl.DateTimeFormat(locale, {day: "numeric", month: "short"}).format(weekStart)} — {new Intl.DateTimeFormat(locale, {day: "numeric", month: "short"}).format(addDays(weekStart, 6))}
             </p>
           )}
         </div>
@@ -699,8 +700,8 @@ export default function SchedulePage() {
       <div className="hidden print:block text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
           {viewMode === "week"
-            ? `Schedule: ${format(weekStart, "MMMM d")} - ${format(addDays(weekStart, 6), "MMMM d, yyyy")}`
-            : `Schedule: ${format(monthStart, "MMMM yyyy")}`}
+            ? tr("printWeekTitle", {from: new Intl.DateTimeFormat(locale, {day: "numeric", month: "long"}).format(weekStart), to: new Intl.DateTimeFormat(locale, {day: "numeric", month: "long", year: "numeric"}).format(addDays(weekStart, 6))})
+            : tr("printMonthTitle", {month: new Intl.DateTimeFormat(locale, {month: "long", year: "numeric"}).format(monthStart)})}
         </h2>
       </div>
 
@@ -722,7 +723,7 @@ export default function SchedulePage() {
                       <div
                         className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 ${isSameDay(day, new Date()) ? "text-primary" : "text-gray-400"}`}
                       >
-                        {format(day, "EEE")}
+                        {new Intl.DateTimeFormat(locale, {weekday: "short"}).format(day)}
                       </div>
                       <div
                         className={`text-xl sm:text-2xl font-black ${isSameDay(day, new Date()) ? "text-primary" : "text-gray-900"}`}
@@ -918,7 +919,7 @@ export default function SchedulePage() {
                               className={`text-[9px] sm:text-[10px] font-bold ${colorMode !== "status" ? "" : ""}`}
                               style={colorMode !== "status" ? { color: "var(--dynamic-text-dark)" } : {}}
                             >
-                              {format(parseISO(lesson.scheduled_start), "h:mm a")}
+                              {new Intl.DateTimeFormat(locale, {hour: "2-digit", minute: "2-digit", hour12: !use24Hour}).format(parseISO(lesson.scheduled_start))}
                             </span>
                             <span
                               className={`text-[9px] sm:text-[10px] font-medium ml-1 ${colorMode !== "status" ? "" : ""}`}
@@ -968,8 +969,8 @@ export default function SchedulePage() {
               <h3 className="font-bold text-gray-900 text-sm">{tr('externalCalendars')}</h3>
               <p className="text-xs text-gray-400">
                 {externalFeeds.length === 0
-                  ? "Import iCal feeds from Google, Apple, Outlook & more"
-                  : `${externalFeeds.filter(f => f.is_enabled).length} of ${externalFeeds.length} active`}
+                  ? tr("importFeedsInfo")
+                  : tr("activeFeedsCount", {active: externalFeeds.filter(f => f.is_enabled).length, total: externalFeeds.length})}
               </p>
             </div>
           </div>
@@ -1003,10 +1004,10 @@ export default function SchedulePage() {
                       </p>
                       <p className="text-[10px] text-gray-400 truncate">
                         {feed.last_synced_at
-                          ? `${feed.event_count} events · synced ${format(parseISO(feed.last_synced_at), "MMM d, h:mm a")}`
-                          : "Not yet synced"}
+                          ? tr("feedSyncInfo", {count: feed.event_count, date: new Intl.DateTimeFormat(locale, {day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"}).format(parseISO(feed.last_synced_at))})
+                          : tr("notYetSynced")}
                         {feed.last_error && (
-                          <span className="ml-1 text-red-400">· Error: {feed.last_error.slice(0, 40)}</span>
+                          <span className="ml-1 text-red-400">· {tr("feedError")}: {feed.last_error.slice(0, 40)}</span>
                         )}
                       </p>
                     </div>
@@ -1022,7 +1023,7 @@ export default function SchedulePage() {
                       </button>
                       <button
                         onClick={() => handleToggleFeed(feed)}
-                        title={feed.is_enabled ? "Hide events" : "Show events"}
+                        title={feed.is_enabled ? tr("hideEvents") : tr("showEvents")}
                         className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
                       >
                         {feed.is_enabled
@@ -1129,7 +1130,7 @@ export default function SchedulePage() {
                       : undefined
                   }
                 >
-                  {mode}
+                  {mode === "individual" ? tr("modeIndividual") : mode === "band" ? tr("modeBand") : tr("modeEvent")}
                 </Button>
               ))}
             </div>
@@ -1138,7 +1139,7 @@ export default function SchedulePage() {
                 <>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                      Instructor{" "}
+                      {tr("instructor")}{" "}
                       <span className="normal-case font-medium text-gray-400">{tr('optional')}</span>
                     </label>
                     <select
@@ -1165,10 +1166,10 @@ export default function SchedulePage() {
                   <div className="space-y-2">
                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
                       {bookingMode === "band"
-                        ? "Band / Group"
+                        ? tr("bandGroup")
                         : bookingMode === "individual"
-                          ? "Student"
-                          : "Target (Optional)"}
+                          ? tr("student")
+                          : tr("targetOptional")}
                     </label>
 
                     {bookingMode === "band" ? (
@@ -1431,7 +1432,7 @@ export default function SchedulePage() {
             disabled={bookingLoading}
             className="flex-[2] gap-2"
           >
-            {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Booking"}
+            {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : tr("confirmBooking")}
           </Button>
         </DialogFooter>
       </Dialog>
