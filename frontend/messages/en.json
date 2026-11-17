@@ -421,7 +421,11 @@
     "totalFaculty": "Total Faculty",
     "activeStatus": "Active Status",
     "mentorshipCount": "Mentorship Count",
-    "marketAverage": "Market Average"
+    "marketAverage": "Market Average",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "authorizedFaculty": "Authorized Faculty",
+    "saveProfile": "Execute Profile Update"
   },
   "Lessons": {
     "synchronizingLessons": "Synchronizing Lessons...",
@@ -1141,7 +1145,17 @@
     "msgBandUpdatedSuccessfully": "Band updated successfully",
     "msgBandCreatedSuccessfully": "Band created successfully",
     "msgBandDeleted": "Band deleted",
-    "msgFailedToDeleteBand": "Failed to delete band"
+    "msgFailedToDeleteBand": "Failed to delete band",
+    "activeCount": "{count} active",
+    "totalBands": "Total Bands",
+    "activeMusicians": "Active Musicians",
+    "averageGroupSize": "Avg. Group Size",
+    "averageReadiness": "Avg. Readiness",
+    "membersCount": "{count, plural, one {# member} other {# members}}",
+    "activeMembersCount": "{count, plural, one {# active member} other {# active members}}",
+    "variousGenres": "Various Genres",
+    "unassigned": "Unassigned",
+    "confirmDeleteBand": "Are you sure you want to delete {name}?"
   },
   "BandDetail": {
     "loadingBand": "Loading Band...",

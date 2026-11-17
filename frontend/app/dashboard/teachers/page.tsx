@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useStudioFormatting } from '@/lib/useStudioFormatting'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -18,6 +19,7 @@ import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/
 
 export default function InstructorsPage() {
     const tr = useTranslations('Teachers')
+    const { money } = useStudioFormatting()
     const router = useRouter()
     const { currentUser } = useUser()
     const { teachers, loading, refresh } = useTeachers()
@@ -143,7 +145,7 @@ export default function InstructorsPage() {
                     { label: tr('totalFaculty'), value: teachers.length, icon: Users, color: 'purple' },
                     { label: tr('activeStatus'), value: activeInstructors, icon: CheckCircle, color: 'emerald' },
                     { label: tr('mentorshipCount'), value: totalStudents, icon: GraduationCap, color: 'blue' },
-                    { label: tr('marketAverage'), value: `$${avgRate}`, icon: Music, color: 'orange' }
+                    { label: tr('marketAverage'), value: money(avgRate), icon: Music, color: 'orange' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm group hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between mb-4">
@@ -242,7 +244,7 @@ export default function InstructorsPage() {
                                     </td>
                                     <td className="px-8 py-6 text-center">
                                         <span className="text-sm font-black text-gray-900">
-                                            {teacher.hourly_rate ? `$${teacher.hourly_rate}` : '-'}
+                                            {teacher.hourly_rate ? money(teacher.hourly_rate) : '-'}
                                         </span>
                                     </td>
                                     <td className="px-8 py-6 text-center">
@@ -250,7 +252,7 @@ export default function InstructorsPage() {
                                             teacher.is_active ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-50 text-gray-400 border-gray-100'
                                          }`}>
                                             <div className={`w-1.5 h-1.5 rounded-full ${teacher.is_active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-gray-300'}`} />
-                                            {teacher.is_active ? 'Active' : 'Inactive'}
+                                            {teacher.is_active ? tr('statusActive') : tr('statusInactive')}
                                         </span>
                                     </td>
                                     <td className="px-8 py-6 text-right">
@@ -408,7 +410,7 @@ export default function InstructorsPage() {
                                     }`}
                                 >
                                     <span className={`text-[10px] font-black uppercase tracking-widest ${formData.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                        {formData.is_active ? 'Authorized Faculty' : 'Inactive'}
+                                        {formData.is_active ? tr('authorizedFaculty') : tr('statusInactive')}
                                     </span>
                                     <div className={`w-10 h-6 rounded-full p-1 transition-colors ${formData.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`}>
                                         <div className={`w-4 h-4 bg-white rounded-full transition-transform ${formData.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
@@ -438,7 +440,7 @@ export default function InstructorsPage() {
                                 {tr('committing')}
                             </>
                         ) : (
-                            'Execute Profile Update'
+                            tr('saveProfile')
                         )}
                     </Button>
                 </DialogFooter>

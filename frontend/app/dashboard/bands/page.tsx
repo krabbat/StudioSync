@@ -131,7 +131,7 @@ export default function BandsPage() {
     }
 
     const handleDeleteBand = async (band: any) => {
-        if (!confirm(`Are you sure you want to delete ${band.name}?`)) return
+        if (!confirm(t('confirmDeleteBand', {name: band.name}))) return
 
         try {
             await api.delete(`/core/bands/${band.id}/`)
@@ -164,7 +164,7 @@ export default function BandsPage() {
                     <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
                         {t('bandsGroups')}
                         <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-black text-primary uppercase tracking-widest">
-                            {bands.length} Active
+                            {t('activeCount', {count: bands.length})}
                         </div>
                     </h1>
                     <p className="text-gray-500 font-medium max-w-lg">{t('manageYourBandsRehearsalSchedulesAndStudentGroups')}</p>
@@ -181,15 +181,15 @@ export default function BandsPage() {
              {/* Stats */}
              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                  {[
-                    { label: 'Total Bands', value: bands.length, icon: Music, color: 'blue' },
-                    { label: 'Active Musicians', value: bands.reduce((acc, b) => acc + (b.members_count || 0), 0), icon: UsersIcon, color: 'emerald' },
+                    { label: t('totalBands'), value: bands.length, icon: Music, color: 'blue' },
+                    { label: t('activeMusicians'), value: bands.reduce((acc, b) => acc + (b.members_count || 0), 0), icon: UsersIcon, color: 'emerald' },
                     { 
-                        label: 'Avg. Group Size', 
+                        label: t('averageGroupSize'), 
                         value: bands.length > 0 ? (bands.reduce((acc, b) => acc + (b.members_count || 0), 0) / bands.length).toFixed(1) : '0', 
                         icon: Target, 
                         color: 'purple' 
                     },
-                    { label: 'Avg. Readiness', value: '0%', icon: Trophy, color: 'orange' }
+                    { label: t('averageReadiness'), value: '0%', icon: Trophy, color: 'orange' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
                          <div className="flex items-center justify-between mb-4">
@@ -266,7 +266,7 @@ export default function BandsPage() {
                                         <div className="flex flex-col items-end gap-2">
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100 group-hover:bg-primary/5 group-hover:border-primary/20 transition-colors">
                                                 <UsersIcon className="w-3.5 h-3.5 text-gray-400 group-hover:text-primary transition-colors" />
-                                                <span className="text-[10px] font-black text-gray-600 group-hover:text-primary transition-colors">{band.members_count || 0} MEMBERS</span>
+                                                <span className="text-[10px] font-black text-gray-600 group-hover:text-primary transition-colors">{t('membersCount', {count: band.members_count || 0})}</span>
                                             </div>
                                             {band.genre && (
                                                 <span className="px-3 py-1 bg-white shadow-sm text-primary text-[10px] font-black uppercase tracking-widest rounded-lg border border-primary/20">
@@ -377,7 +377,7 @@ export default function BandsPage() {
                                                     </div>
                                                     <div>
                                                         <div className="text-sm font-black text-gray-900 tracking-tight uppercase tracking-tighter group-hover:text-primary transition-colors">{band.name}</div>
-                                                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{band.genre || 'Various Genres'}</div>
+                                                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{band.genre || t('variousGenres')}</div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -386,7 +386,7 @@ export default function BandsPage() {
                                                     <div className="w-2.5 h-2.5 rounded-full bg-primary/20 flex items-center justify-center">
                                                         <div className="w-1 h-1 rounded-full bg-primary" />
                                                     </div>
-                                                    <span className="text-xs font-black text-gray-600 uppercase tracking-widest">{band.members_count || 0} ACTIVE MEMBERS</span>
+                                                    <span className="text-xs font-black text-gray-600 uppercase tracking-widest">{t('activeMembersCount', {count: band.members_count || 0})}</span>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6">
@@ -567,7 +567,7 @@ export default function BandsPage() {
                                                     </div>
                                                     <div className="text-left">
                                                         <div className="text-xs font-black uppercase tracking-tighter leading-none mb-1">{student.first_name} {student.last_name}</div>
-                                                        <div className={`text-[10px] font-bold uppercase tracking-widest ${isSelected ? 'text-white/70' : 'text-gray-400'}`}>{student.student_profile?.instrument || 'Unassigned'}</div>
+                                                        <div className={`text-[10px] font-bold uppercase tracking-widest ${isSelected ? 'text-white/70' : 'text-gray-400'}`}>{student.student_profile?.instrument || t('unassigned')}</div>
                                                     </div>
                                                 </div>
                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isSelected ? 'bg-white/20' : 'bg-gray-50 group-hover:bg-primary/10'}`}>

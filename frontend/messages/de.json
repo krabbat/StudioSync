@@ -421,7 +421,11 @@
     "totalFaculty": "Lehrkräfte insgesamt",
     "activeStatus": "Aktive Lehrkräfte",
     "mentorshipCount": "Betreute Schüler",
-    "marketAverage": "Durchschnittlicher Stundensatz"
+    "marketAverage": "Durchschnittlicher Stundensatz",
+    "statusActive": "Aktiv",
+    "statusInactive": "Inaktiv",
+    "authorizedFaculty": "Lehrkraft freigegeben",
+    "saveProfile": "Profiländerungen speichern"
   },
   "Lessons": {
     "synchronizingLessons": "Unterrichtsstunden werden geladen…",
@@ -1141,7 +1145,17 @@
     "msgBandUpdatedSuccessfully": "Band aktualisiert",
     "msgBandCreatedSuccessfully": "Band angelegt",
     "msgBandDeleted": "Band gelöscht",
-    "msgFailedToDeleteBand": "Band konnte nicht gelöscht werden"
+    "msgFailedToDeleteBand": "Band konnte nicht gelöscht werden",
+    "activeCount": "{count} aktiv",
+    "totalBands": "Bands insgesamt",
+    "activeMusicians": "Aktive Musiker",
+    "averageGroupSize": "Durchschnittliche Gruppengröße",
+    "averageReadiness": "Durchschnittlicher Probenstand",
+    "membersCount": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
+    "activeMembersCount": "{count, plural, one {# aktives Mitglied} other {# aktive Mitglieder}}",
+    "variousGenres": "Verschiedene Stilrichtungen",
+    "unassigned": "Nicht zugewiesen",
+    "confirmDeleteBand": "Band „{name}“ wirklich löschen?"
   },
   "BandDetail": {
     "loadingBand": "Band wird geladen…",
