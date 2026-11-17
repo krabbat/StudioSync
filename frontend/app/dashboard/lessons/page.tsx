@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { useUser } from '@/contexts/UserContext'
@@ -50,6 +51,7 @@ interface Lesson {
 }
 
 export default function LessonsPage() {
+  const tr = useTranslations('Lessons')
     const { currentUser } = useUser()
     const { lessons, loading, createLesson, updateLesson } = useLessons()
     const typedLessons = lessons as Lesson[]
@@ -188,7 +190,7 @@ export default function LessonsPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Synchronizing Lessons...</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{tr('synchronizingLessons')}</p>
             </div>
         )
     }
@@ -198,8 +200,8 @@ export default function LessonsPage() {
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
                 <div className="space-y-2">
-                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Lessons & Plans</h1>
-                    <p className="text-gray-500 font-medium max-w-lg">Orchestrate your pedagogical workflow and track student evolution.</p>
+                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">{tr('lessonsPlans')}</h1>
+                    <p className="text-gray-500 font-medium max-w-lg">{tr('orchestrateYourPedagogicalWorkflowAndTrackStudentEvolution')}</p>
                 </div>
                 {currentUser && ['admin', 'teacher'].includes(currentUser.role) && (
                     <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3">
@@ -220,7 +222,7 @@ export default function LessonsPage() {
                             className="gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 h-12 sm:h-auto"
                         >
                             <Calendar className="w-4 h-4" />
-                            <span className="text-xs sm:text-sm">New Lesson</span>
+                            <span className="text-xs sm:text-sm">{tr('newLesson')}</span>
                         </Button>
                         <Button
                             variant="secondary"
@@ -228,7 +230,7 @@ export default function LessonsPage() {
                             className="gap-2 transition-all hover:scale-105 text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 h-12 sm:h-auto"
                         >
                             <Plus className="w-4 h-4" />
-                            <span className="text-xs sm:text-sm">New Template</span>
+                            <span className="text-xs sm:text-sm">{tr('newTemplate')}</span>
                         </Button>
                     </div>
                 )}
@@ -245,7 +247,7 @@ export default function LessonsPage() {
                                 onClick={() => { setViewMode('all'); setCurrentPage(1); }}
                                 className={`flex-1 sm:px-4 rounded-xl text-[10px] font-black uppercase tracking-widest ${viewMode === 'all' ? 'bg-white shadow-sm' : 'text-gray-400'}`}
                             >
-                                All
+                                {tr('all')}
                             </Button>
                             <Button
                                 variant={viewMode === 'my_lessons' ? 'secondary' : 'ghost'}
@@ -253,7 +255,7 @@ export default function LessonsPage() {
                                 onClick={() => { setViewMode('my_lessons'); setCurrentPage(1); }}
                                 className={`flex-1 sm:px-4 rounded-xl text-[10px] font-black uppercase tracking-widest ${viewMode === 'my_lessons' ? 'bg-white shadow-sm' : 'text-gray-400'}`}
                             >
-                                My Lessons
+                                {tr('myLessons')}
                             </Button>
                         </div>
                         <div className="flex p-1 bg-gray-50 rounded-2xl border border-gray-100 overflow-x-auto no-scrollbar w-full sm:w-auto">
@@ -277,7 +279,7 @@ export default function LessonsPage() {
                             <Search className="w-4 h-4 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Search..."
+                                placeholder={tr('search')}
                                 className="pl-12 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all w-full"
                                 value={searchQuery}
                                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
@@ -314,12 +316,12 @@ export default function LessonsPage() {
                                         className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4"
                                     />
                                 </th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date & Schedule</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Student / Group</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Instructor</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                                <th className="px-6 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('dateSchedule')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('studentGroup')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('instructor')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('type')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('status')}</th>
+                                <th className="px-6 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -439,7 +441,7 @@ export default function LessonsPage() {
 
                                     <div className="flex items-center justify-between pt-1">
                                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate max-w-[150px]">
-                                            Instructor: <span className="text-gray-600">{lesson.teacher_name}</span>
+                                            {tr('instructor')} <span className="text-gray-600">{lesson.teacher_name}</span>
                                         </span>
                                         <Button
                                             variant="ghost"
@@ -460,7 +462,7 @@ export default function LessonsPage() {
                                             className="text-primary font-black uppercase text-[10px] tracking-widest h-8 px-2"
                                         >
                                             <Edit className="w-3 h-3 mr-1" />
-                                            Edit
+                                            {tr('edit')}
                                         </Button>
                                     </div>
                                 </div>
@@ -476,7 +478,7 @@ export default function LessonsPage() {
                                 <BookOpen className="w-10 h-10 text-gray-200" />
                             </div>
                             <div>
-                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No matching lessons found</p>
+                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{tr('noMatchingLessonsFound')}</p>
                             </div>
                         </div>
                     </div>
@@ -517,8 +519,8 @@ export default function LessonsPage() {
             <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-6 space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-black text-gray-900">Lesson Plan Templates</h2>
-                        <p className="text-sm text-gray-600 mt-1">Reusable curriculum frameworks with attached resources</p>
+                        <h2 className="text-xl font-black text-gray-900">{tr('lessonPlanTemplates')}</h2>
+                        <p className="text-sm text-gray-600 mt-1">{tr('reusableCurriculumFrameworksWithAttachedResources')}</p>
                     </div>
                     <div className="text-sm text-gray-500">
                         {plans.length} plan{plans.length !== 1 ? 's' : ''}
@@ -532,8 +534,8 @@ export default function LessonsPage() {
                 ) : plans.length === 0 ? (
                     <div className="text-center py-12 space-y-3">
                         <BookOpen className="w-12 h-12 text-gray-300 mx-auto" />
-                        <p className="text-gray-500">No lesson plans yet</p>
-                        <p className="text-sm text-gray-400">Create your first template to get started</p>
+                        <p className="text-gray-500">{tr('noLessonPlansYet')}</p>
+                        <p className="text-sm text-gray-400">{tr('createYourFirstTemplateToGetStarted')}</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -565,7 +567,7 @@ export default function LessonsPage() {
                                         </button>
                                         <button
                                             onClick={async () => {
-                                                if (confirm('Delete this lesson plan?')) {
+                                                if (confirm(tr('messageDeleteThisLessonPlan'))) {
                                                     await deletePlan(plan.id)
                                                 }
                                             }}
@@ -628,21 +630,21 @@ export default function LessonsPage() {
                 }}
                 size="lg"
             >
-                <DialogHeader title={editingPlan ? 'Edit Lesson Plan' : 'Create Lesson Plan'} />
+                <DialogHeader title={editingPlan ? tr('editPlan') : tr('createPlan')} />
                 <DialogContent>
                     <div className="space-y-6 max-h-[60vh] overflow-y-auto">
                         {/* Title */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <Sparkles className="w-3 h-3" />
-                                Plan Title
+                                {tr('planTitle')}
                             </label>
                             <input
                                 type="text"
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                 className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
-                                placeholder="e.g., Theory Fundamentals - Week 1"
+                                placeholder={tr('eGTheoryFundamentalsWeek1')}
                                 required
                             />
                         </div>
@@ -651,14 +653,14 @@ export default function LessonsPage() {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <Activity className="w-3 h-3" />
-                                Lesson Content
+                                {tr('lessonContent')}
                             </label>
                             <textarea
                                 value={formData.content}
                                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                                 rows={6}
                                 className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-medium text-gray-900 outline-none transition-all resize-none"
-                                placeholder="Detailed lesson structure, exercises, goals..."
+                                placeholder={tr('detailedLessonStructureExercisesGoals')}
                                 required
                             />
                         </div>
@@ -668,7 +670,7 @@ export default function LessonsPage() {
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                     <Clock className="w-3 h-3 text-primary" />
-                                    Duration (min)
+                                    {tr('durationMin')}
                                 </label>
                                 <input
                                     type="number"
@@ -685,7 +687,7 @@ export default function LessonsPage() {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <Tag className="w-3 h-3" />
-                                Tags
+                                {tr('tags')}
                             </label>
                             <div className="flex gap-2">
                                 <input
@@ -702,7 +704,7 @@ export default function LessonsPage() {
                                         }
                                     }}
                                     className="flex-1 px-4 py-2 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-medium text-gray-900 outline-none transition-all"
-                                    placeholder="Type and press Enter"
+                                    placeholder={tr('typeAndPressEnter')}
                                 />
                             </div>
                             {formData.tags.length > 0 && (
@@ -726,7 +728,7 @@ export default function LessonsPage() {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <Package className="w-3 h-3" />
-                                Attached Resources
+                                {tr('attachedResources')}
                             </label>
                             <button
                                 type="button"
@@ -741,8 +743,8 @@ export default function LessonsPage() {
                         {/* Public Toggle */}
                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                             <div>
-                                <div className="font-bold text-gray-900">Make Public</div>
-                                <div className="text-sm text-gray-600">Share with other teachers in your studio</div>
+                                <div className="font-bold text-gray-900">{tr('makePublic')}</div>
+                                <div className="text-sm text-gray-600">{tr('shareWithOtherTeachersInYourStudio')}</div>
                             </div>
                             <button
                                 type="button"
@@ -762,7 +764,7 @@ export default function LessonsPage() {
                         onClick={() => setShowPlanModal(false)}
                         disabled={submitting}
                     >
-                        Cancel
+                        {tr('cancel')}
                     </Button>
                     <Button
                         onClick={async () => {
@@ -800,7 +802,7 @@ export default function LessonsPage() {
                         {submitting ? (
                             <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Saving...
+                                {tr('saving')}
                             </>
                         ) : (
                             <>
@@ -814,26 +816,26 @@ export default function LessonsPage() {
 
             {/* Create/Edit Lesson Modal */}
             <Dialog open={showLessonModal} onOpenChange={(open) => { setShowLessonModal(open); if (!open) setEditingLessonId(null) }} size="lg">
-                <DialogHeader title={editingLessonId ? 'Edit Lesson' : 'Create Lesson'} />
+                <DialogHeader title={editingLessonId ? tr('editLesson') : tr('createLesson')} />
                 <DialogContent>
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">Student</label>
+                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('student')}</label>
                                 <select
                                     required
                                     value={lessonData.student}
                                     onChange={(e) => setLessonData({ ...lessonData, student: e.target.value })}
                                     className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
                                 >
-                                    <option value="">Select student...</option>
+                                    <option value="">{tr('selectStudent')}</option>
                                     {students.map((student: any) => (
                                         <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">Date & Time</label>
+                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('dateTime')}</label>
                                 <input
                                     type="datetime-local"
                                     required
@@ -843,7 +845,7 @@ export default function LessonsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">Duration (min)</label>
+                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('durationMin')}</label>
                                 <input
                                     type="number"
                                     required
@@ -855,7 +857,7 @@ export default function LessonsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">Type</label>
+                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('type')}</label>
                                 <select
                                     value={lessonData.lesson_type}
                                     onChange={(e) => setLessonData({ ...lessonData, lesson_type: e.target.value as any })}
@@ -868,7 +870,7 @@ export default function LessonsPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">Status</label>
+                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('status')}</label>
                                 <select
                                     value={lessonData.status}
                                     onChange={(e) => setLessonData({ ...lessonData, status: e.target.value as any })}
@@ -881,11 +883,11 @@ export default function LessonsPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">Location</label>
+                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('location')}</label>
                                 <input
                                     type="text"
                                     value={lessonData.location}
-                                    placeholder="Room A, Zoom link, etc."
+                                    placeholder={tr('roomAZoomLinkEtc')}
                                     onChange={(e) => setLessonData({ ...lessonData, location: e.target.value })}
                                     className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
                                 />
@@ -894,7 +896,7 @@ export default function LessonsPage() {
                     </div>
                 </DialogContent>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => setShowLessonModal(false)} disabled={lessonSubmitting}>Cancel</Button>
+                    <Button variant="ghost" onClick={() => setShowLessonModal(false)} disabled={lessonSubmitting}>{tr('cancel')}</Button>
                     <Button
                         disabled={lessonSubmitting || !lessonData.student || !lessonData.scheduled_start}
                         onClick={async () => {

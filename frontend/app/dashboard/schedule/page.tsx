@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
 import {
@@ -89,6 +90,7 @@ interface LessonBooking {
 }
 
 export default function SchedulePage() {
+  const tr = useTranslations('Schedule')
   const { currentUser } = useUser();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
@@ -183,8 +185,8 @@ export default function SchedulePage() {
 
   const handleAddFeed = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFeedUrl.trim()) { toast.error("Please enter a feed URL"); return; }
-    if (!newFeedName.trim()) { toast.error("Please enter a name"); return; }
+    if (!newFeedUrl.trim()) { toast.error(tr('messagePleaseEnterAFeedURL')); return; }
+    if (!newFeedName.trim()) { toast.error(tr('messagePleaseEnterAName')); return; }
     setAddingFeed(true);
     try {
       await api.post("/lessons/external-feeds/", {
@@ -192,14 +194,14 @@ export default function SchedulePage() {
         url: newFeedUrl,
         color: newFeedColor,
       });
-      toast.success("Calendar added and synced!");
+      toast.success(tr('messageCalendarAddedAndSynced'));
       setNewFeedName("");
       setNewFeedUrl("");
       setNewFeedColor("#6366f1");
       await fetchExternalFeeds();
       await fetchExternalEvents();
     } catch (err: any) {
-      const detail = err?.response?.data?.url?.[0] || err?.response?.data?.detail || "Failed to add calendar";
+      const detail = err?.response?.data?.url?.[0] || err?.response?.data?.detail || tr('messageFailedToAddCalendar');
       toast.error(typeof detail === "string" ? detail : "Failed to add calendar");
     } finally {
       setAddingFeed(false);
@@ -214,7 +216,7 @@ export default function SchedulePage() {
       await fetchExternalFeeds();
       await fetchExternalEvents();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Refresh failed");
+      toast.error(err?.response?.data?.error || tr('messageRefreshFailed'));
     } finally {
       setRefreshingFeedId(null);
     }
@@ -225,16 +227,16 @@ export default function SchedulePage() {
       await api.patch(`/lessons/external-feeds/${feed.id}/`, { is_enabled: !feed.is_enabled });
       await fetchExternalFeeds();
       await fetchExternalEvents();
-    } catch { toast.error("Could not update calendar"); }
+    } catch { toast.error(tr('messageCouldNotUpdateCalendar')); }
   };
 
   const handleDeleteFeed = async (feedId: string) => {
     try {
       await api.delete(`/lessons/external-feeds/${feedId}/`);
-      toast.success("Calendar removed");
+      toast.success(tr('messageCalendarRemoved'));
       await fetchExternalFeeds();
       await fetchExternalEvents();
-    } catch { toast.error("Could not remove calendar"); }
+    } catch { toast.error(tr('messageCouldNotRemoveCalendar')); }
   };
 
   // Get external events for a given day + hour slot
@@ -437,19 +439,19 @@ export default function SchedulePage() {
 
     // Manual validation with user-friendly toasts
     if (!newBooking.date) {
-      toast.error("Please select a date");
+      toast.error(tr('messagePleaseSelectADate'));
       return;
     }
     if (!newBooking.time) {
-      toast.error("Please select a time");
+      toast.error(tr('messagePleaseSelectATime'));
       return;
     }
     if (currentUser?.role !== "student" && bookingMode === "individual" && !newBooking.student) {
-      toast.error("Please select a student");
+      toast.error(tr('messagePleaseSelectAStudent'));
       return;
     }
     if (currentUser?.role !== "student" && bookingMode === "band" && !newBooking.band) {
-      toast.error("Please select a band");
+      toast.error(tr('messagePleaseSelectABand'));
       return;
     }
 
@@ -497,10 +499,10 @@ export default function SchedulePage() {
 
       if (editingLessonId) {
         await api.patch(`/lessons/${editingLessonId}/`, payload);
-        toast.success("Lesson updated successfully");
+        toast.success(tr('messageLessonUpdatedSuccessfully'));
       } else {
         await api.post("/lessons/", payload);
-        toast.success("Lesson booked successfully");
+        toast.success(tr('messageLessonBookedSuccessfully'));
       }
 
       setShowBookingModal(false);
@@ -536,7 +538,7 @@ export default function SchedulePage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
         <Loader2 className="w-10 h-10 text-primary animate-spin" />
         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-          Synchronizing Schedule...
+          {tr('synchronizingSchedule')}
         </p>
       </div>
     );
@@ -574,9 +576,9 @@ export default function SchedulePage() {
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
         <div className="space-y-2">
-          <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">Schedule</h1>
+          <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{tr('schedule')}</h1>
           <p className="text-gray-500 font-medium max-w-lg">
-            Orchestrate your weekly lesson calendar.
+            {tr('orchestrateYourWeeklyLessonCalendar')}
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 no-print">
@@ -584,7 +586,7 @@ export default function SchedulePage() {
             variant="outline"
             size="icon"
             onClick={() => refetchLessons()}
-            title="Refresh"
+            title={tr('refresh')}
             className="w-full"
           >
             <RefreshCw className={`w-4 h-4 ${lessonsLoading ? "animate-spin" : ""}`} />
@@ -606,7 +608,7 @@ export default function SchedulePage() {
             className="gap-2 w-full"
           >
             <Link className="w-4 h-4" />
-            <span className="hidden sm:inline">Subscribe</span>
+            <span className="hidden sm:inline">{tr('subscribe')}</span>
           </Button>
           <Button
             variant="default" // Changed from outline with inline style
@@ -614,7 +616,7 @@ export default function SchedulePage() {
             className="gap-2 w-full"
           >
             <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">Print</span>
+            <span className="hidden sm:inline">{tr('print')}</span>
           </Button>
           {["admin", "teacher", "student"].includes(currentUser?.role || "") && (
             <Button
@@ -625,7 +627,7 @@ export default function SchedulePage() {
               className="gap-2 hover:scale-105 col-span-2 sm:col-span-4 w-full"
             >
               <Plus className="w-4 h-4" />
-              New Booking
+              {tr('newBooking')}
             </Button>
           )}
         </div>
@@ -638,36 +640,36 @@ export default function SchedulePage() {
             onClick={() => setViewMode("week")}
             className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
           >
-            Week
+            {tr('week')}
           </button>
           <button
             onClick={() => setViewMode("month")}
             className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
           >
-            Month
+            {tr('month')}
           </button>
         </div>
 
         <div className="flex justify-center items-center gap-2">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:inline">Color By:</span>
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:inline">{tr('colorBy')}</span>
           <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
             <button
               onClick={() => setColorMode("status")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "status" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
             >
-              Status
+              {tr('status')}
             </button>
             <button
               onClick={() => setColorMode("student")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "student" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
             >
-              Student
+              {tr('student')}
             </button>
             <button
               onClick={() => setColorMode("instrument")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "instrument" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
             >
-              Instrument
+              {tr('instrument')}
             </button>
           </div>
         </div>
@@ -710,7 +712,7 @@ export default function SchedulePage() {
               <thead className="bg-gray-50/80 backdrop-blur-sm sticky top-0 z-20">
                 <tr>
                   <th className="px-2 py-3 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest w-24 sticky left-0 z-30 bg-gray-50 border-r border-b border-gray-100">
-                    Time
+                    {tr('time')}
                   </th>
                   {weekDays.map((day, idx) => (
                     <th
@@ -791,7 +793,7 @@ export default function SchedulePage() {
                                     </div>
                                     <div className="flex items-center gap-0.5 sm:gap-1">
                                       {hasExternalConflict(lesson) && (
-                                        <span title="Overlaps with an external calendar event" className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                                        <span title={tr('overlapsWithAnExternalCalendarEvent')} className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                                       )}
                                       {lesson.duration_minutes !== 60 && (
                                         <span
@@ -813,7 +815,7 @@ export default function SchedulePage() {
                                           className={`text-[8px] sm:text-[9px] font-black uppercase px-0.5 sm:px-1 rounded truncate max-w-[35px] sm:max-w-[50px] ${colorMode !== "status" ? "" : "bg-purple-50 text-purple-500"}`}
                                           style={colorMode !== "status" ? { backgroundColor: "rgba(255,255,255,0.7)", color: "var(--dynamic-text)" } : {}}
                                         >
-                                          Online
+                                          {tr('online')}
                                         </span>
                                       ) : null}
                                     </div>
@@ -910,7 +912,7 @@ export default function SchedulePage() {
                             `}
                           >
                             {hasExternalConflict(lesson) && (
-                              <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" title="Conflicts with external calendar event" />
+                              <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" title={tr('conflictsWithExternalCalendarEvent')} />
                             )}
                             <span
                               className={`text-[9px] sm:text-[10px] font-bold ${colorMode !== "status" ? "" : ""}`}
@@ -963,7 +965,7 @@ export default function SchedulePage() {
               <Globe className="w-4 h-4 text-indigo-500" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 text-sm">External Calendars</h3>
+              <h3 className="font-bold text-gray-900 text-sm">{tr('externalCalendars')}</h3>
               <p className="text-xs text-gray-400">
                 {externalFeeds.length === 0
                   ? "Import iCal feeds from Google, Apple, Outlook & more"
@@ -981,7 +983,7 @@ export default function SchedulePage() {
             {feedsLoading ? (
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Loading calendars...
+                {tr('loadingCalendars')}
               </div>
             ) : externalFeeds.length > 0 ? (
               <div className="space-y-2">
@@ -1013,7 +1015,7 @@ export default function SchedulePage() {
                       <button
                         onClick={() => handleRefreshFeed(feed.id)}
                         disabled={refreshingFeedId === feed.id}
-                        title="Sync now"
+                        title={tr('syncNow')}
                         className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${refreshingFeedId === feed.id ? "animate-spin" : ""}`} />
@@ -1029,7 +1031,7 @@ export default function SchedulePage() {
                       </button>
                       <button
                         onClick={() => handleDeleteFeed(feed.id)}
-                        title="Remove calendar"
+                        title={tr('removeCalendar')}
                         className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1040,30 +1042,30 @@ export default function SchedulePage() {
               </div>
             ) : (
               <p className="text-sm text-gray-400 italic">
-                No external calendars yet. Add one below.
+                {tr('noExternalCalendarsYetAddOneBelow')}
               </p>
             )}
 
             {/* Add feed form */}
             <form onSubmit={handleAddFeed} className="space-y-3">
-              <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Add Calendar</p>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{tr('addCalendar')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto] gap-2">
                 <input
                   type="text"
-                  placeholder="Name (e.g. My Google Calendar)"
+                  placeholder={tr('nameEGMyGoogleCalendar')}
                   value={newFeedName}
                   onChange={(e) => setNewFeedName(e.target.value)}
                   className="px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 outline-none focus:border-indigo-300 focus:bg-white transition-colors"
                 />
                 <input
                   type="text"
-                  placeholder="iCal URL (https:// or webcal://)"
+                  placeholder={tr('icalURLHttpsOrWebcal')}
                   value={newFeedUrl}
                   onChange={(e) => setNewFeedUrl(e.target.value)}
                   className="px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 font-mono outline-none focus:border-indigo-300 focus:bg-white transition-colors"
                 />
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-gray-400 shrink-0">Color</label>
+                  <label className="text-xs text-gray-400 shrink-0">{tr('color')}</label>
                   <input
                     type="color"
                     value={newFeedColor}
@@ -1079,7 +1081,7 @@ export default function SchedulePage() {
               <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 flex gap-2 items-start">
                 <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
                 <p className="text-xs text-blue-700">
-                  Works with <strong>Google Calendar</strong>, <strong>Apple iCal</strong>, <strong>Outlook</strong>, and any
+                  {tr('worksWith')} <strong>{tr('googleCalendar')}</strong>, <strong>{tr('appleICal')}</strong>, <strong>{tr('outlook')}</strong>, and any
                   service that offers a public <code>.ics</code> feed URL. Events appear as overlays on your schedule.
                 </p>
               </div>
@@ -1097,7 +1099,7 @@ export default function SchedulePage() {
         }}
         size="lg"
       >
-        <DialogHeader title={editingLessonId ? "Edit Booking" : "New Booking"} />
+        <DialogHeader title={editingLessonId ? tr('editBooking') : tr('newBooking')} />
         <DialogContent>
           <form id="booking-form" onSubmit={handleBooking} noValidate className="space-y-6">
             {/* Booking Mode Selector */}
@@ -1137,7 +1139,7 @@ export default function SchedulePage() {
                   <div className="space-y-2">
                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
                       Instructor{" "}
-                      <span className="normal-case font-medium text-gray-400">(optional)</span>
+                      <span className="normal-case font-medium text-gray-400">{tr('optional')}</span>
                     </label>
                     <select
                       value={newBooking.teacher}
@@ -1155,7 +1157,7 @@ export default function SchedulePage() {
                     </select>
                     {teachers.length === 0 && (
                       <p className="text-xs text-amber-600 font-medium">
-                        Add instructors in the Teachers section first.
+                        {tr('addInstructorsInTheTeachersSectionFirst')}
                       </p>
                     )}
                   </div>
@@ -1178,7 +1180,7 @@ export default function SchedulePage() {
                         }
                         className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                       >
-                        <option value="">Select Band...</option>
+                        <option value="">{tr('selectBand')}</option>
                         {bands.map((b: any) => (
                           <option key={b.id} value={b.id}>
                             {b.name}
@@ -1194,7 +1196,7 @@ export default function SchedulePage() {
                         }
                         className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                       >
-                        <option value="">Select Student...</option>
+                        <option value="">{tr('selectStudent')}</option>
                         {students.map((s: any) => (
                           <option key={s.id} value={s.id}>
                             {s.name || s.user?.email || "Student"}
@@ -1216,7 +1218,7 @@ export default function SchedulePage() {
                         }}
                         className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                       >
-                        <option value="">No specific student/band</option>
+                        <option value="">{tr('noSpecificStudentBand')}</option>
                         <optgroup label="Students">
                           {students.map((s: any) => (
                             <option key={s.id} value={s.id}>
@@ -1239,7 +1241,7 @@ export default function SchedulePage() {
                 <div className="space-y-2">
                   <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
                     Instructor{" "}
-                    <span className="normal-case font-medium text-gray-400">(optional)</span>
+                    <span className="normal-case font-medium text-gray-400">{tr('optional')}</span>
                   </label>
                   <select
                     value={newBooking.teacher}
@@ -1259,7 +1261,7 @@ export default function SchedulePage() {
               )}
               <div className="space-y-2">
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Room / location
+                  {tr('roomLocation')}
                 </label>
                 <select
                   value={newBooking.room}
@@ -1273,13 +1275,13 @@ export default function SchedulePage() {
                   }}
                   className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                 >
-                  <option value="">Select Room...</option>
+                  <option value="">{tr('selectRoom')}</option>
                   {rooms.map((r: any) => (
                     <option key={r.id} value={r.id}>
                       {r.name}
                     </option>
                   ))}
-                  <option value="external">External / Online</option>
+                  <option value="external">{tr('externalOnline')}</option>
                 </select>
               </div>
             </div>
@@ -1287,11 +1289,11 @@ export default function SchedulePage() {
             {newBooking.room === "external" && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Online Meeting Link / Platform
+                  {tr('onlineMeetingLinkPlatform')}
                 </label>
                 <input
                   type="text"
-                  placeholder="Zoom, Google Meet, or Meeting URL"
+                  placeholder={tr('zoomGoogleMeetOrMeetingURL')}
                   value={newBooking.online_meeting_url}
                   onChange={(e) =>
                     setNewBooking({ ...newBooking, online_meeting_url: e.target.value })
@@ -1304,7 +1306,7 @@ export default function SchedulePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Date
+                  {tr('date')}
                 </label>
                 <input
                   type="date"
@@ -1316,7 +1318,7 @@ export default function SchedulePage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Time
+                  {tr('time')}
                 </label>
                 <div className="relative">
                   <select
@@ -1339,7 +1341,7 @@ export default function SchedulePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Duration (min)
+                  {tr('durationMin')}
                 </label>
                 <input
                   type="number"
@@ -1355,19 +1357,19 @@ export default function SchedulePage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                  Lesson / Event Type
+                  {tr('lessonEventType')}
                 </label>
                 <select
                   value={newBooking.lesson_type}
                   onChange={(e) => setNewBooking({ ...newBooking, lesson_type: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary-dark rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                 >
-                  <option value="private">Private Lesson</option>
-                  <option value="group">Group Lesson / Band</option>
-                  <option value="workshop">Workshop</option>
-                  <option value="recital">Recital</option>
-                  <option value="makeup">Makeup Lesson</option>
-                  <option value="other">Other Event</option>
+                  <option value="private">{tr('privateLesson')}</option>
+                  <option value="group">{tr('groupLessonBand')}</option>
+                  <option value="workshop">{tr('workshop')}</option>
+                  <option value="recital">{tr('recital')}</option>
+                  <option value="makeup">{tr('makeupLesson')}</option>
+                  <option value="other">{tr('otherEvent')}</option>
                 </select>
               </div>
             </div>
@@ -1377,7 +1379,7 @@ export default function SchedulePage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                      Status
+                      {tr('status')}
                     </label>
                     <select
                       value={newBooking.status}
@@ -1385,21 +1387,21 @@ export default function SchedulePage() {
                       className={`w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 rounded-xl font-bold outline-none transition-all appearance-none ${newBooking.status === 'cancelled' ? 'text-red-600 focus:border-red-400' : 'text-gray-700 focus:border-primary'
                         }`}
                     >
-                      <option value="scheduled">Scheduled</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                      <option value="no_show">No Show</option>
+                      <option value="scheduled">{tr('scheduled')}</option>
+                      <option value="in_progress">{tr('inProgress')}</option>
+                      <option value="completed">{tr('completed')}</option>
+                      <option value="cancelled">{tr('cancelled')}</option>
+                      <option value="no_show">{tr('noShow')}</option>
                     </select>
                   </div>
 
                   {newBooking.status === "cancelled" && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                       <label className="text-xs font-black text-red-400 uppercase tracking-widest">
-                        Cancellation Reason
+                        {tr('cancellationReason')}
                       </label>
                       <textarea
-                        placeholder="Why was this lesson cancelled?"
+                        placeholder={tr('whyWasThisLessonCancelled')}
                         value={newBooking.cancellation_reason}
                         onChange={(e) =>
                           setNewBooking({ ...newBooking, cancellation_reason: e.target.value })
@@ -1421,7 +1423,7 @@ export default function SchedulePage() {
             onClick={() => setShowBookingModal(false)}
             className="flex-1"
           >
-            Cancel
+            {tr('cancel')}
           </Button>
           <Button
             type="submit"
@@ -1436,18 +1438,18 @@ export default function SchedulePage() {
 
       {/* Subscribe Modal */}
       <Dialog open={showSubscribeModal} onOpenChange={setShowSubscribeModal} size="md">
-        <DialogHeader title="Subscribe" />
+        <DialogHeader title={tr('subscribe')} />
         <DialogContent>
           <div className="space-y-6">
             <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex gap-3">
               <Info className="w-5 h-5 text-blue-600 shrink-0" />
               <p className="text-sm text-blue-800 font-medium">
-                Use this link to subscribe in your calendar app (Google Calendar, iCal, etc).
+                {tr('useThisLinkToSubscribeInYourCalendarAppGoogleCalendarICalEtc')}
               </p>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                Feed URL
+                {tr('feedURL')}
               </label>
               <div className="flex gap-2">
                 <input
@@ -1461,10 +1463,10 @@ export default function SchedulePage() {
                     navigator.clipboard.writeText(
                       `${window.location.origin}/api/calendar/my/lessons.ics`
                     );
-                    toast.success("Copied!");
+                    toast.success(tr('messageCopied'));
                   }}
                 >
-                  Copy
+                  {tr('copy')}
                 </Button>
               </div>
             </div>
@@ -1476,7 +1478,7 @@ export default function SchedulePage() {
             onClick={() => setShowSubscribeModal(false)}
             className="w-full"
           >
-            Close
+            {tr('close')}
           </Button>
         </DialogFooter>
       </Dialog>
