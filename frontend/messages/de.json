@@ -34,7 +34,8 @@
     "backHome": "Zurück zur Startseite",
     "serverUnavailable": "Verbindung zum Server nicht möglich. Bitte versuche es später erneut.",
     "invalidLogin": "Anmeldung fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.",
-    "demoFailed": "Demo-Anmeldung fehlgeschlagen. Die Datenbank wird möglicherweise noch vorbereitet. Bitte versuche es gleich erneut."
+    "demoFailed": "Demo-Anmeldung fehlgeschlagen. Die Datenbank wird möglicherweise noch vorbereitet. Bitte versuche es gleich erneut.",
+    "accountProvidedByTeacher": "Der Zugang wird von deiner Lehrkraft eingerichtet."
   },
   "Navigation": {
     "home": "Startseite",
@@ -143,7 +144,11 @@
     "assignmentFailed": "Zuordnung konnte nicht geändert werden.",
     "assigning": "Wird gespeichert…",
     "removeAssignment": "Zuordnung aufheben",
-    "assignNow": "Zuweisen"
+    "assignNow": "Zuweisen",
+    "teachingAddress": "Unterrichtsanschrift",
+    "streetAddress": "Straße und Hausnummer",
+    "postalCode": "Postleitzahl",
+    "city": "Ort"
   },
   "DashboardHeader": {
     "allMarkedRead": "Alle Benachrichtigungen als gelesen markiert",
@@ -271,7 +276,11 @@
     "studentCreatedPhotoFailed": "Schüler angelegt, aber das Foto konnte nicht gespeichert werden. Bitte das Foto anschließend ergänzen.",
     "assignedTeacher": "Lehrkraft zuweisen",
     "noTeacher": "Noch keine Lehrkraft zugewiesen",
-    "soloTeacherHint": "Im Einzelunterrichtsmodus wird deine Lehrkraft automatisch vorgeschlagen. Die Auswahl kann geändert werden."
+    "soloTeacherHint": "Im Einzelunterrichtsmodus wird deine Lehrkraft automatisch vorgeschlagen. Die Auswahl kann geändert werden.",
+    "teachingAddress": "Unterrichtsanschrift",
+    "streetAddress": "Straße und Hausnummer",
+    "postalCode": "Postleitzahl",
+    "city": "Ort"
   },
   "StudentProfile": {
     "profileAccess": "Schülerprofil",
@@ -304,7 +313,20 @@
     "enrollmentRequired": "Bitte ein Aufnahmedatum auswählen.",
     "enrollmentSaved": "Aufnahmedatum gespeichert.",
     "enrollmentSaveFailed": "Aufnahmedatum konnte nicht gespeichert werden.",
-    "assignedTeacher": "Zugeordnete Lehrkraft"
+    "assignedTeacher": "Zugeordnete Lehrkraft",
+    "teachingAddress": "Unterrichtsanschrift",
+    "studentLogin": "Schülerzugang",
+    "loginReady": "Anmeldung mit diesem Schülerkonto möglich.",
+    "loginNotReady": "Noch kein nutzbarer Zugang eingerichtet.",
+    "setPassword": "Passwort festlegen / ändern",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Passwort wiederholen",
+    "loginPasswordInfo": "Das Passwort wird für das bereits verknüpfte Schülerkonto gesetzt. Es entsteht kein zweites Konto.",
+    "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+    "passwordSaved": "Der Schülerzugang ist jetzt freigeschaltet.",
+    "passwordSaveFailed": "Das Passwort konnte nicht gespeichert werden.",
+    "passwordSaving": "Wird gespeichert…",
+    "savePassword": "Schülerzugang aktivieren"
   },
   "SettingsHub": {
     "sectionAccount": "Konto",
@@ -547,7 +569,10 @@
     "resourceCount": "{count, plural, one {# Material ausgewählt} other {# Materialien ausgewählt}}",
     "selectResources": "Materialien auswählen",
     "missingTitleOrContent": "Bitte Titel und Unterrichtsinhalt eingeben.",
-    "updatePlan": "Vorlage aktualisieren"
+    "updatePlan": "Vorlage aktualisieren",
+    "teachingAddress": "Unterrichtsanschrift",
+    "addressMissing": "Noch keine Anschrift beim Schüler hinterlegt",
+    "online": "Onlineunterricht"
   },
   "Billing": {
     "loadingBilling": "Abrechnung wird geladen…",
@@ -728,7 +753,10 @@
     "selectInstructor": "Lehrkraft auswählen…",
     "bandGroup": "Band / Gruppe",
     "targetOptional": "Ziel (optional)",
-    "confirmBooking": "Termin bestätigen"
+    "confirmBooking": "Termin bestätigen",
+    "teachingAddress": "Unterrichtsanschrift",
+    "addressMissing": "Noch keine Anschrift beim Schüler hinterlegt",
+    "onlineLesson": "Onlineunterricht"
   },
   "Users": {
     "accessingDirectory": "Benutzerverzeichnis wird geladen…",
