@@ -171,3 +171,18 @@ class TestStudentAPI:
             status.HTTP_404_NOT_FOUND,
             status.HTTP_200_OK,
         ]
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_dashboard_student_count_matches_student_roster(authenticated_client, studio, student, admin_user):
+    """An admin's stray student profile must not inflate the dashboard count."""
+    Student.objects.create(user=admin_user, studio=studio, instrument="")
+
+    dashboard = authenticated_client.get("/api/core/stats/")
+    roster_stats = authenticated_client.get("/api/students/stats/")
+
+    assert dashboard.status_code == status.HTTP_200_OK
+    assert roster_stats.status_code == status.HTTP_200_OK
+    assert dashboard.data["overview"]["total_students"]["value"] == 1
+    assert roster_stats.data["active_students"] == 1
