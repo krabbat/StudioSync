@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Building2, Grid3X3, Package, Calendar, Zap, Clock, ArrowRight, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -44,6 +45,7 @@ const PLANNED_FEATURES = [
 ]
 
 export default function StudioBuilderPage() {
+  const t = useTranslations('StudioBuilder')
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-14">
 
@@ -60,12 +62,12 @@ export default function StudioBuilderPage() {
                         </div>
                         <div>
                             <div className="flex items-center gap-3 mb-1">
-                                <h1 className="text-3xl md:text-5xl font-black tracking-tight">Studio Builder</h1>
+                                <h1 className="text-3xl md:text-5xl font-black tracking-tight">{t('studioBuilder')}</h1>
                                 <span className="px-3 py-1 bg-white/20 text-white text-[10px] font-black uppercase tracking-widest rounded-full border border-white/30">
-                                    Coming Soon
+                                    {t('comingSoon')}
                                 </span>
                             </div>
-                            <p className="text-white/70 font-medium text-lg">Visual studio layout designer</p>
+                            <p className="text-white/70 font-medium text-lg">{t('visualStudioLayoutDesigner')}</p>
                         </div>
                     </div>
 
@@ -77,7 +79,7 @@ export default function StudioBuilderPage() {
                     <div className="flex items-center gap-3 bg-white/10 border border-white/20 rounded-2xl px-5 py-3.5">
                         <Clock className="w-5 h-5 text-white/70 flex-shrink-0" />
                         <p className="text-sm font-semibold text-white/90">
-                            Rooms are currently managed from the <strong>Studios</strong> page. 
+                            {t('roomsAreCurrentlyManagedFromThe')} <strong>{t('studios')}</strong> page. 
                             The visual builder is coming in a future update.
                         </p>
                     </div>
@@ -85,13 +87,13 @@ export default function StudioBuilderPage() {
                     <div className="flex flex-wrap gap-3">
                         <Link href="/dashboard/studios">
                             <Button className="bg-white text-indigo-600 hover:bg-white/90 font-black gap-2 px-6 py-5 rounded-xl shadow-xl">
-                                Manage Studios Now
+                                {t('manageStudiosNow')}
                                 <ArrowRight className="w-4 h-4" />
                             </Button>
                         </Link>
                         <Link href="/dashboard/inventory">
                             <Button variant="outline" className="border-white/40 text-white hover:bg-white/10 font-semibold gap-2 px-6 py-5 rounded-xl bg-white/5">
-                                View Inventory
+                                {t('viewInventory')}
                             </Button>
                         </Link>
                     </div>
@@ -101,7 +103,7 @@ export default function StudioBuilderPage() {
             {/* Feature Preview */}
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">What's Being Built</h2>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">{t('whatSBeingBuilt')}</h2>
                     <div className="flex-1 h-px bg-gray-100" />
                 </div>
 
@@ -128,17 +130,17 @@ export default function StudioBuilderPage() {
                 </div>
                 <div className="flex-1 space-y-3">
                     <h3 className="text-base font-black text-amber-900 uppercase tracking-tight">
-                        Use Studios in the Meantime
+                        {t('useStudiosInTheMeantime')}
                     </h3>
                     <p className="text-sm text-amber-800 font-medium leading-relaxed max-w-xl">
-                        You can create and manage studio rooms today from the <strong>Studios</strong> page. 
+                        {t('youCanCreateAndManageStudioRoomsTodayFromThe')} <strong>{t('studios')}</strong> page. 
                         Rooms can be assigned to bookings in the schedule, and inventory items can be linked to them.
                         The Studio Builder will add a visual drag-and-drop layer on top of this foundation.
                     </p>
                     <div className="pt-1">
                         <Link href="/dashboard/studios">
                             <Button className="bg-amber-500 hover:bg-amber-600 text-white font-black gap-2 rounded-xl px-5 py-4 text-xs uppercase tracking-widest shadow-md shadow-amber-200">
-                                Go to Studios
+                                {t('goToStudios')}
                                 <ArrowRight className="w-3.5 h-3.5" />
                             </Button>
                         </Link>

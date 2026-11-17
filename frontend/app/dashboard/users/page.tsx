@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/contexts/UserContext'
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
 
 export default function UsersPage() {
+  const t = useTranslations('Users')
     const { currentUser } = useUser()
     const { teachers } = useTeachers()
     const { stats: studentStats } = useStudentStats()
@@ -151,10 +153,10 @@ export default function UsersPage() {
                     })
                 }
 
-                toast.success('User updated successfully!')
+                toast.success(t('msgUserUpdatedSuccessfully'))
             } else {
                 await api.post('/core/users/', formData)
-                toast.success('User created successfully!')
+                toast.success(t('msgUserCreatedSuccessfully'))
             }
             setIsUserModalOpen(false)
             if (refresh) refresh()
@@ -168,7 +170,7 @@ export default function UsersPage() {
 
     const handleDeleteUser = async (userId: string, userName: string) => {
         if (userId === currentUser?.id) {
-            toast.error("You cannot delete your own account!")
+            toast.error(t('msgYouCannotDeleteYourOwnAccount'))
             return
         }
 
@@ -209,7 +211,7 @@ export default function UsersPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Accessing Directory...</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('accessingDirectory')}</p>
             </div>
         )
     }
@@ -220,19 +222,19 @@ export default function UsersPage() {
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
                 <div className="space-y-2">
                     <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                        Users
+                        {t('users')}
                         <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-black text-primary uppercase tracking-widest">
                             {meta?.count || 0} Total
                         </div>
                     </h1>
-                    <p className="text-gray-500 font-medium max-w-lg">Manage the studio community, verify credentials, and orchestrate roles.</p>
+                    <p className="text-gray-500 font-medium max-w-lg">{t('manageTheStudioCommunityVerifyCredentialsAndOrchestrateRoles')}</p>
                 </div>
                 <Button
                     onClick={() => handleOpenModal()}
                     className="gap-2 hover:scale-105 shadow-lg shadow-gray-200"
                 >
                     <UserPlus className="w-4 h-4" />
-                    Onboard User
+                    {t('onboardUser')}
                 </Button>
             </header>
 
@@ -263,7 +265,7 @@ export default function UsersPage() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Search directory..."
+                        placeholder={t('searchDirectory')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all"
@@ -297,11 +299,11 @@ export default function UsersPage() {
                     <table className="w-full border-separate border-spacing-0">
                         <thead>
                             <tr className="bg-gray-50/50">
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Identity</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Classification</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Profile Insight</th>
-                                <th className="px-6 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">System Access</th>
-                                <th className="px-6 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('identity')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('classification')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('profileInsight')}</th>
+                                <th className="px-6 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('systemAccess')}</th>
+                                <th className="px-6 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -350,7 +352,7 @@ export default function UsersPage() {
                                                 ))}
                                             </div>
                                         ) : (
-                                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Member</span>
+                                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{t('member')}</span>
                                         )}
                                     </td>
                                     <td className="px-6 py-6 text-center">
@@ -391,7 +393,7 @@ export default function UsersPage() {
                 {/* Pagination */}
                 <div className="p-6 bg-gray-50/30 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-gray-50">
                     <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        Exhibiting <span className="text-gray-900">{users.length}</span> of <span className="text-gray-900">{meta?.count || 0}</span> studio members
+                        {t('exhibiting')} <span className="text-gray-900">{users.length}</span> {t('of')} <span className="text-gray-900">{meta?.count || 0}</span> {t('studioMembers')}
                     </div>
                     <div className="flex items-center gap-3">
                         <Button
@@ -431,31 +433,31 @@ export default function UsersPage() {
                         {/* Basic Info */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Legal First Name</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('legalFirstName')}</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.first_name}
                                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                                     className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all"
-                                    placeholder="Jane"
+                                    placeholder={t('jane')}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Legal Last Name</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('legalLastName')}</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.last_name}
                                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                                     className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all"
-                                    placeholder="Smith"
+                                    placeholder={t('smith')}
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Official Email Address</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('officialEmailAddress')}</label>
                             <input
                                 type="email"
                                 required
@@ -469,20 +471,20 @@ export default function UsersPage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">System Role</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('systemRole')}</label>
                                 <select
                                     value={formData.role}
                                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                                     className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all appearance-none"
                                 >
-                                    <option value="student">Student</option>
-                                    <option value="teacher">Instructor</option>
-                                    <option value="parent">Parent</option>
-                                    <option value="admin">Administrator</option>
+                                    <option value="student">{t('student')}</option>
+                                    <option value="teacher">{t('instructor')}</option>
+                                    <option value="parent">{t('parent')}</option>
+                                    <option value="admin">{t('administrator')}</option>
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Status</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('accountStatus')}</label>
                                 <div
                                     onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                                     className={`flex items-center justify-between px-5 py-3.5 rounded-2xl border-2 transition-all cursor-pointer ${formData.is_active ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
@@ -503,17 +505,17 @@ export default function UsersPage() {
                             <div className="p-8 bg-green-50/50 rounded-3xl border border-green-100 space-y-6 animate-in slide-in-from-top-2">
                                 <h3 className="text-xs font-black text-green-700 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <UserCog className="w-4 h-4" />
-                                    Student Configuration
+                                    {t('studentConfiguration')}
                                 </h3>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Primary Instrument</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('primaryInstrument')}</label>
                                     <select
                                         value={formData.instrument}
                                         onChange={(e) => setFormData({ ...formData, instrument: e.target.value })}
                                         className="w-full px-5 py-3.5 bg-white border-transparent focus:border-green-400 border-2 rounded-2xl font-bold text-gray-700 outline-none transition-all appearance-none"
                                     >
-                                        <option value="">Select instrument...</option>
+                                        <option value="">{t('selectInstrument')}</option>
                                         {allInstruments.map(inst => (
                                             <option key={inst} value={inst}>{inst}</option>
                                         ))}
@@ -521,7 +523,7 @@ export default function UsersPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Band Affiliations</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('bandAffiliations')}</label>
                                     <div className="w-full bg-white border-gray-100 focus-within:border-green-400 border-2 rounded-2xl overflow-hidden min-h-[120px] max-h-[200px] overflow-y-auto custom-scrollbar transition-all">
                                         {bands.length > 0 ? (
                                             bands.map(b => {
@@ -550,20 +552,20 @@ export default function UsersPage() {
                                             })
                                         ) : (
                                             <div className="px-5 py-8 text-center text-gray-400 text-xs font-medium italic">
-                                                No bands available in the studio system.
+                                                {t('noBandsAvailableInTheStudioSystem')}
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Legal Guardian / Parent</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('legalGuardianParent')}</label>
                                     <select
                                         value={formData.family_id}
                                         onChange={(e) => setFormData({ ...formData, family_id: e.target.value })}
                                         className="w-full px-5 py-3.5 bg-white border-transparent focus:border-green-400 border-2 rounded-2xl font-bold text-gray-700 outline-none transition-all appearance-none"
                                     >
-                                        <option value="">No linked guardian</option>
+                                        <option value="">{t('noLinkedGuardian')}</option>
                                         {parentOptions.map((p: any) => <option key={p.id} value={p.id}>{p.full_name || p.email}</option>)}
                                     </select>
                                 </div>
@@ -575,7 +577,7 @@ export default function UsersPage() {
                             <div className="p-8 bg-blue-50/50 rounded-3xl border border-blue-100 space-y-6 animate-in slide-in-from-top-2">
                                 <h3 className="text-xs font-black text-blue-700 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Sparkles className="w-4 h-4" />
-                                    Instructor Credentials
+                                    {t('instructorCredentials')}
                                 </h3>
 
                                 <div className="flex flex-wrap gap-2">
@@ -610,7 +612,7 @@ export default function UsersPage() {
                                                 }
                                             }
                                         }}
-                                        placeholder="Add expertise (e.g. Neo-Soul Rhythm)"
+                                        placeholder={t('addExpertiseEGNeoSoulRhythm')}
                                         className="flex-1 px-5 py-3.5 bg-white border-transparent focus:border-blue-400 border-2 rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all shadow-sm"
                                     />
                                     <Button
@@ -625,7 +627,7 @@ export default function UsersPage() {
                                             }
                                         }}
                                     >
-                                        Add
+                                        {t('add')}
                                     </Button>
                                 </div>
                             </div>
@@ -639,7 +641,7 @@ export default function UsersPage() {
                         onClick={() => setIsUserModalOpen(false)}
                         className="flex-1"
                     >
-                        Cancel
+                        {t('cancel')}
                     </Button>
                     <Button
                         type="submit"
@@ -650,7 +652,7 @@ export default function UsersPage() {
                         {isSubmitting ? (
                             <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Synchronizing...
+                                {t('synchronizing')}
                             </>
                         ) : (
                             selectedUser ? 'Commit Changes' : 'Activate Membership'

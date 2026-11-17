@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import {
     CreditCard,
     Package,
@@ -56,10 +57,11 @@ const FEATURES = [
 ]
 
 export default function FeaturesPage() {
+  const t = useTranslations('FeatureSettings')
     return (
         <div className="max-w-4xl mx-auto p-6">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Feature Settings</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('featureSettings')}</h1>
                 <p className="text-gray-600">
                     All features are now enabled by default for all studios.
                     The feature flags system has been removed to simplify the platform.
@@ -71,10 +73,10 @@ export default function FeaturesPage() {
                     <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
                     <div>
                         <h3 className="text-lg font-semibold text-green-900 mb-1">
-                            All Features Enabled
+                            {t('allFeaturesEnabled')}
                         </h3>
                         <p className="text-sm text-green-700">
-                            You have full access to all StudioSync features. No configuration needed!
+                            {t('youHaveFullAccessToAllStudioSyncFeaturesNoConfigurationNeeded')}
                         </p>
                     </div>
                 </div>
@@ -100,7 +102,7 @@ export default function FeaturesPage() {
                                         </h3>
                                         <span className="flex items-center text-sm font-medium text-green-600">
                                             <CheckCircle2 className="w-4 h-4 mr-1" />
-                                            Enabled
+                                            {t('enabled')}
                                         </span>
                                     </div>
                                     <p className="text-sm text-gray-600">
@@ -115,7 +117,7 @@ export default function FeaturesPage() {
 
             <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
                 <p className="text-sm text-gray-600">
-                    <strong>Note:</strong> Previously, features could be toggled on and off.
+                    <strong>{t('note')}</strong> Previously, features could be toggled on and off.
                     This system has been deprecated in favor of providing all functionality to every studio.
                 </p>
             </div>

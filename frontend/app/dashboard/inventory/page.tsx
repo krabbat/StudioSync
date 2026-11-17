@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import {
     Plus, Search, Package, Music, BookOpen, Headphones,
@@ -27,6 +28,7 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
+  const t = useTranslations('Inventory')
     const { items, loading, refresh } = useInventoryItems()
     const [searchQuery, setSearchQuery] = useState('')
     const [filterCategory, setFilterCategory] = useState<string>('all')
@@ -93,17 +95,17 @@ export default function InventoryPage() {
         try {
             if (editingItem) {
                 await api.patch(`/inventory/items/${editingItem.id}/`, data)
-                toast.success('Item updated!')
+                toast.success(t('msgItemUpdated'))
             } else {
                 await api.post('/inventory/items/', data)
-                toast.success('Item added!')
+                toast.success(t('msgItemAdded'))
             }
             setShowAddModal(false)
             setEditingItem(null)
             refresh()
         } catch (error) {
             console.error(error)
-            toast.error('Failed to save item')
+            toast.error(t('msgFailedToSaveItem'))
         } finally {
             setSubmitting(false)
         }
@@ -113,7 +115,7 @@ export default function InventoryPage() {
         return (
             <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="w-10 h-10 text-[var(--color-primary)] animate-spin mb-4" />
-                <p className="text-gray-500 font-bold tracking-wider uppercase text-xs">Synchronizing Inventory...</p>
+                <p className="text-gray-500 font-bold tracking-wider uppercase text-xs">{t('synchronizingInventory')}</p>
             </div>
         )
     }
@@ -124,8 +126,8 @@ export default function InventoryPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-2">
                 <div>
-                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">Inventory</h1>
-                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-500 mt-0.5 font-medium uppercase tracking-wide">Manage your studio equipment</p>
+                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{t('inventory')}</h1>
+                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-500 mt-0.5 font-medium uppercase tracking-wide">{t('manageYourStudioEquipment')}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <button
@@ -136,7 +138,7 @@ export default function InventoryPage() {
                         className="w-full sm:w-auto px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-all shadow-md text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95"
                     >
                         <Plus className="w-4 h-4" />
-                        <span>Add Item</span>
+                        <span>{t('addItem')}</span>
                     </button>
                 </div>
             </div>
@@ -144,22 +146,22 @@ export default function InventoryPage() {
             {/* Stats Cards - Responsive Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                 <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">Items</div>
+                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">{t('items')}</div>
                     <div className="text-lg sm:text-xl md:text-2xl font-black text-gray-900">{items.length}</div>
                 </div>
 
                 <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">Value</div>
+                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">{t('value')}</div>
                     <div className="text-lg sm:text-xl md:text-2xl font-black text-gray-900">${totalValue.toLocaleString()}</div>
                 </div>
 
                 <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">Low Stock</div>
+                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">{t('lowStock')}</div>
                     <div className="text-lg sm:text-xl md:text-2xl font-black text-orange-600">{lowStock}</div>
                 </div>
 
                 <div className="bg-white p-2 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">Repairs</div>
+                    <div className="text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wide mb-0.5 sm:mb-1">{t('repairs')}</div>
                     <div className="text-lg sm:text-xl md:text-2xl font-black text-red-600">{needsRepair}</div>
                 </div>
             </div>
@@ -197,7 +199,7 @@ export default function InventoryPage() {
                             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Search..."
+                                placeholder={t('search')}
                                 className="w-full sm:w-64 pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none font-medium transition-shadow shadow-sm"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -214,13 +216,13 @@ export default function InventoryPage() {
                     <table className="w-full">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Condition</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('item')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('category')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('location')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('condition')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('qty')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('value')}</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -266,7 +268,7 @@ export default function InventoryPage() {
                                     <td colSpan={7} className="px-6 py-12 text-center">
                                         <div className="flex flex-col items-center gap-2">
                                             <Package className="w-12 h-12 text-gray-300" />
-                                            <p className="text-gray-500 font-medium">No items found</p>
+                                            <p className="text-gray-500 font-medium">{t('noItemsFound')}</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -299,22 +301,22 @@ export default function InventoryPage() {
 
                             <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div>
-                                    <p className="text-gray-500 text-xs">Location</p>
+                                    <p className="text-gray-500 text-xs">{t('location')}</p>
                                     <p className="text-gray-900 font-medium flex items-center gap-1">
                                         <MapPin className="w-3 h-3" />
                                         {item.location}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500 text-xs">Quantity</p>
+                                    <p className="text-gray-500 text-xs">{t('quantity')}</p>
                                     <p className="text-gray-900 font-medium">{item.quantity}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500 text-xs">Value</p>
+                                    <p className="text-gray-500 text-xs">{t('value')}</p>
                                     <p className="text-gray-900 font-medium">${Number(item.value).toLocaleString()}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500 text-xs mb-1">Condition</p>
+                                    <p className="text-gray-500 text-xs mb-1">{t('condition')}</p>
                                     <ConditionBadge condition={item.condition} />
                                 </div>
                             </div>
@@ -322,7 +324,7 @@ export default function InventoryPage() {
                     )) : (
                         <div className="p-12 text-center">
                             <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                            <p className="text-gray-500 font-medium">No items found</p>
+                            <p className="text-gray-500 font-medium">{t('noItemsFound')}</p>
                         </div>
                     )}
                 </div>
@@ -330,7 +332,7 @@ export default function InventoryPage() {
                 {/* Pagination */}
                 <div className="p-4 sm:p-6 border-t border-gray-100 bg-gray-50/30 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-xs sm:text-sm text-gray-600 font-semibold text-center sm:text-left">
-                        <span className="font-black text-gray-900">{filteredItems.length > 0 ? startIndex + 1 : 0}</span> to <span className="font-black text-gray-900">{Math.min(startIndex + itemsPerPage, filteredItems.length)}</span> of <span className="font-black text-gray-900">{filteredItems.length}</span>
+                        <span className="font-black text-gray-900">{filteredItems.length > 0 ? startIndex + 1 : 0}</span> {t('to')} <span className="font-black text-gray-900">{Math.min(startIndex + itemsPerPage, filteredItems.length)}</span> {t('of')} <span className="font-black text-gray-900">{filteredItems.length}</span>
                     </div>
                     <div className="flex space-x-2">
                         <button
@@ -371,34 +373,34 @@ export default function InventoryPage() {
                 <DialogContent>
                     <form id="inventory-form" onSubmit={handleSave} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">Item Name</label>
+                            <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('itemName')}</label>
                             <input
                                 name="name"
                                 type="text"
                                 required
                                 defaultValue={editingItem?.name}
                                 className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-[var(--color-primary)] rounded-xl font-bold text-gray-700 outline-none transition-all"
-                                placeholder="e.g. Yamaha Piano"
+                                placeholder={t('eGYamahaPiano')}
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">Category</label>
+                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('category')}</label>
                                 <select
                                     name="category"
                                     defaultValue={editingItem?.category || 'instrument'}
                                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-[var(--color-primary)] rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                                 >
-                                    <option value="instrument">Instrument</option>
-                                    <option value="equipment">Equipment</option>
-                                    <option value="sheet-music">Sheet Music</option>
-                                    <option value="accessories">Accessories</option>
-                                    <option value="other">Other</option>
+                                    <option value="instrument">{t('instrument')}</option>
+                                    <option value="equipment">{t('equipment')}</option>
+                                    <option value="sheet-music">{t('sheetMusic')}</option>
+                                    <option value="accessories">{t('accessories')}</option>
+                                    <option value="other">{t('other')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">Quantity</label>
+                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('quantity')}</label>
                                 <input
                                     name="quantity"
                                     type="number"
@@ -412,7 +414,7 @@ export default function InventoryPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">Value ($)</label>
+                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('value')}</label>
                                 <input
                                     name="value"
                                     type="number"
@@ -422,40 +424,40 @@ export default function InventoryPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">Condition</label>
+                                <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('condition')}</label>
                                 <select
                                     name="condition"
                                     defaultValue={editingItem?.condition || 'good'}
                                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-[var(--color-primary)] rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                                 >
-                                    <option value="excellent">Excellent</option>
-                                    <option value="good">Good</option>
-                                    <option value="fair">Fair</option>
-                                    <option value="needs-repair">Needs Repair</option>
+                                    <option value="excellent">{t('excellent')}</option>
+                                    <option value="good">{t('good')}</option>
+                                    <option value="fair">{t('fair')}</option>
+                                    <option value="needs-repair">{t('needsRepair')}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">Location</label>
+                            <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('location')}</label>
                             <input
                                 name="location"
                                 type="text"
                                 required
                                 defaultValue={editingItem?.location}
                                 className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-[var(--color-primary)] rounded-xl font-bold text-gray-700 outline-none transition-all"
-                                placeholder="Room or shelf location"
+                                placeholder={t('roomOrShelfLocation')}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">Notes</label>
+                            <label className="block text-sm font-black text-gray-400 uppercase tracking-widest mb-1">{t('notes')}</label>
                             <textarea
                                 name="notes"
                                 defaultValue={editingItem?.notes}
                                 rows={3}
                                 className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-[var(--color-primary)] rounded-xl font-bold text-gray-700 outline-none transition-all resize-none"
-                                placeholder="Additional notes..."
+                                placeholder={t('additionalNotes')}
                             />
                         </div>
                     </form>
@@ -469,7 +471,7 @@ export default function InventoryPage() {
                         }}
                         className="flex-1"
                     >
-                        Cancel
+                        {t('cancel')}
                     </Button>
                     <Button
                         type="submit"

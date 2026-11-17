@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, MapPin, Plus, Trash2, Users, X, Loader2, Check } from 'lucide-react';
@@ -28,6 +29,7 @@ const inp = 'w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 tex
 const lbl = 'block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5';
 
 export default function GigVenuesPage() {
+  const t = useTranslations('GigVenues')
     const [venues, setVenues] = useState<Venue[]>([]);
     const [users, setUsers] = useState<StudioUser[]>([]);
     const [loading, setLoading] = useState(true);
@@ -49,7 +51,7 @@ export default function GigVenuesPage() {
             const all: StudioUser[] = usersRes.data.results ?? usersRes.data ?? [];
             setUsers(all.filter(u => u.role === 'admin' || u.role === 'teacher'));
         } catch {
-            toast.error('Failed to load venues');
+            toast.error(t('msgFailedToLoadVenues'));
         } finally {
             setLoading(false);
         }
@@ -80,15 +82,15 @@ export default function GigVenuesPage() {
 
     async function save(e: React.FormEvent) {
         e.preventDefault();
-        if (!form.name.trim()) { toast.error('Venue name is required'); return; }
+        if (!form.name.trim()) { toast.error(t('msgVenueNameIsRequired')); return; }
         setSaving(true);
         try {
             if (editingId) {
                 await api.patch(`/gigs/venues/${editingId}/`, form);
-                toast.success('Venue updated');
+                toast.success(t('msgVenueUpdated'));
             } else {
                 await api.post('/gigs/venues/', form);
-                toast.success('Venue created');
+                toast.success(t('msgVenueCreated'));
             }
             setShowForm(false);
             load();
@@ -100,14 +102,14 @@ export default function GigVenuesPage() {
     }
 
     async function deleteVenue(id: string) {
-        if (!confirm('Delete this venue? Existing gigs will not be affected.')) return;
+        if (!confirm(t('msgDeleteThisVenueExistingGigsWillNotBeAffected'))) return;
         setDeleting(id);
         try {
             await api.delete(`/gigs/venues/${id}/`);
-            toast.success('Venue deleted');
+            toast.success(t('msgVenueDeleted'));
             setVenues(v => v.filter(x => x.id !== id));
         } catch {
-            toast.error('Failed to delete venue');
+            toast.error(t('msgFailedToDeleteVenue'));
         } finally {
             setDeleting(null);
         }
@@ -121,15 +123,15 @@ export default function GigVenuesPage() {
                         <ChevronLeft className="w-5 h-5" />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Gig Venues</h1>
-                        <p className="text-sm text-gray-500 mt-0.5">Venues your studio books gigs at, and who's allowed to post for each.</p>
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tight">{t('gigVenues')}</h1>
+                        <p className="text-sm text-gray-500 mt-0.5">{t('venuesYourStudioBooksGigsAtAndWhoSAllowedToPostForEach')}</p>
                     </div>
                 </div>
                 <button
                     onClick={openCreate}
                     className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
                 >
-                    <Plus className="w-4 h-4" /> Add Venue
+                    <Plus className="w-4 h-4" /> {t('addVenue')}
                 </button>
             </div>
 
@@ -140,10 +142,10 @@ export default function GigVenuesPage() {
             ) : venues.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center shadow-sm">
                     <MapPin className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-                    <p className="font-bold text-gray-700 text-sm uppercase tracking-widest">No venues yet</p>
-                    <p className="text-xs text-gray-400 mt-1 mb-6">Add the venues your studio performs at to start posting gigs.</p>
+                    <p className="font-bold text-gray-700 text-sm uppercase tracking-widest">{t('noVenuesYet')}</p>
+                    <p className="text-xs text-gray-400 mt-1 mb-6">{t('addTheVenuesYourStudioPerformsAtToStartPostingGigs')}</p>
                     <button onClick={openCreate} className="px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors">
-                        Add First Venue
+                        {t('addFirstVenue')}
                     </button>
                 </div>
             ) : (
@@ -170,7 +172,7 @@ export default function GigVenuesPage() {
                                             {v.allowed_poster_names.join(', ')}
                                         </span>
                                     ) : (
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin only</span>
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('adminOnly')}</span>
                                     )}
                                 </div>
             </div>
@@ -179,7 +181,7 @@ export default function GigVenuesPage() {
                                     onClick={() => openEdit(v)}
                                     className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
                                 >
-                                    Edit
+                                    {t('edit')}
                                 </button>
                                 <button
                                     onClick={() => deleteVenue(v.id)}
@@ -210,33 +212,33 @@ export default function GigVenuesPage() {
                             </div>
                             <form onSubmit={save} className="p-6 space-y-4">
                                 <div>
-                                    <label className={lbl}>Venue Name <span className="text-red-400">*</span></label>
+                                    <label className={lbl}>{t('venueName')} <span className="text-red-400">*</span></label>
                                     <input
                                         type="text"
                                         value={form.name}
                                         onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                        placeholder="e.g. The Vogue"
+                                        placeholder={t('eGTheVogue')}
                                         className={inp}
                                         required
                                         autoFocus
                                     />
                                 </div>
                                 <div>
-                                    <label className={lbl}>Address</label>
+                                    <label className={lbl}>{t('address')}</label>
                                     <input
                                         type="text"
                                         value={form.address}
                                         onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                                        placeholder="e.g. 6259 N College Ave, Indianapolis, IN"
+                                        placeholder={t('eG6259NCollegeAveIndianapolisIN')}
                                         className={inp}
                                     />
                                 </div>
                                 <div>
-                                    <label className={lbl}>Notes</label>
+                                    <label className={lbl}>{t('notes')}</label>
                                     <textarea
                                         value={form.notes}
                                         onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                                        placeholder="Load-in details, parking, contact info…"
+                                        placeholder={t('loadInDetailsParkingContactInfo')}
                                         rows={2}
                                         className={`${inp} resize-none`}
                                     />
@@ -245,7 +247,7 @@ export default function GigVenuesPage() {
                                 {users.length > 0 && (
                                     <div>
                                         <label className={lbl}>
-                                            Authorized to Post Gigs
+                                            {t('authorizedToPostGigs')}
                                             <span className="ml-1 font-normal text-gray-400 normal-case tracking-normal">(empty = admin only)</span>
                                         </label>
                                         <div className="space-y-1.5 mt-1">
@@ -285,7 +287,7 @@ export default function GigVenuesPage() {
                                         onClick={() => setShowForm(false)}
                                         className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                                     >
-                                        Cancel
+                                        {t('cancel')}
                                     </button>
                                     <button
                                         type="submit"

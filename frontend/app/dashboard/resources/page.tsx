@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useResources } from '@/hooks/useDashboardData'
 import api from '@/services/api'
@@ -140,6 +141,7 @@ function ResourceIcon({ type, size = 'w-5 h-5' }: { type: ResourceType; size?: s
 // ─────────────────────────────────────────────
 
 export default function ResourcesPage() {
+  const t = useTranslations('Resources')
     const { resources, loading, refetch } = useResources()
 
     // Folder state
@@ -217,9 +219,9 @@ export default function ResourcesPage() {
             setNewFolderName('')
             setShowNewFolderInput(false)
             fetchFolders()
-            toast.success('Folder created')
+            toast.success(t('msgFolderCreated'))
         } catch {
-            toast.error('Failed to create folder')
+            toast.error(t('msgFailedToCreateFolder'))
         } finally {
             setCreatingFolder(false)
         }
@@ -323,7 +325,7 @@ export default function ResourcesPage() {
         const anyDone = queue.some(q => q.status === 'done')
         if (anyDone) {
             refetch()
-            toast.success('Files uploaded successfully')
+            toast.success(t('msgFilesUploadedSuccessfully'))
         }
     }
 
@@ -338,24 +340,24 @@ export default function ResourcesPage() {
             window.open(resource.external_url, '_blank')
             return
         }
-        if (!resource.file_url) { toast.error('File URL unavailable'); return }
+        if (!resource.file_url) { toast.error(t('msgFileURLUnavailable')); return }
         try {
             await downloadAuthenticatedFile(resource.file_url, resource.title)
-            toast.success('Download started')
+            toast.success(t('msgDownloadStarted'))
         } catch {
-            toast.error('Download failed')
+            toast.error(t('msgDownloadFailed'))
         }
     }
 
     const handleDelete = async (resourceId: string) => {
-        if (!confirm('Delete this resource?')) return
+        if (!confirm(t('msgDeleteThisResource'))) return
         setDeleting(resourceId)
         try {
             await api.delete(`/resources/library/${resourceId}/`)
-            toast.success('Resource deleted')
+            toast.success(t('msgResourceDeleted'))
             refetch()
         } catch {
-            toast.error('Delete failed')
+            toast.error(t('msgDeleteFailed'))
         } finally {
             setDeleting(null)
         }
@@ -368,7 +370,7 @@ export default function ResourcesPage() {
             toast.success(folderId ? 'Moved to folder' : 'Moved to root')
             refetch()
         } catch {
-            toast.error('Move failed')
+            toast.error(t('msgMoveFailed'))
         } finally {
             setMovingResource(null)
         }
@@ -401,7 +403,7 @@ export default function ResourcesPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Loading Library...</p>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t('loadingLibrary')}</p>
             </div>
         )
     }
@@ -422,8 +424,8 @@ export default function ResourcesPage() {
                 <div className="fixed inset-0 z-50 bg-primary/5 border-4 border-dashed border-primary/40 rounded-none flex items-center justify-center pointer-events-none">
                     <div className="text-center space-y-3">
                         <CloudUpload className="w-16 h-16 text-primary mx-auto animate-bounce" />
-                        <p className="text-xl font-black text-primary uppercase tracking-widest">Drop files anywhere</p>
-                        <p className="text-sm font-medium text-primary/60">Release to add to upload queue</p>
+                        <p className="text-xl font-black text-primary uppercase tracking-widest">{t('dropFilesAnywhere')}</p>
+                        <p className="text-sm font-medium text-primary/60">{t('releaseToAddToUploadQueue')}</p>
                     </div>
                 </div>
             )}
@@ -432,19 +434,19 @@ export default function ResourcesPage() {
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4 text-center md:text-left">
                 <div className="space-y-2">
                     <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex flex-col md:flex-row items-center gap-2 md:gap-3">
-                        Resources Library
+                        {t('resourcesLibrary')}
                         <div className="bg-primary/10 px-3 py-1 rounded-full text-[10px] font-black text-primary uppercase tracking-widest">
                             {resources.length} Files
                         </div>
                     </h1>
-                    <p className="text-gray-500 font-medium max-w-lg mx-auto md:mx-0 text-sm md:text-base">Your studio's cloud file storage — drag & drop or pick multiple files at once.</p>
+                    <p className="text-gray-500 font-medium max-w-lg mx-auto md:mx-0 text-sm md:text-base">{t('yourStudioSCloudFileStorageDragDropOrPickMultipleFilesAtOnce')}</p>
                 </div>
                 <Button
                     onClick={() => setShowUploadPanel(true)}
                     className="gap-2 hover:scale-105 shadow-xl shadow-primary/20 transition-all py-6 px-10 font-black uppercase tracking-widest text-[10px] w-full md:w-auto"
                 >
                     <CloudUpload className="w-4 h-4" />
-                    Upload Files
+                    {t('uploadFiles')}
                 </Button>
             </header>
 
@@ -473,11 +475,11 @@ export default function ResourcesPage() {
                 <aside className="w-full md:w-64 shrink-0 space-y-4 md:sticky md:top-6 self-start">
                     <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5 space-y-4">
                         <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Library Folders</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('libraryFolders')}</p>
                             <button
                                 onClick={() => { setShowNewFolderInput(v => !v); setTimeout(() => newFolderInputRef.current?.focus(), 50) }}
                                 className="w-7 h-7 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center transition-colors px-0 py-0"
-                                title="New folder"
+                                title={t('newFolder')}
                             >
                                 <FolderPlus className="w-3.5 h-3.5" />
                             </button>
@@ -490,7 +492,7 @@ export default function ResourcesPage() {
                                     value={newFolderName}
                                     onChange={e => setNewFolderName(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') setShowNewFolderInput(false) }}
-                                    placeholder="Folder name…"
+                                    placeholder={t('folderName')}
                                     className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-gray-50 border-2 border-transparent focus:border-primary text-xs font-bold outline-none"
                                 />
                                 <button
@@ -511,7 +513,7 @@ export default function ResourcesPage() {
                                     }`}
                             >
                                 <Home className="w-3.5 h-3.5 shrink-0" />
-                                Root Library
+                                {t('rootLibrary')}
                                 <span className="ml-auto text-[10px] font-bold opacity-50">
                                     {(resources as Resource[]).filter(r => r.folder === null).length}
                                 </span>
@@ -527,7 +529,7 @@ export default function ResourcesPage() {
                                     {/* Breadcrumb back navigation */}
                                     {breadcrumb.length > 0 && (
                                         <div className="flex items-center gap-1 text-[10px] font-black text-gray-400 uppercase tracking-wider px-1 pb-2 overflow-x-auto no-scrollbar pt-2 border-t border-gray-50 mt-2">
-                                            <button onClick={() => navigateToFolder(null)} className="hover:text-primary shrink-0 transition-colors">ROOT</button>
+                                            <button onClick={() => navigateToFolder(null)} className="hover:text-primary shrink-0 transition-colors">{t('root')}</button>
                                             {breadcrumb.map((f, i) => (
                                                 <span key={f.id} className="flex items-center gap-1 shrink-0">
                                                     <ChevronRight className="w-2.5 h-2.5 opacity-30" />
@@ -540,7 +542,7 @@ export default function ResourcesPage() {
                                     )}
 
                                     {visibleFolders.length === 0 && (
-                                        <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest text-center py-4">Empty Directory</p>
+                                        <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest text-center py-4">{t('emptyDirectory')}</p>
                                     )}
 
                                     <div className="max-h-[300px] md:max-h-none overflow-y-auto no-scrollbar space-y-1">
@@ -576,7 +578,7 @@ export default function ResourcesPage() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Search resources…"
+                                placeholder={t('searchResources')}
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all"
@@ -626,13 +628,13 @@ export default function ResourcesPage() {
                                                             onClick={() => { setMovingResource(resource); setOpenMenuId(null) }}
                                                             className="w-full flex items-center gap-2 px-4 py-2.5 text-[11px] sm:text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors text-left"
                                                         >
-                                                            <MoveRight className="w-3.5 h-3.5" /> Move to folder
+                                                            <MoveRight className="w-3.5 h-3.5" /> {t('moveToFolder')}
                                                         </button>
                                                         <button
                                                             onClick={() => { handleDelete(resource.id); setOpenMenuId(null) }}
                                                             className="w-full flex items-center gap-2 px-4 py-2.5 text-[11px] sm:text-xs font-bold text-red-500 hover:bg-red-50 transition-colors text-left"
                                                         >
-                                                            <Trash className="w-3.5 h-3.5" /> Delete
+                                                            <Trash className="w-3.5 h-3.5" /> {t('delete')}
                                                         </button>
                                                     </div>
                                                 )}
@@ -683,7 +685,7 @@ export default function ResourcesPage() {
                                     <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-gray-200" />
                                 </div>
                                 <div className="space-y-1 sm:space-y-2">
-                                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 uppercase tracking-tighter">Library is Empty</h3>
+                                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 uppercase tracking-tighter">{t('libraryIsEmpty')}</h3>
                                     <p className="text-[11px] sm:text-sm font-medium text-gray-500 max-w-sm mx-auto leading-relaxed">
                                         {activeFolderId !== 'root'
                                             ? 'No resources in this folder yet.'
@@ -691,7 +693,7 @@ export default function ResourcesPage() {
                                     </p>
                                 </div>
                                 <Button onClick={() => setShowUploadPanel(true)} className="px-6 sm:px-10 py-5 sm:py-6 rounded-2xl shadow-lg shadow-primary/10 w-full sm:w-auto">
-                                    <CloudUpload className="w-4 h-4 mr-2" /> Upload Files
+                                    <CloudUpload className="w-4 h-4 mr-2" /> {t('uploadFiles')}
                                 </Button>
                             </div>
                         </div>
@@ -716,7 +718,7 @@ export default function ResourcesPage() {
                         {/* Panel header */}
                         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
                             <div>
-                                <h2 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Upload Files</h2>
+                                <h2 className="text-lg font-black text-gray-900 uppercase tracking-tighter">{t('uploadFiles')}</h2>
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                     {activeFolderId !== 'root'
                                         ? `Uploading to: ${folders.find(f => f.id === activeFolderId)?.name}`
@@ -748,14 +750,14 @@ export default function ResourcesPage() {
                                 onChange={e => e.target.files && addFilesToQueue(e.target.files)}
                             />
                             <CloudUpload className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-3 transition-colors ${panelDragging ? 'text-primary' : 'text-gray-300'}`} />
-                            <p className="text-xs font-black text-gray-700 uppercase tracking-widest">Drop files here</p>
-                            <p className="text-[10px] font-bold text-gray-400 mt-1">or click to browse — select multiple</p>
+                            <p className="text-xs font-black text-gray-700 uppercase tracking-widest">{t('dropFilesHere')}</p>
+                            <p className="text-[10px] font-bold text-gray-400 mt-1">{t('orClickToBrowseSelectMultiple')}</p>
                         </div>
 
                         {/* Queue */}
                         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
                             {queue.length === 0 && (
-                                <p className="text-center text-[10px] font-black text-gray-300 uppercase tracking-widest py-8">Add files above to get started</p>
+                                <p className="text-center text-[10px] font-black text-gray-300 uppercase tracking-widest py-8">{t('addFilesAboveToGetStarted')}</p>
                             )}
 
                             {queue.map(item => (
@@ -802,7 +804,7 @@ export default function ResourcesPage() {
                         <div className="px-6 py-6 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
                             {queue.some(q => q.status === 'done') && (
                                 <Button variant="ghost" onClick={clearCompleted} className="text-[10px] font-black uppercase tracking-widest text-gray-400 py-6 sm:py-2">
-                                    Clear done
+                                    {t('clearDone')}
                                 </Button>
                             )}
                             <Button
@@ -811,7 +813,7 @@ export default function ResourcesPage() {
                                 className="flex-1 py-6 gap-2 font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20"
                             >
                                 {uploadingAll ? (
-                                    <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> {t('uploading')}</>
                                 ) : (
                                     <><Sparkles className="w-4 h-4" /> Upload All ({queue.filter(q => q.status === 'idle').length})</>
                                 )}
@@ -829,8 +831,8 @@ export default function ResourcesPage() {
                     <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
                         <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md p-6 sm:p-10 space-y-6 animate-in slide-in-from-bottom sm:zoom-in-95">
                             <div>
-                                <h2 className="text-lg font-black text-gray-900 uppercase tracking-tighter">Move Resource</h2>
-                                <p className="text-xs text-gray-500 mt-1 font-medium">Choose a destination for <span className="font-black text-gray-800">"{movingResource.title}"</span></p>
+                                <h2 className="text-lg font-black text-gray-900 uppercase tracking-tighter">{t('moveResource')}</h2>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">{t('chooseADestinationFor')} <span className="font-black text-gray-800">"{movingResource.title}"</span></p>
                             </div>
 
                             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
@@ -840,7 +842,7 @@ export default function ResourcesPage() {
                                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-primary/5 hover:text-primary text-gray-600 transition-all text-left"
                                 >
                                     <Home className="w-4 h-4 shrink-0" />
-                                    <span className="text-sm font-bold">Root (no folder)</span>
+                                    <span className="text-sm font-bold">{t('rootNoFolder')}</span>
                                 </button>
 
                                 {folders.map(folder => (
@@ -853,14 +855,14 @@ export default function ResourcesPage() {
                                         <Folder className="w-4 h-4 text-amber-400 shrink-0" />
                                         <span className="text-sm font-bold">{folder.name}</span>
                                         {movingResource.folder === folder.id && (
-                                            <span className="ml-auto text-[10px] font-black text-primary uppercase">Current</span>
+                                            <span className="ml-auto text-[10px] font-black text-primary uppercase">{t('current')}</span>
                                         )}
                                     </button>
                                 ))}
                             </div>
 
                             <Button variant="ghost" onClick={() => setMovingResource(null)} className="w-full">
-                                Cancel
+                                {t('cancel')}
                             </Button>
                         </div>
                     </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { usePublicResources } from '@/hooks/usePublicResources'
 import {
     FileText,
@@ -52,6 +53,7 @@ const RESOURCE_TYPES: { value: MusicResourceType; label: string; icon: any }[] =
 ]
 
 export default function LibraryPage() {
+  const t = useTranslations('Library')
     const { resources: publicResources, loading, refetch } = usePublicResources()
 
     // Filter only music resources
@@ -70,7 +72,7 @@ export default function LibraryPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Loading Library...</p>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t('loadingLibrary')}</p>
             </div>
         )
     }
@@ -82,12 +84,12 @@ export default function LibraryPage() {
                 <div className="space-y-2">
                     <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
                         <BookOpen className="w-8 h-8 text-primary" />
-                        Library
+                        {t('library')}
                         <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-black text-primary uppercase tracking-widest">
                             {musicResources.length} Charts
                         </div>
                     </h1>
-                    <p className="text-gray-500 font-medium max-w-lg">Browse and discover public charts shared by studios.</p>
+                    <p className="text-gray-500 font-medium max-w-lg">{t('browseAndDiscoverPublicChartsSharedByStudios')}</p>
                 </div>
             </header>
 
@@ -155,9 +157,9 @@ export default function LibraryPage() {
                             <BookOpen className="w-12 h-12 text-gray-200" />
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Library is Empty</h3>
+                            <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">{t('libraryIsEmpty')}</h3>
                             <p className="text-sm font-medium text-gray-500 max-w-sm mx-auto leading-relaxed">
-                                There are no public charts available yet. Check back later!
+                                {t('thereAreNoPublicChartsAvailableYetCheckBackLater')}
                             </p>
                         </div>
                     </div>

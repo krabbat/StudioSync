@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl'
 import React, { useCallback, useEffect, useState } from 'react';
 import api from '@/services/api';
 import { Copy, Eye, EyeOff, Key, Plus, Trash2, ChevronLeft } from 'lucide-react';
@@ -29,6 +30,7 @@ function formatDate(iso: string | null) {
 }
 
 export default function APIKeysPage() {
+  const t = useTranslations('ApiKeys')
     const [keys, setKeys] = useState<APIKey[]>([]);
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
@@ -69,7 +71,7 @@ export default function APIKeysPage() {
     }
 
     async function revokeKey(id: string) {
-        if (!confirm('Revoke this API key? Any service using it will lose access immediately.')) return;
+        if (!confirm(t('msgRevokeThisAPIKeyAnyServiceUsingItWillLoseAccessImmediately'))) return;
         setRevoking(id);
         try {
             await api.post(`/core/api-keys/${id}/revoke/`);
@@ -98,7 +100,7 @@ export default function APIKeysPage() {
                     className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
                 >
                     <ChevronLeft className="w-4 h-4" />
-                    Settings
+                    {t('settings')}
                 </Link>
             </div>
 
@@ -107,7 +109,7 @@ export default function APIKeysPage() {
                     <div className="p-2 bg-primary/10 rounded-lg">
                         <Key className="h-5 w-5 text-primary" />
                     </div>
-                    <h1 className="text-2xl font-bold">API Keys</h1>
+                    <h1 className="text-2xl font-bold">{t('apiKeys')}</h1>
                 </div>
                 <p className="text-muted-foreground ml-12">
                     Generate keys for external integrations (e.g. 317booking) to authenticate against the StudioSync API.
@@ -119,7 +121,7 @@ export default function APIKeysPage() {
             {newKey && (
                 <div className="mb-6 rounded-xl border border-yellow-400/50 bg-yellow-50 dark:bg-yellow-950/20 p-5">
                     <p className="font-semibold text-yellow-800 dark:text-yellow-300 mb-3">
-                        Save your new key — it won&apos;t be shown again.
+                        {t('saveYourNewKeyItWontBeShownAgain')}
                     </p>
                     <div className="flex items-center gap-2">
                         <code className="flex-1 bg-background border rounded-lg px-3 py-2 text-sm font-mono tracking-wide overflow-x-auto">
@@ -135,17 +137,17 @@ export default function APIKeysPage() {
                         <button
                             onClick={copyKey}
                             className="p-2 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors"
-                            title="Copy"
+                            title={t('copy')}
                         >
                             <Copy className="h-4 w-4" />
                         </button>
                     </div>
-                    {copied && <p className="mt-2 text-xs text-green-600 dark:text-green-400">Copied to clipboard!</p>}
+                    {copied && <p className="mt-2 text-xs text-green-600 dark:text-green-400">{t('copiedToClipboard')}</p>}
                     <button
                         onClick={() => setNewKey(null)}
                         className="mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                        I&apos;ve saved it — dismiss
+                        {t('iveSavedItDismiss')}
                     </button>
                 </div>
             )}
@@ -157,7 +159,7 @@ export default function APIKeysPage() {
                         <input
                             autoFocus
                             type="text"
-                            placeholder="Key name (e.g. 317booking)"
+                            placeholder={t('keyNameEG317booking')}
                             value={newName}
                             onChange={e => setNewName(e.target.value)}
                             className="flex-1 border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
@@ -174,7 +176,7 @@ export default function APIKeysPage() {
                             onClick={() => { setShowForm(false); setNewName(''); }}
                             className="px-4 py-2 border rounded-lg text-sm hover:bg-secondary transition-colors"
                         >
-                            Cancel
+                            {t('cancel')}
                         </button>
                     </form>
                 ) : (
@@ -183,17 +185,17 @@ export default function APIKeysPage() {
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                     >
                         <Plus className="h-4 w-4" />
-                        New API Key
+                        {t('newAPIKey')}
                     </button>
                 )}
             </div>
 
             {/* Active keys */}
             {loading ? (
-                <div className="text-center py-12 text-muted-foreground">Loading…</div>
+                <div className="text-center py-12 text-muted-foreground">{t('loading')}</div>
             ) : activeKeys.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground border rounded-xl">
-                    No active API keys. Generate one to get started.
+                    {t('noActiveAPIKeysGenerateOneToGetStarted')}
                 </div>
             ) : (
                 <div className="space-y-2 mb-8">
@@ -213,7 +215,7 @@ export default function APIKeysPage() {
                                 onClick={() => revokeKey(k.id)}
                                 disabled={revoking === k.id}
                                 className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                                title="Revoke key"
+                                title={t('revokeKey')}
                             >
                                 <Trash2 className="h-4 w-4" />
                             </button>
@@ -225,7 +227,7 @@ export default function APIKeysPage() {
             {/* Revoked keys */}
             {revokedKeys.length > 0 && (
                 <div>
-                    <h2 className="text-sm font-semibold text-muted-foreground mb-2">Revoked Keys</h2>
+                    <h2 className="text-sm font-semibold text-muted-foreground mb-2">{t('revokedKeys')}</h2>
                     <div className="space-y-1">
                         {revokedKeys.map(k => (
                             <div key={k.id} className="flex items-center gap-4 border rounded-xl px-4 py-3 opacity-50">
@@ -246,7 +248,7 @@ export default function APIKeysPage() {
 
             {/* Usage guide */}
             <div className="mt-10 rounded-xl border bg-secondary/30 p-5">
-                <h2 className="font-semibold mb-3">Using your API key</h2>
+                <h2 className="font-semibold mb-3">{t('usingYourAPIKey')}</h2>
                 <p className="text-sm text-muted-foreground mb-3">
                     Pass the key as a Bearer token or{' '}
                     <code className="bg-background border rounded px-1 text-xs">X-Api-Key</code> header:

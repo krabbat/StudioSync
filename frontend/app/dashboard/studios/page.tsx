@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useRef } from 'react'
 import { useStudios } from '@/hooks/useDashboardData'
 import {
@@ -14,6 +15,7 @@ import { useRouter } from 'next/navigation'
 import { formatPhoneNumber } from '@/lib/utils'
 
 export default function StudiosPage() {
+  const t = useTranslations('Studios')
     const { studios, loading: studiosLoading, refetch } = useStudios()
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -48,16 +50,16 @@ export default function StudiosPage() {
         const uploadData = new FormData()
         uploadData.append('cover_image', file)
 
-        const toastId = toast.loading('Uploading cover image...')
+        const toastId = toast.loading(t('msgUploadingCoverImage'))
 
         try {
             await api.patch('/core/studios/current/', uploadData)
-            toast.success('Cover image updated!', { id: toastId })
+            toast.success(t('msgCoverImageUpdated'), { id: toastId })
             setLastUpdated(Date.now())
             refetch()
         } catch (error: any) {
             console.error('Upload failed:', error)
-            toast.error('Failed to upload cover image', { id: toastId })
+            toast.error(t('msgFailedToUploadCoverImage'), { id: toastId })
         }
     }
 
@@ -68,16 +70,16 @@ export default function StudiosPage() {
         const uploadData = new FormData()
         uploadData.append('logo', file)
 
-        const toastId = toast.loading('Uploading logo...')
+        const toastId = toast.loading(t('msgUploadingLogo'))
 
         try {
             await api.patch('/core/studios/current/', uploadData)
-            toast.success('Studio logo updated!', { id: toastId })
+            toast.success(t('msgStudioLogoUpdated'), { id: toastId })
             setLastUpdated(Date.now())
             refetch()
         } catch (error: any) {
             console.error('Logo upload failed:', error)
-            toast.error('Failed to upload logo', { id: toastId })
+            toast.error(t('msgFailedToUploadLogo'), { id: toastId })
         }
     }
 
@@ -108,7 +110,7 @@ export default function StudiosPage() {
         setIsSubmitting(true)
         try {
             await api.post('/core/studios/', formData)
-            toast.success('Studio initialized successfully')
+            toast.success(t('msgStudioInitializedSuccessfully'))
             setIsDialogOpen(false)
             refetch()
         } catch (error: any) {
@@ -126,7 +128,7 @@ export default function StudiosPage() {
         return (
             <div className="flex flex-col items-center justify-center py-20 animate-in fade-in duration-700">
                 <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-                <p className="text-[10px] font-black text-gray-400 tracking-[0.3em] uppercase">Accessing Infrastructure...</p>
+                <p className="text-[10px] font-black text-gray-400 tracking-[0.3em] uppercase">{t('accessingInfrastructure')}</p>
             </div>
         )
     }
@@ -144,7 +146,7 @@ export default function StudiosPage() {
                             <Building2 className="w-12 h-12 text-gray-300" />
                         </div>
                         <div className="space-y-3">
-                            <h2 className="text-4xl font-black text-gray-900 tracking-tight">Setup Your Main Headquarters</h2>
+                            <h2 className="text-4xl font-black text-gray-900 tracking-tight">{t('setupYourMainHeadquarters')}</h2>
                             <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
                                 Initialize your primary studio environment to start orchestrating lesson plans, designing layouts, and managing your faculty roster.
                             </p>
@@ -154,7 +156,7 @@ export default function StudiosPage() {
                             className="px-10 py-8 text-sm font-black uppercase tracking-[0.1em] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/20"
                         >
                             <Plus className="w-5 h-5 mr-1" />
-                            Initialize Headquarters
+                            {t('initializeHeadquarters')}
                         </Button>
                     </div>
                 </div>
@@ -165,7 +167,7 @@ export default function StudiosPage() {
                     onOpenChange={setIsDialogOpen}
                     size="xl"
                 >
-                    <DialogHeader title="Studio Initialization" />
+                    <DialogHeader title={t('studioInitialization')} />
                     <DialogContent>
                         <form id="studio-creation-form" onSubmit={handleSubmit} className="space-y-10">
                             {/* Basics */}
@@ -174,17 +176,17 @@ export default function StudiosPage() {
                                     <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                                         <Sparkles className="w-4 h-4" />
                                     </div>
-                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">Core Identity</h3>
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">{t('coreIdentity')}</h3>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Official Studio Name *</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('officialStudioName')}</label>
                                     <input
                                         type="text"
                                         required
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-gray-900 transition-all placeholder:text-gray-300"
-                                        placeholder="e.g. Apex Music Conservatoire"
+                                        placeholder={t('eGApexMusicConservatoire')}
                                     />
                                 </div>
                             </div>
@@ -195,11 +197,11 @@ export default function StudiosPage() {
                                     <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
                                         <Globe className="w-4 h-4" />
                                     </div>
-                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">Global Communication</h3>
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">{t('globalCommunication')}</h3>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Administrative Email</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('administrativeEmail')}</label>
                                         <input
                                             type="email"
                                             value={formData.email}
@@ -209,7 +211,7 @@ export default function StudiosPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Primary Phone</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('primaryPhone')}</label>
                                         <input
                                             type="tel"
                                             value={formData.phone}
@@ -219,7 +221,7 @@ export default function StudiosPage() {
                                         />
                                     </div>
                                     <div className="col-span-full space-y-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Public Domain / Website</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('publicDomainWebsite')}</label>
                                         <input
                                             type="url"
                                             value={formData.website}
@@ -237,7 +239,7 @@ export default function StudiosPage() {
                                     <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
                                         <MapPin className="w-4 h-4" />
                                     </div>
-                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">Physical Location</h3>
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">{t('physicalLocation')}</h3>
                                 </div>
                                 <div className="space-y-4">
                                     <input
@@ -245,14 +247,14 @@ export default function StudiosPage() {
                                         value={formData.address_line1}
                                         onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
                                         className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-gray-900 transition-all placeholder:text-gray-300"
-                                        placeholder="Street Address"
+                                        placeholder={t('streetAddress')}
                                     />
                                     <input
                                         type="text"
                                         value={formData.address_line2}
                                         onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
                                         className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-gray-900 transition-all placeholder:text-gray-300"
-                                        placeholder="Suite / Floor / Unit (Optional)"
+                                        placeholder={t('suiteFloorUnitOptional')}
                                     />
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <input
@@ -260,28 +262,28 @@ export default function StudiosPage() {
                                             value={formData.city}
                                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                                             className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-sm text-gray-900 transition-all placeholder:text-gray-300"
-                                            placeholder="City"
+                                            placeholder={t('city')}
                                         />
                                         <input
                                             type="text"
                                             value={formData.state}
                                             onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                                             className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-sm text-gray-900 transition-all placeholder:text-gray-300"
-                                            placeholder="State"
+                                            placeholder={t('state')}
                                         />
                                         <input
                                             type="text"
                                             value={formData.postal_code}
                                             onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
                                             className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-sm text-gray-900 transition-all placeholder:text-gray-300"
-                                            placeholder="Postal Code"
+                                            placeholder={t('postalCode')}
                                         />
                                         <input
                                             type="text"
                                             value={formData.country}
                                             onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                                             className="w-full px-6 py-4 bg-gray-50 border-transparent border-2 focus:border-primary focus:bg-white rounded-2xl outline-none font-bold text-sm text-gray-900 transition-all placeholder:text-gray-300"
-                                            placeholder="ISO (US)"
+                                            placeholder={t('isoUS')}
                                         />
                                     </div>
                                 </div>
@@ -293,13 +295,13 @@ export default function StudiosPage() {
                                     <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500">
                                         <Clock className="w-4 h-4" />
                                     </div>
-                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">System Parameters</h3>
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">{t('systemParameters')}</h3>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                             <DollarSign className="w-3 h-3 text-emerald-500" />
-                                            Active Currency
+                                            {t('activeCurrency')}
                                         </label>
                                         <input
                                             type="text"
@@ -310,7 +312,7 @@ export default function StudiosPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Regional Timezone</label>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('regionalTimezone')}</label>
                                         <input
                                             type="text"
                                             value={formData.timezone}
@@ -329,7 +331,7 @@ export default function StudiosPage() {
                             onClick={() => setIsDialogOpen(false)}
                             className="flex-1"
                         >
-                            Abort
+                            {t('abort')}
                         </Button>
                         <Button
                             type="submit"
@@ -339,12 +341,12 @@ export default function StudiosPage() {
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Initializing...
+                                    {t('initializing')}
                                 </>
                             ) : (
                                 <>
                                     <Sparkles className="w-4 h-4 mr-2" />
-                                    Initialize Headquarters
+                                    {t('initializeHeadquarters')}
                                 </>
                             )}
                         </Button>
@@ -379,7 +381,7 @@ export default function StudiosPage() {
                 <button
                     onClick={() => fileInputRef.current?.click()}
                     className="absolute top-6 right-6 z-20 bg-black/30 hover:bg-black/50 text-white p-3 rounded-full backdrop-blur-md transition-all"
-                    title="Change Cover Image"
+                    title={t('changeCoverImage')}
                 >
                     <Camera className="w-5 h-5" />
                 </button>
@@ -404,7 +406,7 @@ export default function StudiosPage() {
                         <div
                             className="relative w-24 h-24 md:w-32 md:h-32 bg-white rounded-3xl shadow-xl flex items-center justify-center overflow-hidden border-4 border-white transform translate-y-4 md:translate-y-0 group-hover:-translate-y-2 transition-transform duration-500 cursor-pointer"
                             onClick={() => logoInputRef.current?.click()}
-                            title="Click to upload studio logo"
+                            title={t('clickToUploadStudioLogo')}
                         >
                             {(activeStudio.logo || activeStudio.settings?.logo_url) ? (
                                 <img
@@ -442,7 +444,7 @@ export default function StudiosPage() {
                         className="bg-white/20 hover:bg-white/30 text-white border border-white/40 backdrop-blur-md gap-2 px-6 py-6 rounded-2xl transition-all font-bold mb-2 shadow-lg whitespace-nowrap"
                     >
                         <Settings className="w-5 h-5" />
-                        Configure Studio
+                        {t('configureStudio')}
                     </Button>
                 </div>
             </div>
@@ -457,8 +459,8 @@ export default function StudiosPage() {
                                 <Globe className="w-6 h-6" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-black text-gray-900">Operational Details</h3>
-                                <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Contact & Location</p>
+                                <h3 className="text-xl font-black text-gray-900">{t('operationalDetails')}</h3>
+                                <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{t('contactLocation')}</p>
                             </div>
                         </div>
 
@@ -466,11 +468,11 @@ export default function StudiosPage() {
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <span className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                        <MapPin className="w-3 h-3" /> Physical Address
+                                        <MapPin className="w-3 h-3" /> {t('physicalAddress')}
                                     </span>
                                     <div className="group/address relative">
                                         <p className="font-medium text-gray-900 leading-relaxed text-lg">
-                                            {activeStudio.address_line1 || <span className="text-gray-300 italic">No address set</span>}<br />
+                                            {activeStudio.address_line1 || <span className="text-gray-300 italic">{t('noAddressSet')}</span>}<br />
                                             {activeStudio.address_line2 && <>{activeStudio.address_line2}<br /></>}
                                             <span className="text-gray-500">
                                                 {[activeStudio.city, activeStudio.state, activeStudio.postal_code].filter(Boolean).join(', ')}
@@ -485,7 +487,7 @@ export default function StudiosPage() {
                                                 className="mt-3 flex items-center gap-2 text-xs font-bold text-primary hover:text-primary-hover transition-colors"
                                             >
                                                 <Globe className="w-3 h-3" />
-                                                View on Google Maps
+                                                {t('viewOnGoogleMaps')}
                                             </button>
                                         )}
                                     </div>
@@ -493,11 +495,11 @@ export default function StudiosPage() {
 
                                 <div className="pt-4 border-t border-gray-50 grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Timezone</span>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('timezone')}</span>
                                         <p className="text-sm font-bold text-gray-700">{activeStudio.timezone}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Currency</span>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('currency')}</span>
                                         <p className="text-sm font-bold text-gray-700">{activeStudio.currency}</p>
                                     </div>
                                 </div>
@@ -506,12 +508,12 @@ export default function StudiosPage() {
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <span className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                        <Phone className="w-3 h-3" /> Contact Methods
+                                        <Phone className="w-3 h-3" /> {t('contactMethods')}
                                     </span>
                                     <div className="space-y-3 mt-1">
                                         <div className="flex items-center gap-3 text-gray-700 bg-gray-50/50 p-3 rounded-xl border border-gray-100">
                                             <Mail className="w-4 h-4 text-gray-400" />
-                                            <span className="font-medium">{activeStudio.email || <span className="text-gray-300 italic">No email set</span>}</span>
+                                            <span className="font-medium">{activeStudio.email || <span className="text-gray-300 italic">{t('noEmailSet')}</span>}</span>
                                         </div>
                                         {activeStudio.phone && (
                                             <div className="flex items-center gap-3 text-gray-700 bg-gray-50/50 p-3 rounded-xl border border-gray-100">
@@ -530,11 +532,11 @@ export default function StudiosPage() {
 
                                 <div className="pt-4 border-t border-gray-50 grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Lesson Default</span>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('lessonDefault')}</span>
                                         <p className="text-sm font-bold text-gray-700">{activeStudio.settings?.default_lesson_duration || 60} min</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Notice Period</span>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('noticePeriod')}</span>
                                         <p className="text-sm font-bold text-gray-700">{activeStudio.settings?.cancellation_notice_period || 24} hrs</p>
                                     </div>
                                 </div>
@@ -550,8 +552,8 @@ export default function StudiosPage() {
                         <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-700" />
                         <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-700" />
 
-                        <h3 className="text-xl font-black mb-2 relative z-10">Studio Command</h3>
-                        <p className="text-gray-400 text-sm mb-8 relative z-10">Manage your daily operations</p>
+                        <h3 className="text-xl font-black mb-2 relative z-10">{t('studioCommand')}</h3>
+                        <p className="text-gray-400 text-sm mb-8 relative z-10">{t('manageYourDailyOperations')}</p>
 
                         <div className="space-y-3 relative z-10">
                             <Button
@@ -559,7 +561,7 @@ export default function StudiosPage() {
                                 onClick={() => router.push('/dashboard/schedule')}
                             >
                                 <Calendar className="w-5 h-5 mr-3 text-indigo-600" />
-                                Master Schedule
+                                {t('masterSchedule')}
                             </Button>
                             <Button
                                 variant="ghost"
@@ -567,7 +569,7 @@ export default function StudiosPage() {
                                 onClick={() => router.push('/dashboard/students')}
                             >
                                 <Sparkles className="w-5 h-5 mr-3 text-yellow-400" />
-                                Student Roster
+                                {t('studentRoster')}
                             </Button>
                         </div>
                     </div>
@@ -577,16 +579,16 @@ export default function StudiosPage() {
                         <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-4">
                                 <Palette className="w-5 h-5 text-white/80" />
-                                <h4 className="font-bold text-lg">Identity & Theme</h4>
+                                <h4 className="font-bold text-lg">{t('identityTheme')}</h4>
                             </div>
                             <p className="text-white/80 text-sm mb-6 leading-relaxed">
-                                Customize your studio's digital presence. Your brand color communicates your vibe.
+                                {t('customizeYourStudioSDigitalPresenceYourBrandColorCommunicatesYourVibe')}
                             </p>
                             <Button
                                 onClick={() => router.push('/dashboard/settings?tab=appearance')}
                                 className="w-full bg-white text-indigo-600 hover:bg-gray-50 font-bold border-none shadow-lg py-6 rounded-xl"
                             >
-                                Open Visual Editor
+                                {t('openVisualEditor')}
                             </Button>
                         </div>
                     </div>
