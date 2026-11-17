@@ -825,7 +825,8 @@
     "photoInfo": "JPG, PNG or WebP up to 5 MB; can be cropped before saving.",
     "invalidPhoto": "Choose a JPG, PNG or WebP image.",
     "photoTooLarge": "Photo must be 5 MB or less.",
-    "userSavedPhotoFailed": "The user account was saved, but the profile photo upload failed."
+    "userSavedPhotoFailed": "The user account was saved, but the profile photo upload failed.",
+    "studentAccountsFromRoster": "Students are created only in student management. Set up their login from their student profile."
   },
   "Resources": {
     "loadingLibrary": "Loading Library...",
