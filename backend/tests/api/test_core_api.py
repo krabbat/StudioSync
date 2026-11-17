@@ -427,3 +427,24 @@ def test_home_address_in_student_and_lesson_api(authenticated_client, student, t
     rows = response.data.get("results", []) if isinstance(response.data, dict) else response.data
     row = next(item for item in rows if str(item["id"]) == str(lesson.id))
     assert row["student_address"] == "Hauptstr. 12a, 15738 Zeuthen"
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_admin_user_creation_cannot_duplicate_student(authenticated_client, studio):
+    """All pupils must be enrolled through the students API, never /core/users/."""
+    from apps.core.models import User
+
+    before = User.objects.count()
+    response = authenticated_client.post(
+        "/api/core/users/",
+        {
+            "first_name": "Duplicated",
+            "last_name": "Pupil",
+            "email": "duplicate-student@example.test",
+            "role": "student",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert User.objects.count() == before
