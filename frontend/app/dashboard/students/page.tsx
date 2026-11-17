@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useUser } from '@/contexts/UserContext'
 import { useStudents, useTeachers, useStudentStats, useInstruments } from '@/hooks/useDashboardData'
 import api from '@/services/api'
+import { proxyFileUrl } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
 import {
     Loader2, UserPlus, Music,
@@ -42,6 +43,8 @@ interface StudentData {
     is_active: boolean
     first_name?: string
     last_name?: string
+    avatar?: string | null
+    enrollment_date?: string | null
 }
 
 // --- Helper Functions ---
@@ -97,6 +100,7 @@ export default function StudentsPage() {
         instrument: '',
         instruments: [] as string[],
         primary_teacher: '',
+        enrollment_date: '',
         is_active: true
     })
 
@@ -125,6 +129,7 @@ export default function StudentsPage() {
             instrument: student.instrument || '',
             instruments: student.instruments || (student.instrument ? [student.instrument] : []),
             primary_teacher: typeof student.primary_teacher === 'object' ? student.primary_teacher?.id : student.primary_teacher || student.teacher_id || '',
+            enrollment_date: student.enrollment_date || '',
             is_active: student.is_active ?? true
         })
         setIsEditModalOpen(true)
@@ -135,7 +140,11 @@ export default function StudentsPage() {
         if (!selectedStudent) return
         setIsSubmitting(true)
         try {
-            await api.patch(`/students/${selectedStudent.id}/`, formData)
+            // Leave enrollment untouched if the list was loaded from an older API.
+            await api.patch(`/students/${selectedStudent.id}/`, {
+                ...formData,
+                ...(formData.enrollment_date ? { enrollment_date: formData.enrollment_date } : {})
+            })
             toast.success(t('saved'))
             setIsEditModalOpen(false)
             if (refresh) refresh()
@@ -279,9 +288,17 @@ export default function StudentsPage() {
                                     <td className="px-8 py-6">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden group-hover:scale-105 transition-all">
-                                                <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xs uppercase">
-                                                    {(student.user?.first_name?.[0] || '') + (student.user?.last_name?.[0] || '')}
-                                                </div>
+                                                {student.avatar || student.user?.avatar ? (
+                                                    <img
+                                                        src={proxyFileUrl(student.avatar || student.user?.avatar) || undefined}
+                                                        alt={t('studentPhoto', { name: student.name || '' })}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-500 font-black text-xs uppercase">
+                                                        {student.name?.trim().split(/\s+/).slice(0, 2).map((part: string) => part[0]).join('') || '?'}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="font-black text-gray-900 uppercase tracking-tighter leading-tight">{student.name}</span>
@@ -422,6 +439,16 @@ export default function StudentsPage() {
                                     value={formData.email}
                                     onChange={e => setFormData({ ...formData, email: e.target.value })}
                                     className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all"
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="edit-student-enrollment-date">{t('enrollmentDate')}</label>
+                                <input
+                                    id="edit-student-enrollment-date"
+                                    type="date"
+                                    value={formData.enrollment_date}
+                                    onChange={e => setFormData({ ...formData, enrollment_date: e.target.value })}
+                                    className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none"
                                 />
                             </div>
                         </div>

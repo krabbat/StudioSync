@@ -131,7 +131,9 @@
     "enrollment": "Enrollment",
     "cancel": "Cancel",
     "saving": "Saving Changes...",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "enrollmentDate": "Student since (enrollment date)",
+    "studentPhoto": "Profile photo of {name}"
   },
   "DashboardHeader": {
     "allMarkedRead": "All notifications marked as read",

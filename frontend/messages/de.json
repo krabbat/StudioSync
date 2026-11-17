@@ -131,7 +131,9 @@
     "enrollment": "Anmeldestatus",
     "cancel": "Abbrechen",
     "saving": "Änderungen werden gespeichert …",
-    "saveChanges": "Änderungen speichern"
+    "saveChanges": "Änderungen speichern",
+    "enrollmentDate": "Schüler seit (Aufnahmedatum)",
+    "studentPhoto": "Profilfoto von {name}"
   },
   "DashboardHeader": {
     "allMarkedRead": "Alle Benachrichtigungen als gelesen markiert",
