@@ -20,6 +20,11 @@ function ResetPasswordForm() {
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+    const [isHydrated, setIsHydrated] = useState(false)
+
+    useEffect(() => {
+        setIsHydrated(true)
+    }, [])
     const [success, setSuccess] = useState(false)
 
     // Password validation states
@@ -108,7 +113,7 @@ function ResetPasswordForm() {
     }
 
     return (
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form method="post" className="space-y-6" onSubmit={handleSubmit}>
             {error && (
                 <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-center gap-3 text-red-600">
                     <AlertCircle className="w-5 h-5 shrink-0" />
@@ -178,7 +183,7 @@ function ResetPasswordForm() {
 
             <button
                 type="submit"
-                disabled={isLoading || !passwordsMatch || !hasMinLength}
+                disabled={!isHydrated || isLoading || !passwordsMatch || !hasMinLength}
                 className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
             >
                 {isLoading ? (
