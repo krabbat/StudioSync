@@ -238,3 +238,93 @@ def test_analytics_student_enrollments_ignore_non_students(authenticated_client,
     response = authenticated_client.get("/api/core/analytics/")
     assert response.status_code == status.HTTP_200_OK
     assert response.data["student_growth"][-1]["students"] == 1
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_solo_teacher_mode_uses_existing_admin_login(authenticated_client, admin_user, studio):
+    """A studio owner can teach without creating another User account."""
+    from apps.core.models import Teacher, User
+
+    before = User.objects.count()
+    response = authenticated_client.post(
+        "/api/core/teachers/solo-mode/", {"enabled": True}, format="json"
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert User.objects.count() == before
+
+    profile = Teacher.objects.get(user=admin_user, studio=studio)
+    studio.refresh_from_db()
+    assert studio.settings["solo_teacher_mode"] is True
+    assert response.data["teacher_id"] == str(profile.id)
+
+    me = authenticated_client.get("/api/auth/me/")
+    assert me.status_code == status.HTTP_200_OK
+    assert str(me.data["teacher_profile"]["id"]) == str(profile.id)
+
+    enrolled = authenticated_client.post(
+        "/api/students/",
+        {"first_name": "Solo", "last_name": "Pupil", "email": "solo-pupil@example.test"},
+        format="json",
+    )
+    assert enrolled.status_code == status.HTTP_201_CREATED
+    assert Student.objects.get(pk=enrolled.data["id"]).primary_teacher_id == profile.id
+
+    disabled = authenticated_client.post(
+        "/api/core/teachers/solo-mode/", {"enabled": False}, format="json"
+    )
+    assert disabled.status_code == status.HTTP_200_OK
+    assert Teacher.objects.filter(pk=profile.id, user=admin_user).exists()
+    studio.refresh_from_db()
+    assert studio.settings["solo_teacher_mode"] is False
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_solo_teacher_profile_takeover_preserves_assignments(
+    authenticated_client, admin_user, studio, teacher, teacher_user, student
+):
+    """Claiming one's old teacher login keeps the original teacher ID and pupil links."""
+    teacher_user.first_name = admin_user.first_name
+    teacher_user.last_name = admin_user.last_name
+    teacher_user.save(update_fields=["first_name", "last_name"])
+
+    response = authenticated_client.post(
+        "/api/core/teachers/solo-mode/",
+        {"enabled": True, "teacher_id": str(teacher.id)},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_200_OK
+    teacher.refresh_from_db()
+    student.refresh_from_db()
+    assert teacher.user_id == admin_user.id
+    assert student.primary_teacher_id == teacher.id
+    assert teacher_user.__class__.objects.filter(pk=teacher_user.pk).exists()
+    assert teacher_user.__class__.objects.filter(pk=teacher_user.pk, role="teacher").exists()
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_assignment_rejects_teacher_from_another_studio(
+    authenticated_client, studio, student
+):
+    """A pupil cannot be assigned to an instructor from another tenant."""
+    from apps.core.models import Teacher, User
+
+    other_owner = User.objects.create_user(
+        email="other-owner@example.test", role="admin",
+        first_name="Other", last_name="Owner"
+    )
+    other_studio = Studio.objects.create(
+        name="Other School", owner=other_owner, email="other@example.test"
+    )
+    outside_teacher = Teacher.objects.create(user=other_owner, studio=other_studio)
+
+    response = authenticated_client.patch(
+        f"/api/students/{student.pk}/",
+        {"primary_teacher": str(outside_teacher.pk)},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    student.refresh_from_db()
+    assert student.primary_teacher_id != outside_teacher.pk
