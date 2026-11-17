@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useUser } from '@/contexts/UserContext'
 import { Mail, Lock, Loader2, AlertCircle, ArrowRight, Music2 } from 'lucide-react'
 import Link from 'next/link'
@@ -47,6 +47,12 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [demoLoading, setDemoLoading] = useState<string | null>(null)
     const [error, setError] = useState('')
+    // Keep server-rendered login form inert until React can safely POST credentials.
+    const [isHydrated, setIsHydrated] = useState(false)
+
+    useEffect(() => {
+        setIsHydrated(true)
+    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -164,7 +170,7 @@ export default function LoginPage() {
                             </p>
                         </div>
 
-                        <form className="space-y-4" onSubmit={handleSubmit}>
+                        <form method="post" className="space-y-4" onSubmit={handleSubmit}>
                             {error && (
                                 <div className="flex items-start gap-2.5 p-3.5 rounded-xl text-sm" style={{ backgroundColor: 'rgba(181,64,64,0.06)', border: '1px solid rgba(181,64,64,0.2)', color: '#b54040' }}>
                                     <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -229,7 +235,7 @@ export default function LoginPage() {
                             </div>
 
                             <button
-                                type="submit" disabled={isLoading}
+                                type="submit" disabled={!isHydrated || isLoading}
                                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{ backgroundColor: A.amber, color: '#fff' }}
                                 onMouseEnter={e => { if (!isLoading) e.currentTarget.style.backgroundColor = A.amberDark }}
