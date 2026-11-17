@@ -58,6 +58,17 @@ export default function BillingPage() {
     const { invoices, loading: loadingInvoices, refetch: refetchInvoices } = useInvoices()
     const { plans, loading: loadingPlans } = useSubscriptionPlans()
     const { subscriptions, loading: loadingSubs, refetch: refetchSubs } = useSubscriptions()
+    // Keep API values intact; only translate visible labels.
+    const statusLabels: Record<string, string> = {
+        paid: tr('paid'), pending: tr('pending'), overdue: tr('overdue'),
+        draft: tr('draft'), sent: tr('sent'), partial: tr('partial'),
+        cancelled: tr('cancelled'), active: tr('active'),
+        past_due: tr('pastDue'), trialing: tr('trialing')
+    }
+    const intervalLabels: Record<string, string> = {
+        day: tr('intervalDay'), week: tr('intervalWeek'),
+        month: tr('intervalMonth'), year: tr('intervalYear')
+    }
     const [studio, setStudio] = useState<any>(null)
 
     useEffect(() => {
@@ -429,7 +440,7 @@ export default function BillingPage() {
                                             <td className="px-6 py-6">
                                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(invoice.status)}`}>
                                                     {getStatusIcon(invoice.status)}
-                                                    {invoice.status}
+                                                    {statusLabels[invoice.status] || invoice.status}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-6 font-bold text-gray-500 text-xs">
@@ -503,13 +514,13 @@ export default function BillingPage() {
                                             <div>
                                                 <div className="font-black text-gray-900 text-sm tracking-tight">{invoice.invoice_number}</div>
                                                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mt-1">
-                                                    {new Date(invoice.due_date).toLocaleDateString()}
+                                                    {new Date(invoice.due_date).toLocaleDateString(locale)}
                                                 </div>
                                             </div>
                                         </div>
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(invoice.status)}`}>
                                             {getStatusIcon(invoice.status)}
-                                            {invoice.status}
+                                            {statusLabels[invoice.status] || invoice.status}
                                         </span>
                                     </div>
 
@@ -594,8 +605,8 @@ export default function BillingPage() {
                                                 <div>
                                                     <h3 className="font-bold text-gray-900">{sub.plan_details?.name}</h3>
                                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
-                                                        {isManager ? `Student: ${sub.student_name} ` : ''}
-                                                        ({sub.plan_details?.interval}ly)
+                                                        {isManager ? tr('studentName', {name: sub.student_name || ''}) : ''}
+                                                        ({intervalLabels[sub.plan_details?.interval] || sub.plan_details?.interval})
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center justify-between sm:justify-end gap-4">
@@ -603,7 +614,7 @@ export default function BillingPage() {
                                                         sub.status === 'past_due' ? 'bg-red-50 text-red-600 border-red-100' :
                                                             'bg-gray-50 text-gray-500 border-gray-100'
                                                         }`}>
-                                                        {sub.status}
+                                                        {statusLabels[sub.status] || sub.status}
                                                     </span>
                                                     <span className="font-black text-gray-900">${sub.plan_details?.price}</span>
                                                 </div>
@@ -633,9 +644,9 @@ export default function BillingPage() {
                                                 <h3 className="font-black text-lg text-gray-900 mb-1">{plan.name}</h3>
                                                 <div className="flex items-baseline gap-1">
                                                     <span className="text-3xl font-black tracking-tight">${plan.price}</span>
-                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">/ {plan.interval}</span>
+                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">/ {intervalLabels[plan.interval] || plan.interval}</span>
                                                 </div>
-                                                <p className="text-xs font-medium text-gray-500 mt-2">{plan.description || `Subscribe ${plan.interval}ly logic`}</p>
+                                                <p className="text-xs font-medium text-gray-500 mt-2">{plan.description || tr('subscriptionPlanDescription')}</p>
                                             </div>
                                             {!isManager && (
                                                 <Button
@@ -792,7 +803,7 @@ export default function BillingPage() {
                         className="flex-[2] gap-2 active:scale-95 transition-transform"
                     >
                         {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpRight className="w-4 h-4" />}
-                        {creating ? 'Creating...' : 'Issue Invoice'}
+                        {creating ? tr('creating') : tr('issueInvoice')}
                     </Button>
                 </DialogFooter>
             </Dialog>
@@ -805,7 +816,7 @@ export default function BillingPage() {
             >
                 {viewingInvoice && (
                     <>
-                        <DialogHeader title={`Invoice ${viewingInvoice.invoice_number}`} />
+                        <DialogHeader title={tr('invoiceNumber', {number: viewingInvoice.invoice_number})} />
                         <DialogContent>
                             <div className="space-y-8 print:p-0">
                                 {/* Invoice Header with Studio Branding */}
@@ -818,7 +829,7 @@ export default function BillingPage() {
                                         )}
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-black text-gray-900 text-lg leading-tight">{studio?.name || 'Studio Invoice'}</p>
+                                        <p className="font-black text-gray-900 text-lg leading-tight">{studio?.name || tr('studioInvoice')}</p>
                                         {(studio?.address_line1 || studio?.city) && (
                                             <p className="text-xs font-medium text-gray-400 mt-0.5">
                                                 {[studio.address_line1, studio.city, studio.state].filter(Boolean).join(', ')}
@@ -838,7 +849,7 @@ export default function BillingPage() {
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('billedTo')}</p>
                                         <p className="text-lg font-black text-gray-900 leading-tight">
-                                            {viewingInvoice.student_name || viewingInvoice.band_name || 'Generic Client'}
+                                            {viewingInvoice.student_name || viewingInvoice.band_name || tr('genericClient')}
                                         </p>
                                     </div>
                                     <div className="text-right space-y-1">
@@ -893,7 +904,7 @@ export default function BillingPage() {
                                         <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">{tr('totalBalanceDue')}</p>
                                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/10 border border-white/20`}>
                                             <span className={viewingInvoice.status === 'paid' ? 'text-green-400' : 'text-yellow-400'}>
-                                                {viewingInvoice.status}
+                                                {statusLabels[viewingInvoice.status] || viewingInvoice.status}
                                             </span>
                                         </div>
                                         {viewingInvoice.stripe_transaction_id && (
