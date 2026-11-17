@@ -162,7 +162,7 @@ export default function UsersPage() {
             if (refresh) refresh()
         } catch (error: any) {
             console.error('Failed to save user:', error)
-            toast.error(error.response?.data?.detail || 'Failed to save user')
+            toast.error(error.response?.data?.detail || t('saveUserFailed'))
         } finally {
             setIsSubmitting(false)
         }
@@ -174,20 +174,24 @@ export default function UsersPage() {
             return
         }
 
-        if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
+        if (!confirm(t('confirmDeleteUser', {name: userName}))) {
             return
         }
 
         try {
             await api.delete(`/core/users/${userId}/`)
-            toast.success(`${userName} has been deleted successfully`)
+            toast.success(t('userDeleted', {name: userName}))
             if (refresh) refresh()
         } catch (error: any) {
             console.error('Failed to delete user:', error)
-            toast.error(error.response?.data?.detail || 'Failed to delete user')
+            toast.error(error.response?.data?.detail || t('deleteUserFailed'))
         }
     }
 
+    const roleLabels: Record<string, string> = {
+        admin: t('administrator'), teacher: t('instructor'),
+        student: t('student'), parent: t('parent')
+    }
     const getRoleBadge = (role: string) => {
         const styles: Record<string, string> = {
             admin: 'bg-purple-50 text-purple-600 border-purple-100',
@@ -197,7 +201,7 @@ export default function UsersPage() {
         }
         return (
             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${styles[role] || 'bg-gray-50 text-gray-500 border-gray-100'}`}>
-                {role === 'teacher' ? 'Instructor' : role}
+                {roleLabels[role] || role}
             </span>
         )
     }
@@ -224,7 +228,7 @@ export default function UsersPage() {
                     <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
                         {t('users')}
                         <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-black text-primary uppercase tracking-widest">
-                            {meta?.count || 0} Total
+                            {t('totalCount', {count: meta?.count || 0})}
                         </div>
                     </h1>
                     <p className="text-gray-500 font-medium max-w-lg">{t('manageTheStudioCommunityVerifyCredentialsAndOrchestrateRoles')}</p>
@@ -241,10 +245,10 @@ export default function UsersPage() {
             {/* Quick Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { label: 'Total Accounts', value: meta?.count || 0, icon: UsersIcon, color: 'blue' },
-                    { label: 'Active Students', value: studentStats?.active_students || 0, icon: UserCog, color: 'green' },
-                    { label: 'Faculty', value: teachers.length, icon: Music, color: 'purple' },
-                    { label: 'System Health', value: '100%', icon: Shield, color: 'teal' }
+                    { label: t('totalAccounts'), value: meta?.count || 0, icon: UsersIcon, color: 'blue' },
+                    { label: t('activeStudents'), value: studentStats?.active_students || 0, icon: UserCog, color: 'green' },
+                    { label: t('filterFaculty'), value: teachers.length, icon: Music, color: 'purple' },
+                    { label: t('systemHealth'), value: '100%', icon: Shield, color: 'teal' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
                         <div className="flex items-center justify-between mb-4">
@@ -273,11 +277,11 @@ export default function UsersPage() {
                 </div>
                 <div className="flex p-1 bg-gray-50 rounded-2xl border border-gray-100 overflow-x-auto w-full md:w-auto no-scrollbar">
                     {[
-                        { value: 'all', label: 'All Users' },
-                        { value: 'student', label: 'Students' },
-                        { value: 'teacher', label: 'Faculty' },
-                        { value: 'parent', label: 'Parents' },
-                        { value: 'admin', label: 'Admins' }
+                        { value: 'all', label: t('filterAll') },
+                        { value: 'student', label: t('filterStudents') },
+                        { value: 'teacher', label: t('filterFaculty') },
+                        { value: 'parent', label: t('filterParents') },
+                        { value: 'admin', label: t('filterAdmins') }
                     ].map(({ value, label }) => (
                         <button
                             key={value}

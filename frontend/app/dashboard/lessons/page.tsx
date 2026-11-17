@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useState } from 'react'
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { useUser } from '@/contexts/UserContext'
@@ -52,6 +52,7 @@ interface Lesson {
 
 export default function LessonsPage() {
   const tr = useTranslations('Lessons')
+  const locale = useLocale()
     const { currentUser } = useUser()
     const { lessons, loading, createLesson, updateLesson } = useLessons()
     const typedLessons = lessons as Lesson[]
@@ -111,6 +112,16 @@ export default function LessonsPage() {
         is_online: false,
     })
 
+    const statusLabels: Record<string, string> = {
+        all: tr('all'), scheduled: tr('statusScheduled'),
+        in_progress: tr('statusInProgress'), completed: tr('statusCompleted'),
+        cancelled: tr('statusCancelled'), no_show: tr('statusNoShow')
+    }
+    const typeLabels: Record<string, string> = {
+        private: tr('typePrivate'), group: tr('typeGroup'),
+        workshop: tr('typeWorkshop'), recital: tr('typeRecital'),
+        makeup: tr('typeMakeup')
+    }
     const getStatusBadge = (status: string) => {
         const styles = {
             scheduled: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -125,7 +136,7 @@ export default function LessonsPage() {
 
         return (
             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${style}`}>
-                {status ? status.replace('_', ' ') : 'Unknown'}
+                {status ? statusLabels[key] || status : tr('unknown')}
             </span>
         )
     }
@@ -143,7 +154,7 @@ export default function LessonsPage() {
 
         return (
             <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-tighter ${style}`}>
-                {type ? type : 'Unknown'}
+                {type ? typeLabels[key] || type : tr('unknown')}
             </span>
         )
     }
@@ -268,7 +279,7 @@ export default function LessonsPage() {
                                             : 'text-gray-400 hover:text-gray-600'
                                         }`}
                                 >
-                                    {status}
+                                    {statusLabels[status] || status}
                                 </button>
                             ))}
                         </div>
@@ -343,10 +354,10 @@ export default function LessonsPage() {
                                             </td>
                                             <td className="px-6 py-6">
                                                 <div className="flex flex-col gap-1">
-                                                    <span className="text-sm font-black text-gray-900 tracking-tight">{format(start, 'EEE, MMM d')}</span>
+                                                    <span className="text-sm font-black text-gray-900 tracking-tight">{new Intl.DateTimeFormat(locale, { weekday: 'short', month: 'short', day: 'numeric' }).format(start)}</span>
                                                     <span className="text-[10px] text-gray-400 flex items-center gap-1.5 font-black uppercase tracking-widest">
                                                         <Clock className="w-3 h-3 text-primary" />
-                                                        {format(start, 'h:mm a')} • {duration}m
+                                                        {new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(start)} • {duration}m
                                                     </span>
                                                 </div>
                                             </td>
@@ -431,7 +442,7 @@ export default function LessonsPage() {
                                     <div className="flex items-center justify-between text-xs font-bold text-gray-600 bg-gray-50 rounded-xl p-3">
                                         <div className="flex items-center gap-2">
                                             <Calendar className="w-3.5 h-3.5 text-primary" />
-                                            {format(start, 'MMM d, h:mm a')}
+                                            {new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(start)}
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Clock className="w-3.5 h-3.5 text-gray-400" />
@@ -487,7 +498,7 @@ export default function LessonsPage() {
                 {/* Pagination */}
                 <div className="p-4 sm:p-6 bg-gray-50/30 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest order-2 sm:order-1">
-                        Showing <span className="text-gray-900">{startIndex + 1}</span> to <span className="text-gray-900">{Math.min(startIndex + itemsPerPage, filteredLessons.length)}</span> of <span className="text-gray-900">{filteredLessons.length}</span>
+                        {tr('showingRange', {from: filteredLessons.length ? startIndex + 1 : 0, to: Math.min(startIndex + itemsPerPage, filteredLessons.length), count: filteredLessons.length})}
                     </div>
                     <div className="flex items-center gap-3 order-1 sm:order-2">
                         <Button
@@ -864,7 +875,7 @@ export default function LessonsPage() {
                                     className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
                                 >
                                     {['private', 'group', 'workshop', 'recital', 'makeup'].map(type => (
-                                        <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+                                        <option key={type} value={type}>{typeLabels[type] || type}</option>
                                     ))}
                                 </select>
                             </div>
@@ -877,7 +888,7 @@ export default function LessonsPage() {
                                     className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
                                 >
                                     {['scheduled', 'in_progress', 'completed', 'cancelled', 'no_show'].map(type => (
-                                        <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')}</option>
+                                        <option key={type} value={type}>{statusLabels[type] || type}</option>
                                     ))}
                                 </select>
                             </div>
@@ -927,7 +938,7 @@ export default function LessonsPage() {
                         }}
                     >
                         {lessonSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                        {editingLessonId ? 'Save Changes' : 'Create Lesson'}
+                        {editingLessonId ? tr('saveChanges') : tr('createLesson')}
                     </Button>
                 </DialogFooter>
             </Dialog>

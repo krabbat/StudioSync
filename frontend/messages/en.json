@@ -461,7 +461,20 @@
     "editPlan": "Edit Lesson Plan",
     "createPlan": "Create Lesson Plan",
     "editLesson": "Edit Lesson",
-    "createLesson": "Create Lesson"
+    "createLesson": "Create Lesson",
+    "statusScheduled": "Scheduled",
+    "statusInProgress": "In progress",
+    "statusCompleted": "Completed",
+    "statusCancelled": "Cancelled",
+    "statusNoShow": "No show",
+    "typePrivate": "Private lesson",
+    "typeGroup": "Group lesson",
+    "typeWorkshop": "Workshop",
+    "typeRecital": "Recital",
+    "typeMakeup": "Make-up lesson",
+    "unknown": "Unknown",
+    "saveChanges": "Save Changes",
+    "showingRange": "Showing {from} to {to} of {count} lessons"
   },
   "Billing": {
     "loadingBilling": "Loading Billing...",
@@ -645,7 +658,20 @@
     "addExpertiseEGNeoSoulRhythm": "Add expertise (e.g. Neo-Soul Rhythm)",
     "msgUserUpdatedSuccessfully": "User updated successfully!",
     "msgUserCreatedSuccessfully": "User created successfully!",
-    "msgYouCannotDeleteYourOwnAccount": "You cannot delete your own account!"
+    "msgYouCannotDeleteYourOwnAccount": "You cannot delete your own account!",
+    "filterAll": "All Users",
+    "filterStudents": "Students",
+    "filterFaculty": "Faculty",
+    "filterParents": "Parents",
+    "filterAdmins": "Admins",
+    "totalCount": "{count} total",
+    "totalAccounts": "Total Accounts",
+    "activeStudents": "Active Students",
+    "systemHealth": "System Health",
+    "saveUserFailed": "Failed to save user",
+    "deleteUserFailed": "Failed to delete user",
+    "confirmDeleteUser": "Are you sure you want to delete {name}? This action cannot be undone.",
+    "userDeleted": "{name} has been deleted successfully"
   },
   "Resources": {
     "loadingLibrary": "Loading Library...",

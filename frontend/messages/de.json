@@ -461,7 +461,20 @@
     "editPlan": "Unterrichtsvorlage bearbeiten",
     "createPlan": "Unterrichtsvorlage anlegen",
     "editLesson": "Unterrichtsstunde bearbeiten",
-    "createLesson": "Unterrichtsstunde anlegen"
+    "createLesson": "Unterrichtsstunde anlegen",
+    "statusScheduled": "Geplant",
+    "statusInProgress": "Läuft",
+    "statusCompleted": "Abgeschlossen",
+    "statusCancelled": "Abgesagt",
+    "statusNoShow": "Nicht erschienen",
+    "typePrivate": "Einzelunterricht",
+    "typeGroup": "Gruppenunterricht",
+    "typeWorkshop": "Workshop",
+    "typeRecital": "Vorspiel",
+    "typeMakeup": "Nachholstunde",
+    "unknown": "Unbekannt",
+    "saveChanges": "Änderungen speichern",
+    "showingRange": "{from}–{to} von {count} Unterrichtsstunden"
   },
   "Billing": {
     "loadingBilling": "Abrechnung wird geladen…",
@@ -645,7 +658,20 @@
     "addExpertiseEGNeoSoulRhythm": "Qualifikation hinzufügen (z. B. Gehörbildung)",
     "msgUserUpdatedSuccessfully": "Benutzer aktualisiert",
     "msgUserCreatedSuccessfully": "Benutzer angelegt",
-    "msgYouCannotDeleteYourOwnAccount": "Du kannst dein eigenes Benutzerkonto nicht löschen!"
+    "msgYouCannotDeleteYourOwnAccount": "Du kannst dein eigenes Benutzerkonto nicht löschen!",
+    "filterAll": "Alle",
+    "filterStudents": "Schüler",
+    "filterFaculty": "Lehrkräfte",
+    "filterParents": "Eltern",
+    "filterAdmins": "Administratoren",
+    "totalCount": "{count} insgesamt",
+    "totalAccounts": "Benutzerkonten insgesamt",
+    "activeStudents": "Aktive Schüler",
+    "systemHealth": "Systemstatus",
+    "saveUserFailed": "Benutzer konnte nicht gespeichert werden",
+    "deleteUserFailed": "Benutzer konnte nicht gelöscht werden",
+    "confirmDeleteUser": "{name} wirklich löschen? Dies kann nicht rückgängig gemacht werden.",
+    "userDeleted": "{name} wurde gelöscht."
   },
   "Resources": {
     "loadingLibrary": "Materialien werden geladen…",
