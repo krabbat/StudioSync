@@ -118,10 +118,10 @@ export default function InstructorsPage() {
                 try {
                     await api.patch(`/core/users/${accountId}/`, update)
                 } catch (avatarError) {
-                    // The teacher record has already been saved.
+                    // Keep the dialog and cropped image available for a retry.
+                    // Do not imply the photo was saved when this request failed.
                     console.error('Teacher saved but account/profile update failed', avatarError)
                     toast.error(tr('accountDetailsFailedAfterSave'))
-                    setIsEditModalOpen(false)
                     if (refresh) refresh()
                     return
                 }
