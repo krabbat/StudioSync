@@ -13,7 +13,16 @@ class LessonListSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     teacher_name = serializers.CharField(source="teacher.user.get_full_name", read_only=True)
     student_instrument = serializers.SerializerMethodField()
+    student_address = serializers.SerializerMethodField()
     band_name = serializers.SerializerMethodField()
+
+    def get_student_address(self, obj):
+        """Use the student's current address instead of a school room."""
+        if not obj.student_id:
+            return ""
+        pupil = obj.student
+        city_line = " ".join(part for part in (pupil.postal_code, pupil.city) if part)
+        return ", ".join(part for part in (pupil.address_line1, city_line) if part)
 
     def get_student_name(self, obj):
         if obj.student_id:
@@ -50,6 +59,7 @@ class LessonListSerializer(serializers.ModelSerializer):
             "teacher",
             "teacher_name",
             "student_instrument",
+            "student_address",
             "band",
             "band_name",
             "room",
@@ -77,6 +87,14 @@ class LessonDetailSerializer(serializers.ModelSerializer):
     band = serializers.SerializerMethodField()
     room = serializers.SerializerMethodField()
     duration_minutes = serializers.IntegerField(read_only=True)
+    student_address = serializers.SerializerMethodField()
+
+    def get_student_address(self, obj):
+        if not obj.student_id:
+            return ""
+        pupil = obj.student
+        city_line = " ".join(part for part in (pupil.postal_code, pupil.city) if part)
+        return ", ".join(part for part in (pupil.address_line1, city_line) if part)
 
     class Meta:
         model = Lesson
