@@ -894,6 +894,7 @@ export default function SchedulePage() {
                         {dayLessons.map((lesson: any) => (
                           <div
                             key={lesson.id}
+                            title={lesson.student_address || undefined}
                             onDoubleClick={(e) => {
                               e.stopPropagation();
                               handleOpenEditModal(lesson);
