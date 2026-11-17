@@ -4,7 +4,7 @@ from rest_framework import filters, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.core.models import Family, Student
+from apps.core.models import Family, Student, Teacher
 from apps.core.tenancy import studio_for_request, studios_for_request
 from apps.students.serializers import (
     StudentCreateUpdateSerializer,
@@ -117,7 +117,16 @@ class StudentViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import ValidationError
 
             raise ValidationError("No studio is associated with this account.")
-        serializer.save(studio=studio)
+        # In individual-teacher mode, new students belong to the owner by default.
+        # An explicit teacher choice (including null) always takes precedence.
+        extra = {"studio": studio}
+        if "primary_teacher" not in self.request.data and (studio.settings or {}).get("solo_teacher_mode"):
+            owner_teacher = Teacher.objects.filter(
+                studio=studio, user=studio.owner, is_active=True
+            ).first()
+            if owner_teacher:
+                extra["primary_teacher"] = owner_teacher
+        serializer.save(**extra)
 
 
 class FamilyViewSet(viewsets.ModelViewSet):
