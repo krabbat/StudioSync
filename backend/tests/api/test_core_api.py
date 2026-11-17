@@ -328,3 +328,102 @@ def test_student_assignment_rejects_teacher_from_another_studio(
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     student.refresh_from_db()
     assert student.primary_teacher_id != outside_teacher.pk
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_existing_student_account_password_activation(authenticated_client, student, admin_user):
+    """An admin enables login on the existing account without making a second User."""
+    from apps.core.models import User
+
+    account = student.user
+    account.set_unusable_password()
+    account.is_approved = False
+    account.save(update_fields=["password", "is_approved"])
+    before = User.objects.count()
+
+    response = authenticated_client.post(
+        f"/api/students/{student.pk}/set-password/",
+        {"password": "eX7!nQ83rV#p2y", "confirm_password": "eX7!nQ83rV#p2y"},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert User.objects.count() == before
+    account.refresh_from_db()
+    assert account.check_password("eX7!nQ83rV#p2y")
+    assert account.is_approved
+    assert Student.objects.get(pk=student.pk).user_id == account.pk
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_password_cannot_be_changed_by_teacher_or_with_mismatch(
+    authenticated_client, teacher_authenticated_client, student
+):
+    """Student password changes are restricted to studio admins."""
+    url = f"/api/students/{student.pk}/set-password/"
+    unauthorized = teacher_authenticated_client.post(
+        url, {"password": "LongPass123!", "confirm_password": "LongPass123!"}, format="json"
+    )
+    assert unauthorized.status_code == status.HTTP_403_FORBIDDEN
+    mismatch = authenticated_client.post(
+        url, {"password": "LongPass123!", "confirm_password": "Different123!"}, format="json"
+    )
+    assert mismatch.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_public_registration_disabled(api_client):
+    """Public signup must not create duplicate student or teacher accounts."""
+    from apps.core.models import User
+
+    before = User.objects.count()
+    response = api_client.post(
+        "/api/auth/register/",
+        {
+            "email": "uninvited@example.test", "password": "LongPass123!",
+            "first_name": "Uninvited", "last_name": "Account", "role": "teacher",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert User.objects.count() == before
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_home_address_in_student_and_lesson_api(authenticated_client, student, teacher, studio):
+    """The scheduler receives the pupil's address, not a studio room."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.lessons.models import Lesson
+
+    update = authenticated_client.patch(
+        f"/api/students/{student.pk}/",
+        {
+            "address_line1": "Hauptstr. 12a",
+            "postal_code": "15738",
+            "city": "Zeuthen",
+        },
+        format="json",
+    )
+    assert update.status_code == status.HTTP_200_OK
+    detail = authenticated_client.get(f"/api/students/{student.pk}/")
+    assert detail.status_code == status.HTTP_200_OK
+    assert detail.data["address_line1"] == "Hauptstr. 12a"
+
+    student.refresh_from_db()
+    assert student.postal_code == "15738"
+    assert student.city == "Zeuthen"
+
+    now = timezone.now()
+    lesson = Lesson.objects.create(
+        student=student, teacher=teacher, studio=studio,
+        scheduled_start=now, scheduled_end=now + timedelta(minutes=45),
+    )
+    response = authenticated_client.get("/api/lessons/")
+    assert response.status_code == status.HTTP_200_OK
+    rows = response.data.get("results", []) if isinstance(response.data, dict) else response.data
+    row = next(item for item in rows if str(item["id"]) == str(lesson.id))
+    assert row["student_address"] == "Hauptstr. 12a, 15738 Zeuthen"
