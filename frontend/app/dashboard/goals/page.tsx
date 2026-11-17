@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useGoals, useUsers } from '@/hooks/useDashboardData'
 import { Target, CheckCircle, Clock, AlertCircle, Plus, X, Loader2, Award, TrendingUp, Calendar } from 'lucide-react'
 import { useState } from 'react'
@@ -8,6 +9,7 @@ import { toast } from 'react-hot-toast'
 import { useUser } from '@/contexts/UserContext'
 
 export default function GoalsPage() {
+    const tr = useTranslations('Goals')
     const { goals, loading, refetch } = useGoals()
     const { users } = useUsers()
     const { currentUser } = useUser()
@@ -61,13 +63,13 @@ export default function GoalsPage() {
 
         try {
             await api.post('/lessons/goals/', submitData)
-            toast.success('Goal created successfully')
+            toast.success(tr('created'))
             setIsModalOpen(false)
             setFormData({ title: '', description: '', student: '', target_date: '', status: 'active' })
             refetch()
         } catch (error) {
             console.error(error)
-            toast.error('Failed to create goal')
+            toast.error(tr('createFailed'))
         } finally {
             setCreating(false)
         }
@@ -78,17 +80,17 @@ export default function GoalsPage() {
         : goals.filter((goal: any) => goal.status === filterStatus)
 
     const statusFilters = [
-        { value: 'all', label: 'All', icon: Target },
-        { value: 'active', label: 'Active', icon: TrendingUp },
-        { value: 'achieved', label: 'Achieved', icon: Award },
-        { value: 'abandoned', label: 'Abandoned', icon: AlertCircle }
+        { value: 'all', label: tr('all'), icon: Target },
+        { value: 'active', label: tr('active'), icon: TrendingUp },
+        { value: 'achieved', label: tr('achieved'), icon: Award },
+        { value: 'abandoned', label: tr('abandoned'), icon: AlertCircle }
     ]
 
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="w-10 h-10 text-[var(--color-primary)] animate-spin mb-4" />
-                <p className="text-gray-500 font-bold tracking-wider uppercase text-xs">Loading Goals...</p>
+                <p className="text-gray-500 font-bold tracking-wider uppercase text-xs">{tr('loadingGoals')}</p>
             </div>
         )
     }
@@ -97,8 +99,8 @@ export default function GoalsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl md:text-4xl font-bold text-gray-900">Student Goals</h1>
-                <p className="text-sm text-gray-600 mt-1">Track student progress and achievements</p>
+                <h1 className="text-2xl md:text-4xl font-bold text-gray-900">{tr('studentGoals')}</h1>
+                <p className="text-sm text-gray-600 mt-1">{tr('trackStudentProgressAndAchievements')}</p>
             </div>
 
             {/* Create Button */}
@@ -107,29 +109,29 @@ export default function GoalsPage() {
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors font-medium shadow-sm"
             >
                 <Plus className="w-5 h-5" />
-                Create Goal
+                {tr('createGoal')}
             </button>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-600 uppercase">Total Goals</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase">{tr('totalGoals')}</p>
                     <p className="text-2xl font-bold text-gray-900 mt-1">{goals.length}</p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-600 uppercase">Active</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase">{tr('active')}</p>
                     <p className="text-2xl font-bold text-blue-600 mt-1">
                         {goals.filter((g: any) => g.status === 'active').length}
                     </p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-600 uppercase">Achieved</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase">{tr('achieved')}</p>
                     <p className="text-2xl font-bold text-green-600 mt-1">
                         {goals.filter((g: any) => g.status === 'achieved').length}
                     </p>
                 </div>
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                    <p className="text-xs font-medium text-gray-600 uppercase">Avg Progress</p>
+                    <p className="text-xs font-medium text-gray-600 uppercase">{tr('avgProgress')}</p>
                     <p className="text-2xl font-bold text-gray-900 mt-1">
                         {goals.length > 0
                             ? Math.round(goals.reduce((acc: number, g: any) => acc + g.progress_percentage, 0) / goals.length)
@@ -224,7 +226,7 @@ export default function GoalsPage() {
                             onClick={() => setIsModalOpen(true)}
                             className="px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors font-medium"
                         >
-                            Create Goal
+                            {tr('createGoal')}
                         </button>
                     )}
                 </div>
@@ -235,7 +237,7 @@ export default function GoalsPage() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                            <h2 className="text-xl font-bold text-gray-900">Create New Goal</h2>
+                            <h2 className="text-xl font-bold text-gray-900">{tr('createNewGoal')}</h2>
                             <button
                                 onClick={() => setIsModalOpen(false)}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -246,27 +248,27 @@ export default function GoalsPage() {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Goal Title *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{tr('goalTitle')}</label>
                                 <input
                                     type="text"
                                     required
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                                     value={formData.title}
                                     onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                    placeholder="e.g., Master C Major Scale"
+                                    placeholder={tr('eGMasterCMajorScale')}
                                 />
                             </div>
 
                             {!isStudent && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Student *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{tr('student')}</label>
                                     <select
                                         required
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                                         value={formData.student}
                                         onChange={e => setFormData({ ...formData, student: e.target.value })}
                                     >
-                                        <option value="">Select a student...</option>
+                                        <option value="">{tr('selectAStudent')}</option>
                                         {users.filter((u: any) => u.role === 'student').map((student: any) => (
                                             <option key={student.id} value={student.student_profile?.id || student.id}>
                                                 {student.first_name} {student.last_name}
@@ -278,16 +280,16 @@ export default function GoalsPage() {
 
                             {isStudent && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{tr('student')}</label>
                                     <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
                                         {currentUser?.full_name} (You)
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">Goal will be assigned to you.</p>
+                                    <p className="text-xs text-gray-500 mt-1">{tr('goalWillBeAssignedToYou')}</p>
                                 </div>
                             )}
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Target Date</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{tr('targetDate')}</label>
                                 <input
                                     type="date"
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
@@ -297,13 +299,13 @@ export default function GoalsPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{tr('description')}</label>
                                 <textarea
                                     rows={3}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                                     value={formData.description}
                                     onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="Details about the goal..."
+                                    placeholder={tr('detailsAboutTheGoal')}
                                 />
                             </div>
 
@@ -313,7 +315,7 @@ export default function GoalsPage() {
                                     onClick={() => setIsModalOpen(false)}
                                     className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                                 >
-                                    Cancel
+                                    {tr('cancel')}
                                 </button>
                                 <button
                                     type="submit"
@@ -323,7 +325,7 @@ export default function GoalsPage() {
                                     {creating ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            Creating...
+                                            {tr('creating')}
                                         </>
                                     ) : (
                                         'Create Goal'

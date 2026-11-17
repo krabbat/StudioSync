@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
 
 export default function InstructorsPage() {
+    const tr = useTranslations('Teachers')
     const router = useRouter()
     const { currentUser } = useUser()
     const { teachers, loading, refresh } = useTeachers()
@@ -56,12 +58,12 @@ export default function InstructorsPage() {
         setIsSubmitting(true)
         try {
             await api.patch(`/core/teachers/${selectedTeacher.id}/`, formData)
-            toast.success('Instructor updated successfully')
+            toast.success(tr('updated'))
             setIsEditModalOpen(false)
             if (refresh) refresh()
         } catch (error: any) {
             console.error('Failed to update teacher:', error)
-            toast.error(error.response?.data?.detail || 'Failed to update instructor')
+            toast.error(error.response?.data?.detail || tr('updateFailed'))
         } finally {
             setIsSubmitting(false)
         }
@@ -97,7 +99,7 @@ export default function InstructorsPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
-        toast.success('Instructors list exported successfully')
+        toast.success(tr('exported'))
     }
 
     // Calculate stats
@@ -111,7 +113,7 @@ export default function InstructorsPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Scanning Faculty Records...</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{tr('scanningFacultyRecords')}</p>
             </div>
         )
     }
@@ -121,8 +123,8 @@ export default function InstructorsPage() {
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
                 <div className="space-y-2">
-                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">Faculty & Mentors</h1>
-                    <p className="text-gray-500 font-medium max-w-lg">Oversee pedagogical impact, instructional quality, and faculty growth.</p>
+                    <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{tr('facultyMentors')}</h1>
+                    <p className="text-gray-500 font-medium max-w-lg">{tr('overseePedagogicalImpactInstructionalQualityAndFacultyGrowth')}</p>
                 </div>
                 {currentUser?.role === 'admin' && (
                     <Button
@@ -130,7 +132,7 @@ export default function InstructorsPage() {
                         className="gap-2 hover:scale-105 shadow-lg shadow-primary/20 transition-all font-black uppercase tracking-widest text-[10px] py-6 px-8"
                     >
                         <UserPlus className="w-4 h-4" />
-                        Onboard Faculty
+                        {tr('onboardFaculty')}
                     </Button>
                 )}
             </header>
@@ -138,17 +140,17 @@ export default function InstructorsPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { label: 'Total Faculty', value: teachers.length, icon: Users, color: 'purple' },
-                    { label: 'Active Status', value: activeInstructors, icon: CheckCircle, color: 'emerald' },
-                    { label: 'Mentorship Count', value: totalStudents, icon: GraduationCap, color: 'blue' },
-                    { label: 'Market Average', value: `$${avgRate}`, icon: Music, color: 'orange' }
+                    { label: tr('totalFaculty'), value: teachers.length, icon: Users, color: 'purple' },
+                    { label: tr('activeStatus'), value: activeInstructors, icon: CheckCircle, color: 'emerald' },
+                    { label: tr('mentorshipCount'), value: totalStudents, icon: GraduationCap, color: 'blue' },
+                    { label: tr('marketAverage'), value: `$${avgRate}`, icon: Music, color: 'orange' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm group hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between mb-4">
                             <div className={`w-12 h-12 rounded-2xl bg-${stat.color}-50 flex items-center justify-center text-${stat.color}-600 group-hover:scale-110 transition-transform`}>
                                 <stat.icon className="w-6 h-6" />
                             </div>
-                            <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Insights</div>
+                            <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{tr('insights')}</div>
                         </div>
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
                         <h3 className="text-3xl font-black text-gray-900 tracking-tight uppercase tracking-tighter">{stat.value}</h3>
@@ -162,7 +164,7 @@ export default function InstructorsPage() {
                     <Search className="absolute left-4 top-1/2 -track-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Search faculty identity, instrument, or expertise..."
+                        placeholder={tr('searchFacultyIdentityInstrumentOrExpertise')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all"
@@ -174,7 +176,7 @@ export default function InstructorsPage() {
                     className="gap-2 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-primary transition-colors"
                 >
                     <Download className="w-4 h-4" />
-                    Generate Directory Report
+                    {tr('generateDirectoryReport')}
                 </Button>
             </div>
 
@@ -184,12 +186,12 @@ export default function InstructorsPage() {
                     <table className="w-full border-separate border-spacing-0">
                         <thead className="bg-gray-50/50">
                             <tr>
-                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Instructor Identity</th>
-                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Expertise Area</th>
-                                <th className="px-8 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Mentorships</th>
-                                <th className="px-8 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Market Rate</th>
-                                <th className="px-8 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Operations</th>
-                                <th className="px-8 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('instructorIdentity')}</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('expertiseArea')}</th>
+                                <th className="px-8 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('mentorships')}</th>
+                                <th className="px-8 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('marketRate')}</th>
+                                <th className="px-8 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('operations')}</th>
+                                <th className="px-8 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -274,12 +276,12 @@ export default function InstructorsPage() {
                 onOpenChange={setIsEditModalOpen}
                 size="lg"
             >
-                <DialogHeader title="Faculty Profile Enhancement" />
+                <DialogHeader title={tr('facultyProfileEnhancement')} />
                 <DialogContent>
                     <form id="edit-faculty-form" onSubmit={handleSubmit} className="space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Public First Name</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('publicFirstName')}</label>
                                 <input
                                     type="text"
                                     required
@@ -289,7 +291,7 @@ export default function InstructorsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Public Last Name</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('publicLastName')}</label>
                                 <input
                                     type="text"
                                     required
@@ -301,7 +303,7 @@ export default function InstructorsPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Faculty Email Communication</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('facultyEmailCommunication')}</label>
                             <input
                                 type="email"
                                 required
@@ -315,7 +317,7 @@ export default function InstructorsPage() {
                             <div className="flex items-center justify-between mb-2">
                                 <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Award className="w-4 h-4" />
-                                    Pedagogical Specializations
+                                    {tr('pedagogicalSpecializations')}
                                 </label>
                                 <span className="text-[10px] font-black text-gray-400">{formData.specialties.length} Total</span>
                             </div>
@@ -337,7 +339,7 @@ export default function InstructorsPage() {
                                     </span>
                                 ))}
                                 {formData.specialties.length === 0 && (
-                                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest py-2">No credentials listed</p>
+                                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest py-2">{tr('noCredentialsListed')}</p>
                                 )}
                             </div>
                             
@@ -353,14 +355,14 @@ export default function InstructorsPage() {
                                             if (!trimmed) return;
                                             const formatted = trimmed.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
                                             if (formData.specialties.some(s => s.toLowerCase() === formatted.toLowerCase())) {
-                                                toast.error('Specialty already exists');
+                                                toast.error(tr('specialtyExists'));
                                                 return;
                                             }
                                             setFormData({ ...formData, specialties: [...formData.specialties, formatted] });
                                             setNewInstrument('');
                                         }
                                     }}
-                                    placeholder="Add skill (e.g. Masterclass Performance)"
+                                    placeholder={tr('addSkillEGMasterclassPerformance')}
                                     className="flex-1 px-5 py-3.5 bg-white border-transparent focus:border-primary border-2 rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all shadow-sm"
                                 />
                                 <Button
@@ -370,14 +372,14 @@ export default function InstructorsPage() {
                                          if (!trimmed) return;
                                          const formatted = trimmed.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
                                          if (formData.specialties.some(s => s.toLowerCase() === formatted.toLowerCase())) {
-                                             toast.error('Specialty already exists');
+                                             toast.error(tr('specialtyExists'));
                                              return;
                                          }
                                          setFormData({ ...formData, specialties: [...formData.specialties, formatted] });
                                          setNewInstrument('');
                                     }}
                                 >
-                                    Add
+                                    {tr('add')}
                                 </Button>
                             </div>
                         </div>
@@ -386,7 +388,7 @@ export default function InstructorsPage() {
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                     <DollarSign className="w-3 h-3 text-emerald-500" />
-                                    Hourly Compensation
+                                    {tr('hourlyCompensation')}
                                 </label>
                                 <input
                                     type="number"
@@ -398,7 +400,7 @@ export default function InstructorsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Teaching Status</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('teachingStatus')}</label>
                                 <div 
                                     onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                                     className={`flex items-center justify-between px-5 py-3.5 rounded-2xl border-2 transition-all cursor-pointer h-[54px] ${
@@ -422,7 +424,7 @@ export default function InstructorsPage() {
                         onClick={() => setIsEditModalOpen(false)}
                         className="flex-1"
                     >
-                        Cancel
+                        {tr('cancel')}
                     </Button>
                     <Button
                         type="submit"
@@ -433,7 +435,7 @@ export default function InstructorsPage() {
                         {isSubmitting ? (
                             <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Committing...
+                                {tr('committing')}
                             </>
                         ) : (
                             'Execute Profile Update'

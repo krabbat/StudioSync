@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import {
     BarChart3, TrendingUp, Users, Download, Calendar, DollarSign,
     Loader2, FileText, Info, FileSpreadsheet, FileDown, Braces
@@ -10,13 +11,14 @@ import { useState } from 'react'
 import * as ExcelJS from 'exceljs'
 
 export default function ReportsPage() {
+    const tr = useTranslations('Reports')
     const [downloading, setDownloading] = useState<string | null>(null)
 
     const reports = [
         {
             id: 'financial',
-            title: 'Financial Summary',
-            description: 'Income, expenses, and outstanding invoices overview.',
+            title: tr('reportFinancialSummary'),
+            description: tr('reportFinancialSummaryDescription'),
             icon: DollarSign,
             color: 'bg-green-50',
             iconColor: 'text-green-600',
@@ -25,8 +27,8 @@ export default function ReportsPage() {
         },
         {
             id: 'attendance',
-            title: 'Attendance Report',
-            description: 'Student attendance rates, cancellations, and make-ups.',
+            title: tr('reportAttendanceReport'),
+            description: tr('reportAttendanceReportDescription'),
             icon: Calendar,
             color: 'bg-blue-50',
             iconColor: 'text-blue-600',
@@ -35,8 +37,8 @@ export default function ReportsPage() {
         },
         {
             id: 'student-progress',
-            title: 'Student Progress',
-            description: 'Goal completion rates and retention statistics.',
+            title: tr('reportStudentProgress'),
+            description: tr('reportStudentProgressDescription'),
             icon: TrendingUp,
             color: 'bg-purple-50',
             iconColor: 'text-purple-600',
@@ -45,8 +47,8 @@ export default function ReportsPage() {
         },
         {
             id: 'students',
-            title: 'Student Directory',
-            description: 'Full list of students with contact info and status.',
+            title: tr('reportStudentDirectory'),
+            description: tr('reportStudentDirectoryDescription'),
             icon: Users,
             color: 'bg-orange-50',
             iconColor: 'text-orange-600',
@@ -55,8 +57,8 @@ export default function ReportsPage() {
         },
         {
             id: 'teachers',
-            title: 'Instructor Directory',
-            description: 'List of all instructors, rates, and specialties.',
+            title: tr('reportInstructorDirectory'),
+            description: tr('reportInstructorDirectoryDescription'),
             icon: Users,
             color: 'bg-pink-50',
             iconColor: 'text-pink-600',
@@ -65,8 +67,8 @@ export default function ReportsPage() {
         },
         {
             id: 'users',
-            title: 'All Users',
-            description: 'System-wide user export including roles and access.',
+            title: tr('reportAllUsers'),
+            description: tr('reportAllUsersDescription'),
             icon: Users,
             color: 'bg-cyan-50',
             iconColor: 'text-cyan-600',
@@ -89,10 +91,10 @@ export default function ReportsPage() {
             document.body.appendChild(link)
             link.click()
             link.parentNode?.removeChild(link)
-            toast.success('CSV report downloaded')
+            toast.success(tr('csvDownloaded'))
         } catch (error) {
             console.error('Download failed', error)
-            toast.error('Failed to download report')
+            toast.error(tr('downloadFailed'))
         } finally {
             setDownloading(null)
         }
@@ -111,10 +113,10 @@ export default function ReportsPage() {
             document.body.appendChild(link)
             link.click()
             link.parentNode?.removeChild(link)
-            toast.success('JSON report downloaded')
+            toast.success(tr('jsonDownloaded'))
         } catch (error) {
             console.error('JSON download failed', error)
-            toast.error('Failed to download JSON report')
+            toast.error(tr('jsonDownloadFailed'))
         } finally {
             setDownloading(null)
         }
@@ -276,10 +278,10 @@ export default function ReportsPage() {
             link.click()
             link.parentNode?.removeChild(link)
 
-            toast.success('Excel report downloaded')
+            toast.success(tr('excelDownloaded'))
         } catch (error) {
             console.error('Excel download failed', error)
-            toast.error('Failed to download Excel report')
+            toast.error(tr('excelDownloadFailed'))
         } finally {
             setDownloading(null)
         }
@@ -290,8 +292,8 @@ export default function ReportsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl md:text-4xl font-bold text-gray-900">Reports & Analytics</h1>
-                    <p className="text-sm text-gray-600 mt-1">Export business insights and performance metrics</p>
+                    <h1 className="text-2xl md:text-4xl font-bold text-gray-900">{tr('reportsAnalytics')}</h1>
+                    <p className="text-sm text-gray-600 mt-1">{tr('exportBusinessInsightsAndPerformanceMetrics')}</p>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
                     <BarChart3 className="w-5 h-5 text-blue-600" />
@@ -333,7 +335,7 @@ export default function ReportsPage() {
                                 {downloading === report.id ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span className="hidden sm:inline">Exporting...</span>
+                                        <span className="hidden sm:inline">{tr('exporting')}</span>
                                     </>
                                 ) : (
                                     <>
@@ -351,7 +353,7 @@ export default function ReportsPage() {
                                 {downloading === `${report.id}-excel` ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span className="hidden sm:inline">Exporting...</span>
+                                        <span className="hidden sm:inline">{tr('exporting')}</span>
                                     </>
                                 ) : (
                                     <>
@@ -369,7 +371,7 @@ export default function ReportsPage() {
                                 {downloading === `${report.id}-json` ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span className="hidden sm:inline">Exporting...</span>
+                                        <span className="hidden sm:inline">{tr('exporting')}</span>
                                     </>
                                 ) : (
                                     <>
@@ -389,33 +391,33 @@ export default function ReportsPage() {
                     <Info className="w-5 h-5 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-blue-900 mb-1">Need custom reports?</h3>
+                    <h3 className="text-sm font-bold text-blue-900 mb-1">{tr('needCustomReports')}</h3>
                     <p className="text-sm text-blue-700 leading-relaxed">
-                        We're building more advanced analytics. Contact support to request specific data points or custom report formats.
+                        {tr('weReBuildingMoreAdvancedAnalyticsContactSupportToRequestSpecificDataPointsO')}
                     </p>
                 </div>
             </div>
 
             {/* Export Info */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">Export Formats</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">{tr('exportFormats')}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-600">
                     <div className="flex items-start gap-2">
                         <FileDown className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                         <div>
-                            <strong className="text-gray-900">CSV:</strong> Simple text format, compatible with all spreadsheet apps
+                            <strong className="text-gray-900">CSV:</strong> {tr('simpleTextFormatCompatibleWithAllSpreadsheetApps')}
                         </div>
                     </div>
                     <div className="flex items-start gap-2">
                         <FileSpreadsheet className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                         <div>
-                            <strong className="text-gray-900">Excel:</strong> Rich formatting with styled headers and borders
+                            <strong className="text-gray-900">Excel:</strong> {tr('richFormattingWithStyledHeadersAndBorders')}
                         </div>
                     </div>
                     <div className="flex items-start gap-2">
                         <Braces className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
                         <div>
-                            <strong className="text-gray-900">JSON:</strong> Structured data for developers and integrations
+                            <strong className="text-gray-900">JSON:</strong> {tr('structuredDataForDevelopersAndIntegrations')}
                         </div>
                     </div>
                 </div>
