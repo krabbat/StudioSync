@@ -26,6 +26,10 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     const [editingEnrollment, setEditingEnrollment] = useState(false)
     const [enrollmentDraft, setEnrollmentDraft] = useState('')
     const [savingEnrollment, setSavingEnrollment] = useState(false)
+    const [newPassword, setNewPassword] = useState('')
+    const [confirmNewPassword, setConfirmNewPassword] = useState('')
+    const [passwordSaving, setPasswordSaving] = useState(false)
+    const [editingLogin, setEditingLogin] = useState(false)
 
     useEffect(() => {
         const fetchStudent = async () => {
@@ -60,6 +64,32 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
             toast.error(serverMessage || tr('enrollmentSaveFailed'))
         } finally {
             setSavingEnrollment(false)
+        }
+    }
+
+    const saveLoginPassword = async () => {
+        if (!newPassword || newPassword !== confirmNewPassword) {
+            toast.error(tr('passwordMismatch'))
+            return
+        }
+        setPasswordSaving(true)
+        try {
+            await api.post(`/students/${studentId}/set-password/`, {
+                password: newPassword,
+                confirm_password: confirmNewPassword
+            })
+            setNewPassword('')
+            setConfirmNewPassword('')
+            setEditingLogin(false)
+            setStudent((previous: any) => previous ? { ...previous, login_enabled: true } : previous)
+            toast.success(tr('passwordSaved'))
+        } catch (error: any) {
+            const message = error?.response?.data?.password?.[0] ||
+                error?.response?.data?.confirm_password?.[0] ||
+                error?.response?.data?.detail || tr('passwordSaveFailed')
+            toast.error(message)
+        } finally {
+            setPasswordSaving(false)
         }
     }
 
@@ -232,6 +262,47 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                 </div>
                             </div>
                         </section>
+
+                        {/* Student address / home-lesson destination */}
+                        <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
+                            <h2 className="text-xs font-black uppercase tracking-widest text-gray-500">{tr('teachingAddress')}</h2>
+                            <p className="text-lg font-bold text-gray-900">
+                                {student.address_line1 || tr('notProvided')}
+                            </p>
+                            <p className="text-gray-600">{[student.postal_code, student.city].filter(Boolean).join(' ') || tr('notProvided')}</p>
+                        </section>
+
+                        {currentUser?.role === 'admin' && (
+                            <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h2 className="text-xs font-black uppercase tracking-widest text-gray-500">{tr('studentLogin')}</h2>
+                                        <p className="text-sm text-gray-600">
+                                            {student.login_enabled ? tr('loginReady') : tr('loginNotReady')}
+                                        </p>
+                                    </div>
+                                    <Button type="button" variant="outline" onClick={() => setEditingLogin(!editingLogin)}>
+                                        {tr('setPassword')}
+                                    </Button>
+                                </div>
+                                {editingLogin && (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-gray-500">{tr('loginPasswordInfo')}</p>
+                                        <input type="password" autoComplete="new-password"
+                                            aria-label={tr('newPassword')} placeholder={tr('newPassword')}
+                                            value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                                            className="w-full px-4 py-3 border rounded-xl" />
+                                        <input type="password" autoComplete="new-password"
+                                            aria-label={tr('confirmPassword')} placeholder={tr('confirmPassword')}
+                                            value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)}
+                                            className="w-full px-4 py-3 border rounded-xl" />
+                                        <Button type="button" disabled={passwordSaving} onClick={saveLoginPassword}>
+                                            {passwordSaving ? tr('passwordSaving') : tr('savePassword')}
+                                        </Button>
+                                    </div>
+                                )}
+                            </section>
+                        )}
 
                         {/* Emergency Contact */}
                         {(student.emergency_contact_name || student.emergency_contact_phone) && (
