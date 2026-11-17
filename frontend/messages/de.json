@@ -303,7 +303,8 @@
     "cancelEnrollment": "Bearbeitung abbrechen",
     "enrollmentRequired": "Bitte ein Aufnahmedatum auswählen.",
     "enrollmentSaved": "Aufnahmedatum gespeichert.",
-    "enrollmentSaveFailed": "Aufnahmedatum konnte nicht gespeichert werden."
+    "enrollmentSaveFailed": "Aufnahmedatum konnte nicht gespeichert werden.",
+    "assignedTeacher": "Zugeordnete Lehrkraft"
   },
   "SettingsHub": {
     "sectionAccount": "Konto",
