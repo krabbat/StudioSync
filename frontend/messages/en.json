@@ -34,7 +34,8 @@
     "backHome": "Back to home",
     "serverUnavailable": "Cannot connect to server. Please try again later.",
     "invalidLogin": "Failed to sign in. Please check your credentials.",
-    "demoFailed": "Demo login failed — the database may still be seeding. Try again in a moment."
+    "demoFailed": "Demo login failed — the database may still be seeding. Try again in a moment.",
+    "accountProvidedByTeacher": "Your teacher will set up your access."
   },
   "Navigation": {
     "home": "Home",
@@ -143,7 +144,11 @@
     "assignmentFailed": "Could not change teacher assignment.",
     "assigning": "Saving…",
     "removeAssignment": "Unassign",
-    "assignNow": "Assign"
+    "assignNow": "Assign",
+    "teachingAddress": "Lesson address",
+    "streetAddress": "Street and house number",
+    "postalCode": "Postal code",
+    "city": "City"
   },
   "DashboardHeader": {
     "allMarkedRead": "All notifications marked as read",
@@ -271,7 +276,11 @@
     "studentCreatedPhotoFailed": "Student was created, but the photo could not be saved. Please add the photo separately.",
     "assignedTeacher": "Assign teacher",
     "noTeacher": "No teacher assigned yet",
-    "soloTeacherHint": "In individual-teacher mode your teaching profile is preselected. You can change the selection."
+    "soloTeacherHint": "In individual-teacher mode your teaching profile is preselected. You can change the selection.",
+    "teachingAddress": "Lesson address",
+    "streetAddress": "Street and house number",
+    "postalCode": "Postal code",
+    "city": "City"
   },
   "StudentProfile": {
     "profileAccess": "Profile Access",
@@ -304,7 +313,20 @@
     "enrollmentRequired": "Please select an enrollment date.",
     "enrollmentSaved": "Enrollment date saved.",
     "enrollmentSaveFailed": "Could not save enrollment date.",
-    "assignedTeacher": "Assigned teacher"
+    "assignedTeacher": "Assigned teacher",
+    "teachingAddress": "Lesson address",
+    "studentLogin": "Student login",
+    "loginReady": "This student account can sign in.",
+    "loginNotReady": "No usable login has been set up yet.",
+    "setPassword": "Set / change password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "loginPasswordInfo": "The password is set on the existing student account. No second account will be created.",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordSaved": "Student login has been activated.",
+    "passwordSaveFailed": "Could not save the password.",
+    "passwordSaving": "Saving…",
+    "savePassword": "Activate student login"
   },
   "SettingsHub": {
     "sectionAccount": "Account",
@@ -547,7 +569,10 @@
     "resourceCount": "{count, plural, one {# resource selected} other {# resources selected}}",
     "selectResources": "Select Resources",
     "missingTitleOrContent": "Please fill in title and content",
-    "updatePlan": "Update Plan"
+    "updatePlan": "Update Plan",
+    "teachingAddress": "Lesson address",
+    "addressMissing": "No student address recorded yet",
+    "online": "Online lesson"
   },
   "Billing": {
     "loadingBilling": "Loading Billing...",
@@ -728,7 +753,10 @@
     "selectInstructor": "Select Instructor...",
     "bandGroup": "Band / Group",
     "targetOptional": "Target (Optional)",
-    "confirmBooking": "Confirm Booking"
+    "confirmBooking": "Confirm Booking",
+    "teachingAddress": "Lesson address",
+    "addressMissing": "No student address recorded yet",
+    "onlineLesson": "Online lesson"
   },
   "Users": {
     "accessingDirectory": "Accessing Directory...",
