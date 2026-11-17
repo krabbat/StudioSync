@@ -801,14 +801,7 @@ export default function SchedulePage() {
                                           {lesson.duration_minutes}m
                                         </span>
                                       )}
-                                      {lesson.room_name ? (
-                                        <span
-                                          className={`text-[8px] sm:text-[9px] font-black uppercase px-0.5 sm:px-1 rounded truncate max-w-[35px] sm:max-w-[50px] ${colorMode !== "status" ? "" : "bg-blue-50 text-blue-500"}`}
-                                          style={colorMode !== "status" ? { backgroundColor: "rgba(255,255,255,0.7)", color: "var(--dynamic-text)" } : {}}
-                                        >
-                                          {lesson.room_name}
-                                        </span>
-                                      ) : lesson.is_online ? (
+                                      {lesson.is_online ? (
                                         <span
                                           className={`text-[8px] sm:text-[9px] font-black uppercase px-0.5 sm:px-1 rounded truncate max-w-[35px] sm:max-w-[50px] ${colorMode !== "status" ? "" : "bg-purple-50 text-purple-500"}`}
                                           style={colorMode !== "status" ? { backgroundColor: "rgba(255,255,255,0.7)", color: "var(--dynamic-text)" } : {}}
@@ -824,6 +817,12 @@ export default function SchedulePage() {
                                   >
                                     {lesson.student_instrument}
                                   </p>
+                                  {!lesson.is_online && lesson.student_address && (
+                                    <p className="text-[9px] sm:text-[10px] mt-0.5 truncate text-gray-600"
+                                       title={lesson.student_address}>
+                                      {lesson.student_address}
+                                    </p>
+                                  )}
                                 </div>
                               ))}
                               {/* External events overlay in week view */}
