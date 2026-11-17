@@ -87,23 +87,6 @@ export default function InstructorsPage() {
         reader.readAsDataURL(cropped)
     }
 
-    // Teacher records expose an avatar but not the linked user ID.
-    // Look up the exact teacher account in this studio before updating its avatar or phone.
-    const findTeacherAccountId = async (): Promise<string> => {
-        const response = await api.get('/core/users/', {
-            params: { role: 'teacher', search: selectedTeacher.email }
-        })
-        const accounts: any[] = Array.isArray(response.data)
-            ? response.data
-            : response.data?.results || []
-        const account = accounts.find((candidate: any) =>
-            candidate.role === 'teacher' &&
-            candidate.email?.toLowerCase() === selectedTeacher.email?.toLowerCase()
-        )
-        if (!account?.id) throw new Error(tr('accountNotFound'))
-        return account.id
-    }
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
@@ -112,9 +95,13 @@ export default function InstructorsPage() {
                 formData.phone !== (selectedTeacher.phone || '') ||
                 formData.first_name !== (selectedTeacher.first_name || '') ||
                 formData.last_name !== (selectedTeacher.last_name || '')
-            // Resolve before saving either record, to avoid a partial save when
-            // the linked account is not available.
-            const accountId = userDetailsChanged ? await findTeacherAccountId() : null
+            // The API returns the exact linked User ID, including for teachers
+            // whose account role is admin. No fragile email/role lookup needed.
+            const accountId = userDetailsChanged ? selectedTeacher.user_id : null
+            if (userDetailsChanged && !accountId) {
+                toast.error(tr('accountNotFound'))
+                return
+            }
 
             await api.patch(`/core/teachers/${selectedTeacher.id}/`, {
                 specialties: formData.specialties,
@@ -356,6 +343,7 @@ export default function InstructorsPage() {
             <Dialog
                 open={isEditModalOpen}
                 onOpenChange={setIsEditModalOpen}
+                closeOnEsc={!cropImage}
                 size="lg"
             >
                 <DialogHeader title={tr('facultyProfileEnhancement')} />
