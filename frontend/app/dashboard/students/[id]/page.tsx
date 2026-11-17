@@ -281,7 +281,13 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                             {student.login_enabled ? tr('loginReady') : tr('loginNotReady')}
                                         </p>
                                     </div>
-                                    <Button type="button" variant="outline" onClick={() => setEditingLogin(!editingLogin)}>
+                                    <Button type="button" variant="outline" onClick={() => {
+                                        if (editingLogin) {
+                                            setNewPassword('')
+                                            setConfirmNewPassword('')
+                                        }
+                                        setEditingLogin(!editingLogin)
+                                    }}>
                                         {tr('setPassword')}
                                     </Button>
                                 </div>
