@@ -71,7 +71,7 @@ export const FeatureSelectionStep = ({ data, updateFeatures, onNext, onBack, isL
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
                                     <p className="text-sm font-semibold" style={{ color: isEnabled ? A.text : A.muted }}>
-                                        {info.name}
+                                        {t(`${key}Name`)}
                                     </p>
                                     <Switch
                                         checked={isEnabled}
@@ -88,7 +88,7 @@ export const FeatureSelectionStep = ({ data, updateFeatures, onNext, onBack, isL
                                     </Switch>
                                 </div>
                                 <p className="mt-1 text-xs pr-10" style={{ color: A.faint }}>
-                                    {info.description}
+                                    {t(`${key}Description`)}
                                 </p>
                             </div>
                         </div>
