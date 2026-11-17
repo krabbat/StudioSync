@@ -1206,7 +1206,7 @@
     "selectAVenue": "Auftrittsort auswählen…",
     "start": "Beginn",
     "end": "Ende",
-    "payRate": "Vergütung ($)",
+    "payRate": "Vergütung ({currency})",
     "payType": "Vergütungsart",
     "flatRate": "Pauschalbetrag",
     "hourlyRate": "Stundensatz",
@@ -1223,7 +1223,7 @@
     "date": "Datum",
     "duration": "Dauer",
     "baseRate": "Grundvergütung",
-    "finalPayoutAmount": "Auszahlungsbetrag ($)",
+    "finalPayoutAmount": "Auszahlungsbetrag ({currency})",
     "paymentMethod": "Zahlungsart",
     "bankTransfer": "Überweisung",
     "check": "Scheck",
@@ -1267,7 +1267,79 @@
     "msgGigClaimedWaitingForApproval": "Bewerbung eingereicht – Freigabe steht aus.",
     "msgClaimApprovedGigAssigned": "Bewerbung bestätigt – Auftritt vergeben",
     "msgGigReleasedBackToTheMarketplace": "Auftritt wieder freigegeben",
-    "msgFailedToLoadGigData": "Auftrittsdaten konnten nicht geladen werden"
+    "msgFailedToLoadGigData": "Auftrittsdaten konnten nicht geladen werden",
+    "statusOpen": "Offen",
+    "statusPendingApproval": "Genehmigung ausstehend",
+    "statusAssigned": "Vergeben",
+    "statusCompleted": "Abgeschlossen",
+    "statusCancelled": "Abgesagt",
+    "filterPending": "Ausstehend",
+    "filterAll": "Alle",
+    "tabMarketplace": "Auftrittsmarkt",
+    "tabManage": "Verwalten",
+    "tabMyGigs": "Meine Auftritte",
+    "tabAvailability": "Verfügbarkeit",
+    "perHour": "/Std.",
+    "flatShort": "Pauschale",
+    "postGigAction": "Auftritt veröffentlichen",
+    "submitClaimAction": "Bewerbung absenden",
+    "estimatedEarningsAmount": "{amount} voraussichtliche Einnahmen",
+    "payoutProcessed": "Auszahlung von {amount} für {band} verbucht",
+    "payAmount": "{amount} auszahlen",
+    "forBand": "Für {band}",
+    "hoursCount": "{count, plural, one {# Stunde} other {# Stunden}}",
+    "approve": "Bestätigen",
+    "submittedOn": "Eingereicht am {date}",
+    "release": "Freigeben",
+    "payColumn": "Vergütung",
+    "statusColumn": "Status",
+    "actionsColumn": "Aktionen",
+    "availabilitySubmitted": "Verfügbarkeit übermittelt",
+    "draftSaved": "Entwurf gespeichert",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "draft": "Entwurf",
+    "weekdayShort": [
+      "So",
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr",
+      "Sa"
+    ],
+    "weekdayNames": [
+      [
+        "So",
+        "So"
+      ],
+      [
+        "Mo",
+        "Mo"
+      ],
+      [
+        "Di",
+        "Di"
+      ],
+      [
+        "Mi",
+        "Mi"
+      ],
+      [
+        "Do",
+        "Do"
+      ],
+      [
+        "Fr",
+        "Fr"
+      ],
+      [
+        "Sa",
+        "Sa"
+      ]
+    ],
+    "daysSelected": "{count, plural, one {# Tag ausgewählt} other {# Tage ausgewählt}}",
+    "saveDraft": "Entwurf speichern",
+    "submitAvailability": "Verfügbarkeit übermitteln"
   },
   "Projects": {
     "projectBoard": "Projektübersicht",

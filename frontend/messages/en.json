@@ -1206,7 +1206,7 @@
     "selectAVenue": "Select a venue…",
     "start": "Start",
     "end": "End",
-    "payRate": "Pay Rate ($)",
+    "payRate": "Pay Rate ({currency})",
     "payType": "Pay Type",
     "flatRate": "Flat Rate",
     "hourlyRate": "Hourly Rate",
@@ -1223,7 +1223,7 @@
     "date": "Date",
     "duration": "Duration",
     "baseRate": "Base rate",
-    "finalPayoutAmount": "Final Payout Amount ($)",
+    "finalPayoutAmount": "Final Payout Amount ({currency})",
     "paymentMethod": "Payment Method",
     "bankTransfer": "Bank Transfer",
     "check": "Check",
@@ -1267,7 +1267,79 @@
     "msgGigClaimedWaitingForApproval": "Gig claimed! Waiting for approval.",
     "msgClaimApprovedGigAssigned": "Claim approved — gig assigned!",
     "msgGigReleasedBackToTheMarketplace": "Gig released back to the marketplace",
-    "msgFailedToLoadGigData": "Failed to load gig data"
+    "msgFailedToLoadGigData": "Failed to load gig data",
+    "statusOpen": "Open",
+    "statusPendingApproval": "Pending Approval",
+    "statusAssigned": "Assigned",
+    "statusCompleted": "Completed",
+    "statusCancelled": "Cancelled",
+    "filterPending": "Pending",
+    "filterAll": "All",
+    "tabMarketplace": "Marketplace",
+    "tabManage": "Manage",
+    "tabMyGigs": "My Gigs",
+    "tabAvailability": "Availability",
+    "perHour": "/hr",
+    "flatShort": "flat",
+    "postGigAction": "Post Gig",
+    "submitClaimAction": "Submit Claim",
+    "estimatedEarningsAmount": "{amount} est. earnings",
+    "payoutProcessed": "Payout of {amount} processed for {band}",
+    "payAmount": "Pay {amount}",
+    "forBand": "For {band}",
+    "hoursCount": "{count, plural, one {# hour} other {# hours}}",
+    "approve": "Approve",
+    "submittedOn": "Submitted {date}",
+    "release": "Release",
+    "payColumn": "Pay",
+    "statusColumn": "Status",
+    "actionsColumn": "Actions",
+    "availabilitySubmitted": "Availability submitted!",
+    "draftSaved": "Draft saved",
+    "saveFailed": "Failed to save",
+    "draft": "Draft",
+    "weekdayShort": [
+      "S",
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S"
+    ],
+    "weekdayNames": [
+      [
+        "S",
+        "Sun"
+      ],
+      [
+        "M",
+        "Mon"
+      ],
+      [
+        "T",
+        "Tue"
+      ],
+      [
+        "W",
+        "Wed"
+      ],
+      [
+        "T",
+        "Thu"
+      ],
+      [
+        "F",
+        "Fri"
+      ],
+      [
+        "S",
+        "Sat"
+      ]
+    ],
+    "daysSelected": "{count, plural, one {# day selected} other {# days selected}}",
+    "saveDraft": "Save Draft",
+    "submitAvailability": "Submit Availability"
   },
   "Projects": {
     "projectBoard": "Project Board",

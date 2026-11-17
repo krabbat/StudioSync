@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useStudioFormatting } from '@/lib/useStudioFormatting'
 import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -70,13 +71,13 @@ interface BandAvailability {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const STATUS_LABEL: Record<string, string> = {
-    open: 'Open',
-    pending_approval: 'Pending Approval',
-    assigned: 'Assigned',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-}
+const STATUS_KEY = {
+    open: 'statusOpen',
+    pending_approval: 'statusPendingApproval',
+    assigned: 'statusAssigned',
+    completed: 'statusCompleted',
+    cancelled: 'statusCancelled',
+} as const
 const STATUS_COLOR: Record<string, string> = {
     open: 'bg-emerald-50 text-emerald-700',
     pending_approval: 'bg-amber-50 text-amber-700',
@@ -101,13 +102,13 @@ function gigEarnings(gig: Gig) {
 
 function PayBadge({ gig }: { gig: Gig }) {
   const t = useTranslations('Gigs')
+  const { money } = useStudioFormatting()
     const rate = parseFloat(gig.pay_rate || '0')
     return (
         <span className="flex items-center gap-1 font-bold text-emerald-700">
-            <DollarSign className="w-3.5 h-3.5" />
-            {rate.toFixed(2)}
+            {money(rate)}
             <span className="font-normal text-gray-400 text-xs">
-                {gig.pay_type === 'hourly' ? '/hr' : ' flat'}
+                {gig.pay_type === 'hourly' ? t('perHour') : t('flatShort')}
             </span>
         </span>
     )
@@ -122,6 +123,7 @@ const EMPTY_GIG = { title: '', description: '', venue_ref: '', scheduled_start: 
 
 function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const t = useTranslations('Gigs')
+  const { currency } = useStudioFormatting()
     const [form, setForm] = useState(EMPTY_GIG)
     const [venues, setVenues] = useState<Venue[]>([])
     const [saving, setSaving] = useState(false)
@@ -219,7 +221,7 @@ function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className={lbl}>{t('payRate')}</label>
+                                            <label className={lbl}>{t('payRate', {currency})}</label>
                                             <input type="number" min="0" step="0.01" value={form.pay_rate} onChange={set('pay_rate')} placeholder="0.00" className={inp} />
                                         </div>
                                         <div>
@@ -237,7 +239,7 @@ function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
                                     <div className="flex justify-end gap-3 pt-2">
                                         <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">{t('cancel')}</button>
                                         <button type="submit" disabled={saving || venues.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center gap-2">
-                                            {saving && <Loader className="w-4 h-4 animate-spin" />} Post Gig
+                                            {saving && <Loader className="w-4 h-4 animate-spin" />} {t('postGigAction')}
                                         </button>
                                     </div>
                                 </form>
@@ -255,6 +257,7 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
     gig: Gig | null; bands: Band[]; open: boolean; onClose: () => void; onClaimed: () => void
 }) {
   const t = useTranslations('Gigs')
+  const { money } = useStudioFormatting()
     const [bandId, setBandId] = useState('')
     const [notes, setNotes] = useState('')
     const [saving, setSaving] = useState(false)
@@ -299,7 +302,7 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{fmt(gig.scheduled_start)}</span>
                                         <span className="font-bold text-emerald-600">
-                                            ${gigEarnings(gig).toFixed(2)} est. earnings
+                                            {t('estimatedEarningsAmount', {amount: money(gigEarnings(gig))})}
                                         </span>
                                     </div>
                                 </div>
@@ -318,7 +321,7 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
                                     <div className="flex justify-end gap-3">
                                         <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">{t('cancel')}</button>
                                         <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center gap-2">
-                                            {saving && <Loader className="w-4 h-4 animate-spin" />} Submit Claim
+                                            {saving && <Loader className="w-4 h-4 animate-spin" />} {t('submitClaimAction')}
                                         </button>
                                     </div>
                                 </form>
@@ -379,7 +382,7 @@ function ApproveClaimModal({ gig, open, onClose, onApproved }: {
                                                 <div>
                                                     <p className="font-semibold text-sm text-gray-900">{claim.band_name}</p>
                                                     {claim.notes && <p className="text-xs text-gray-500 mt-1 max-w-xs">{claim.notes}</p>}
-                                                    <p className="text-[10px] text-gray-400 mt-1">Submitted {new Date(claim.created_at).toLocaleDateString()}</p>
+                                                    <p className="text-[10px] text-gray-400 mt-1">{t('submittedOn', {date: new Date(claim.created_at).toLocaleDateString()})}</p>
                                                 </div>
                                                 <button
                                                     onClick={() => approve(claim.id)}
@@ -387,7 +390,7 @@ function ApproveClaimModal({ gig, open, onClose, onApproved }: {
                                                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all disabled:opacity-50"
                                                 >
                                                     {saving === claim.id ? <Loader className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-3 h-3" />}
-                                                    Approve
+                                                    {t('approve')}
                                                 </button>
                                             </div>
                                         ))
@@ -407,6 +410,7 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
     gig: Gig | null; open: boolean; onClose: () => void; onPaid: () => void
 }) {
   const t = useTranslations('Gigs')
+  const { money, currency } = useStudioFormatting()
     const [amount, setAmount] = useState('')
     const [method, setMethod] = useState('bank_transfer')
     const [saving, setSaving] = useState(false)
@@ -422,7 +426,7 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
         setSaving(true)
         try {
             await api.post(`/gigs/gigs/${gig.id}/payout/`, { amount: parseFloat(amount), payment_method: method })
-            toast.success(`Payout of $${amount} processed for ${gig.band_name}`)
+            toast.success(t('payoutProcessed', {amount: money(amount), band: gig.band_name || ''}))
             onPaid(); onClose()
         } catch (err: any) {
             toast.error(err?.response?.data?.detail || 'Payout failed')
@@ -448,7 +452,7 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
                                         </div>
                                         <div>
                                             <h2 className="text-base font-bold text-gray-900">{t('processPayout')}</h2>
-                                            <p className="text-xs text-gray-400">For {gig.band_name}</p>
+                                            <p className="text-xs text-gray-400">{t('forBand', {band: gig.band_name || ''})}</p>
                                         </div>
                                     </div>
                                     <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"><X className="w-4 h-4" /></button>
@@ -458,11 +462,11 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
                                         <div className="flex justify-between"><span className="text-gray-500">{t('gig')}</span><span className="font-semibold text-gray-800">{gig.title}</span></div>
                                         <div className="flex justify-between"><span className="text-gray-500">{t('venue')}</span><span className="font-semibold text-gray-800">{gigVenue(gig)}</span></div>
                                         <div className="flex justify-between"><span className="text-gray-500">{t('date')}</span><span className="font-semibold text-gray-800">{fmt(gig.scheduled_start)}</span></div>
-                                        <div className="flex justify-between"><span className="text-gray-500">{t('duration')}</span><span className="font-semibold text-gray-800">{gigHours(gig)} hrs</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500">{t('duration')}</span><span className="font-semibold text-gray-800">{t('hoursCount', {count: gigHours(gig)})}</span></div>
                                         <div className="flex justify-between"><span className="text-gray-500">{t('baseRate')}</span><span className="font-semibold text-gray-800"><PayBadge gig={gig} /></span></div>
                                     </div>
                                     <div>
-                                        <label className={lbl}>{t('finalPayoutAmount')}</label>
+                                        <label className={lbl}>{t('finalPayoutAmount', {currency})}</label>
                                         <input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className={inp} required />
                                     </div>
                                     <div>
@@ -479,7 +483,7 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
                                     <div className="flex justify-end gap-3">
                                         <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors">{t('cancel')}</button>
                                         <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 flex items-center gap-2">
-                                            {saving && <Loader className="w-4 h-4 animate-spin" />} Pay ${parseFloat(amount || '0').toFixed(2)}
+                                            {saving && <Loader className="w-4 h-4 animate-spin" />} {t('payAmount', {amount: money(amount)})}
                                         </button>
                                     </div>
                                 </form>
@@ -497,6 +501,7 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
     gigs: Gig[]; bands: Band[]; isAdmin: boolean; onClaim: (g: Gig) => void; onRefresh: () => void
 }) {
   const t = useTranslations('Gigs')
+  const { money } = useStudioFormatting()
     const [search, setSearch] = useState('')
     const open = gigs.filter(g => g.status === 'open' &&
         (g.title.toLowerCase().includes(search.toLowerCase()) || gigVenue(g).toLowerCase().includes(search.toLowerCase()))
@@ -524,7 +529,7 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
                                 <div className="flex items-start justify-between gap-2 mb-3">
                                     <h3 className="font-bold text-gray-900 leading-tight">{gig.title}</h3>
                                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex-shrink-0 ${STATUS_COLOR[gig.status]}`}>
-                                        {STATUS_LABEL[gig.status]}
+                                        {t(STATUS_KEY[gig.status])}
                                     </span>
                                 </div>
 
@@ -539,7 +544,7 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Clock className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
-                                        {gigHours(gig)} hrs
+                                        {t('hoursCount', {count: gigHours(gig)})}
                                     </div>
                                 </div>
 
@@ -551,9 +556,9 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
                                     <div>
                                         <p className="text-xs text-gray-400 mb-0.5">{t('estEarnings')}</p>
                                         <p className="text-lg font-black text-gray-900">
-                                            ${gigEarnings(gig).toFixed(2)}
+                                            {money(gigEarnings(gig))}
                                             <span className="text-xs font-normal text-gray-400 ml-1">
-                                                ({gig.pay_type === 'hourly' ? `$${parseFloat(gig.pay_rate).toFixed(2)}/hr` : 'flat'})
+                                                ({gig.pay_type === 'hourly' ? `${money(gig.pay_rate)}${t('perHour')}` : t('flatShort')})
                                             </span>
                                         </p>
                                     </div>
@@ -586,7 +591,7 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
     return (
         <div className="space-y-4">
             <div className="flex gap-2 flex-wrap">
-                {[['all', 'All'], ['open', 'Open'], ['pending_approval', 'Pending'], ['assigned', 'Assigned'], ['completed', 'Completed']].map(([v, l]) => (
+                {[['all', t('filterAll')], ['open', t('statusOpen')], ['pending_approval', t('filterPending')], ['assigned', t('statusAssigned')], ['completed', t('statusCompleted')]].map(([v, l]) => (
                     <button key={v} onClick={() => setFilter(v)}
                         className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${filter === v ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                         {l}
@@ -602,7 +607,7 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
                     <table className="w-full">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-100">
-                                {['Gig', 'Venue', 'Date', 'Pay', 'Band', 'Status', 'Actions'].map(h => (
+                                {[t('gig'), t('venue'), t('date'), t('payColumn'), t('band'), t('statusColumn'), t('actionsColumn')].map(h => (
                                     <th key={h} className="px-5 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{h}</th>
                                 ))}
                             </tr>
@@ -621,7 +626,7 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
                                     <td className="px-5 py-4 text-xs font-semibold text-gray-600">{gig.band_name || <span className="text-gray-300">—</span>}</td>
                                     <td className="px-5 py-4">
                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${STATUS_COLOR[gig.status]}`}>
-                                            {STATUS_LABEL[gig.status]}
+                                            {t(STATUS_KEY[gig.status])}
                                         </span>
                                     </td>
                                     <td className="px-5 py-4">
@@ -656,6 +661,7 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
 // ─── My Gigs Tab (band/student) ────────────────────────────────────────────────
 function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) {
   const t = useTranslations('Gigs')
+  const { money } = useStudioFormatting()
     const [releasing, setReleasing] = useState<string | null>(null)
 
     const release = async (gig: Gig) => {
@@ -690,7 +696,7 @@ function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) 
                         <div className="flex items-start justify-between gap-2 mb-3">
                             <h3 className="font-bold text-gray-900">{gig.title}</h3>
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex-shrink-0 ${STATUS_COLOR[gig.status]}`}>
-                                {STATUS_LABEL[gig.status]}
+                                {t(STATUS_KEY[gig.status])}
                             </span>
                         </div>
                         <div className="space-y-1.5 text-sm text-gray-500 mb-4">
@@ -700,12 +706,12 @@ function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) 
                         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                             <div>
                                 <p className="text-xs text-gray-400 mb-0.5">{t('yourEarnings')}</p>
-                                <p className="text-base font-black text-gray-900">${gigEarnings(gig).toFixed(2)}</p>
+                                <p className="text-base font-black text-gray-900">{money(gigEarnings(gig))}</p>
                             </div>
                             {gig.status === 'assigned' && (
                                 <button onClick={() => release(gig)} disabled={releasing === gig.id}
                                     className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-1">
-                                    {releasing === gig.id ? <Loader className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />} Release
+                                    {releasing === gig.id ? <Loader className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />} {t('release')}
                                 </button>
                             )}
                             {gig.status === 'completed' && (
@@ -724,6 +730,7 @@ function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) 
 // ─── Availability Tab ─────────────────────────────────────────────────────────
 function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }) {
   const t = useTranslations('Gigs')
+  const { locale } = useStudioFormatting()
     const today = new Date()
     const [year, setYear] = useState(today.getFullYear())
     const [month, setMonth] = useState(today.getMonth()) // 0-indexed
@@ -737,7 +744,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
     const [loading, setLoading] = useState(false)
 
     const monthKey = `${year}-${String(month + 1).padStart(2, '0')}-01`
-    const monthName = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })
+    const monthName = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(year, month, 1))
 
     const prevMonth = () => { if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1) }
     const nextMonth = () => { if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1) }
@@ -792,10 +799,10 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
             } else {
                 await api.post('/gigs/availabilities/', payload)
             }
-            toast.success(submit ? 'Availability submitted!' : 'Draft saved')
+            toast.success(submit ? t('availabilitySubmitted') : t('draftSaved'))
             fetchAvail()
         } catch (err: any) {
-            toast.error(err?.response?.data?.detail || 'Failed to save')
+            toast.error(err?.response?.data?.detail || t('saveFailed'))
         } finally { fn(false) }
     }
 
@@ -829,7 +836,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                                         </div>
                                         {ba ? (
                                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${ba.is_submitted ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                {ba.is_submitted ? 'Submitted' : 'Draft'}
+                                                {ba.is_submitted ? t('submitted') : t('draft')}
                                             </span>
                                         ) : (
                                             <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400">{t('notSubmitted')}</span>
@@ -837,7 +844,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                                     </div>
                                     {ba ? (
                                         <div className="grid grid-cols-7 gap-1">
-                                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                                            {t.raw('weekdayShort').map((d: string, i: number) => (
                                                 <div key={i} className="text-center text-[10px] font-black text-gray-400 uppercase pb-1">{d}</div>
                                             ))}
                                             {calDays.map((day, i) => (
@@ -894,7 +901,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
             {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div> : (
                 <div className="bg-white rounded-2xl border border-gray-100 p-5">
                     <div className="grid grid-cols-7 gap-1 mb-1">
-                        {[['S','Sun'],['M','Mon'],['T','Tue'],['W','Wed'],['T','Thu'],['F','Fri'],['S','Sat']].map(([s,l], i) => (
+                        {t.raw('weekdayNames').map(([s, l]: [string, string], i: number) => (
                             <div key={i} className="text-center text-[10px] font-black text-gray-400 uppercase pb-2">
                                 <span className="sm:hidden">{s}</span>
                                 <span className="hidden sm:inline">{l}</span>
@@ -918,7 +925,7 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                     <div className="flex items-center gap-3 mt-4 pt-3 border-t border-gray-50 text-xs text-gray-400">
                         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500 inline-block" /> {t('available')}</span>
                         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-100 inline-block" /> {t('unavailable')}</span>
-                        <span className="ml-auto font-semibold text-gray-600">{activeDays.size} days selected</span>
+                        <span className="ml-auto font-semibold text-gray-600">{t('daysSelected', {count: activeDays.size})}</span>
                     </div>
                 </div>
             )}
@@ -934,11 +941,11 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                     <div className="flex gap-3">
                         <button onClick={() => save(false)} disabled={saving}
                             className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                            {saving && <Loader className="w-4 h-4 animate-spin" />} Save Draft
+                            {saving && <Loader className="w-4 h-4 animate-spin" />} {t('saveDraft')}
                         </button>
                         <button onClick={() => save(true)} disabled={submitting || activeDays.size === 0}
                             className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                            {submitting && <Loader className="w-4 h-4 animate-spin" />} Submit Availability
+                            {submitting && <Loader className="w-4 h-4 animate-spin" />} {t('submitAvailability')}
                         </button>
                     </div>
                     {activeDays.size === 0 && <p className="text-xs text-center text-gray-400">{t('selectAtLeastOneAvailableDayBeforeSubmitting')}</p>}
@@ -982,12 +989,12 @@ export default function GigsPage() {
     const pendingCount = gigs.filter(g => g.status === 'pending_approval').length
 
     const tabs = [
-        { id: 'marketplace', label: 'Marketplace', count: openGigs.length },
+        { id: 'marketplace', label: t('tabMarketplace'), count: openGigs.length },
         ...(isAdmin
-            ? [{ id: 'manage', label: 'Manage', count: pendingCount > 0 ? pendingCount : undefined }]
-            : [{ id: 'mygigs', label: 'My Gigs' }]
+            ? [{ id: 'manage', label: t('tabManage'), count: pendingCount > 0 ? pendingCount : undefined }]
+            : [{ id: 'mygigs', label: t('tabMyGigs') }]
         ),
-        { id: 'availability', label: 'Availability' },
+        { id: 'availability', label: t('tabAvailability') },
     ]
 
     if (loading) return (
@@ -1022,9 +1029,9 @@ export default function GigsPage() {
                 {/* Stats row */}
                 <div className="grid grid-cols-3 gap-3">
                     {[
-                        { label: 'Open', value: gigs.filter(g => g.status === 'open').length, color: 'text-emerald-600' },
-                        { label: 'Pending', value: pendingCount, color: 'text-amber-600' },
-                        { label: 'Assigned', value: gigs.filter(g => g.status === 'assigned').length, color: 'text-blue-600' },
+                        { label: t('statusOpen'), value: gigs.filter(g => g.status === 'open').length, color: 'text-emerald-600' },
+                        { label: t('filterPending'), value: pendingCount, color: 'text-amber-600' },
+                        { label: t('statusAssigned'), value: gigs.filter(g => g.status === 'assigned').length, color: 'text-blue-600' },
                     ].map(({ label, value, color }) => (
                         <div key={label} className="bg-white rounded-xl border border-gray-100 p-4 text-center">
                             <p className={`text-2xl font-black ${color}`}>{value}</p>
