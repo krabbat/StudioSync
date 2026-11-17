@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, User, Mail, Phone, Music, Users, Info, Trash2, Plus } from 'lucide-react'
@@ -19,6 +20,7 @@ function calcAge(birthDate: string): number | null {
 }
 
 export default function EditStudentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+    const tr = useTranslations('StudentAdd')
     const params = use(paramsPromise)
     const studentId = params.id
     const router = useRouter()
@@ -263,18 +265,18 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
 
                         {/* Address for home lessons */}
                         <section className="space-y-6">
-                            <h2 className="text-lg font-bold text-gray-900">Unterrichtsanschrift</h2>
+                            <h2 className="text-lg font-bold text-gray-900">{tr('teachingAddress')}</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Straße und Hausnummer</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{tr('streetAddress')}</label>
                                     <input type="text" name="address_line1" value={formData.address_line1} onChange={handleChange} className={inputClass} autoComplete="street-address" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Postleitzahl</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{tr('postalCode')}</label>
                                     <input type="text" name="postal_code" value={formData.postal_code} onChange={handleChange} className={inputClass} autoComplete="postal-code" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{tr('city')}</label>
                                     <input type="text" name="city" value={formData.city} onChange={handleChange} className={inputClass} autoComplete="address-level2" />
                                 </div>
                             </div>
