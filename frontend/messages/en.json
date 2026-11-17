@@ -133,7 +133,17 @@
     "saving": "Saving Changes...",
     "saveChanges": "Save Changes",
     "enrollmentDate": "Student since (enrollment date)",
-    "studentPhoto": "Profile photo of {name}"
+    "studentPhoto": "Profile photo of {name}",
+    "assigningToTeacher": "Assign students",
+    "assignTeacherHint": "Assign or remove individual students below.",
+    "teacherNotFound": "The chosen teacher is no longer available.",
+    "closeAssignment": "Exit assignment",
+    "assignmentSaved": "Student assigned to teacher.",
+    "assignmentRemoved": "Teacher assignment removed.",
+    "assignmentFailed": "Could not change teacher assignment.",
+    "assigning": "Saving…",
+    "removeAssignment": "Unassign",
+    "assignNow": "Assign"
   },
   "DashboardHeader": {
     "allMarkedRead": "All notifications marked as read",
@@ -258,7 +268,10 @@
     "photoInfo": "JPG, PNG or WebP up to 5 MB. You can crop the photo.",
     "invalidPhoto": "Please choose a JPG, PNG or WebP image.",
     "photoTooLarge": "Photo must be 5 MB or smaller.",
-    "studentCreatedPhotoFailed": "Student was created, but the photo could not be saved. Please add the photo separately."
+    "studentCreatedPhotoFailed": "Student was created, but the photo could not be saved. Please add the photo separately.",
+    "assignedTeacher": "Assign teacher",
+    "noTeacher": "No teacher assigned yet",
+    "soloTeacherHint": "In individual-teacher mode your teaching profile is preselected. You can change the selection."
   },
   "StudentProfile": {
     "profileAccess": "Profile Access",
@@ -460,7 +473,18 @@
     "accountDetailsFailedAfterSave": "Teacher saved, but the photo or contact details could not be updated.",
     "phoneNumber": "Phone number",
     "phoneExample": "+49 30 1234567",
-    "specialtyCount": "{count, plural, one {# specialization} other {# specializations}}"
+    "specialtyCount": "{count, plural, one {# specialization} other {# specializations}}",
+    "soloModeTitle": "Individual teaching",
+    "soloModeDescription": "Use your existing admin login as a teacher too. No second login or hourly pay rate is required.",
+    "soloModeActiveDescription": "Individual-teacher mode enabled: new students are assigned to your teaching profile by default.",
+    "soloSaving": "Updating…",
+    "soloEnable": "Enable individual teaching",
+    "soloDisable": "Disable individual teaching",
+    "soloEnabled": "Individual teaching enabled.",
+    "soloDisabled": "Individual teaching disabled. Your teacher profile remains available.",
+    "soloFailed": "Could not change individual-teacher mode.",
+    "claimProfileConfirm": "Attach the existing teacher profile ({email}) to your admin account? Student assignments stay intact. The previous user account remains, but loses this teacher profile.",
+    "assignStudents": "Assign students"
   },
   "Lessons": {
     "synchronizingLessons": "Synchronizing Lessons...",
