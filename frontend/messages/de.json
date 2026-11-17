@@ -248,7 +248,15 @@
     "guardianName": "Name der sorgeberechtigten Person",
     "guardianPhone": "Telefon der sorgeberechtigten Person",
     "exampleEmail": "max.mustermann@beispiel.de",
-    "examplePhone": "+49 30 1234567"
+    "examplePhone": "+49 30 1234567",
+    "profilePhoto": "Profilbild (optional)",
+    "photoPreview": "Vorschau des Profilbilds",
+    "choosePhoto": "Foto auswählen",
+    "removePhoto": "Foto entfernen",
+    "photoInfo": "JPG, PNG oder WebP bis 5 MB. Das Foto kann zugeschnitten werden.",
+    "invalidPhoto": "Bitte eine JPG-, PNG- oder WebP-Datei auswählen.",
+    "photoTooLarge": "Das Foto darf höchstens 5 MB groß sein.",
+    "studentCreatedPhotoFailed": "Schüler angelegt, aber das Foto konnte nicht gespeichert werden. Bitte das Foto anschließend ergänzen."
   },
   "StudentProfile": {
     "profileAccess": "Schülerprofil",

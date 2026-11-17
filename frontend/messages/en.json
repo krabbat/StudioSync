@@ -248,7 +248,15 @@
     "guardianName": "Parent / Guardian Name",
     "guardianPhone": "Parent / Guardian Phone",
     "exampleEmail": "john.doe@example.com",
-    "examplePhone": "(555) 123-4567"
+    "examplePhone": "(555) 123-4567",
+    "profilePhoto": "Profile photo (optional)",
+    "photoPreview": "Profile photo preview",
+    "choosePhoto": "Choose photo",
+    "removePhoto": "Remove photo",
+    "photoInfo": "JPG, PNG or WebP up to 5 MB. You can crop the photo.",
+    "invalidPhoto": "Please choose a JPG, PNG or WebP image.",
+    "photoTooLarge": "Photo must be 5 MB or smaller.",
+    "studentCreatedPhotoFailed": "Student was created, but the photo could not be saved. Please add the photo separately."
   },
   "StudentProfile": {
     "profileAccess": "Profile Access",

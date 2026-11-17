@@ -3,10 +3,11 @@
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Mail, Phone, Music, Users, Info, Plus } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, Music, Users, Info, Plus, Camera, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
 import { formatPhoneNumber } from '@/lib/utils'
+import ImageCropper from '@/components/ImageCropper'
 
 /** Returns the age in whole years given an ISO date string, or null if blank. */
 function calcAge(birthDate: string): number | null {
@@ -23,6 +24,9 @@ export default function AddStudentPage() {
     const tr = useTranslations('StudentAdd')
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [cropImage, setCropImage] = useState<string | null>(null)
+    const [avatar, setAvatar] = useState<Blob | null>(null)
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -40,11 +44,58 @@ export default function AddStudentPage() {
     const ageUnknown = age === null
     const showParentSection = isMinor || ageUnknown
 
+    const handlePhotoSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        e.target.value = ''
+        if (!file) return
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            toast.error(tr('invalidPhoto'))
+            return
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error(tr('photoTooLarge'))
+            return
+        }
+        const reader = new FileReader()
+        reader.onload = () => setCropImage(reader.result as string)
+        reader.readAsDataURL(file)
+    }
+
+    const handlePhotoCrop = (croppedPhoto: Blob) => {
+        setAvatar(croppedPhoto)
+        setCropImage(null)
+        const reader = new FileReader()
+        reader.onload = () => setAvatarPreview(reader.result as string)
+        reader.readAsDataURL(croppedPhoto)
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
         try {
-            await api.post('/students/', formData)
+            // The student creation response contains a student ID.
+            // Retrieving that student exposes its linked user ID for avatar upload.
+            const { data: createdStudent } = await api.post('/students/', {
+                ...formData,
+                instrument: formData.instruments[0] || formData.instrument.trim()
+            })
+
+            if (avatar) {
+                try {
+                    if (!createdStudent?.id) throw new Error('Missing student ID')
+                    const { data: studentDetails } = await api.get(`/students/${createdStudent.id}/`)
+                    if (!studentDetails?.user) throw new Error('Missing linked user ID')
+                    const uploadData = new FormData()
+                    uploadData.append('avatar', avatar, 'student-avatar.jpg')
+                    await api.patch(`/core/users/${studentDetails.user}/`, uploadData)
+                } catch (uploadError) {
+                    // Student creation succeeded; avoid any duplicate submission.
+                    console.error('Student saved but avatar upload failed', uploadError)
+                    toast.error(tr('studentCreatedPhotoFailed'))
+                    router.push('/dashboard/students')
+                    return
+                }
+            }
             toast.success(tr('studentCreated'))
             router.push('/dashboard/students')
         } catch (error: any) {
@@ -103,6 +154,35 @@ export default function AddStudentPage() {
                                         {tr('lastName')} <span className="text-red-500">*</span>
                                     </label>
                                     <input type="text" name="last_name" required value={formData.last_name} onChange={handleChange} className={inputClass} placeholder={tr('doe')} />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* ── Optional profile photo ── */}
+                        <section>
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                <Camera className="w-5 h-5 text-[var(--color-primary)]" />
+                                {tr('profilePhoto')}
+                            </h2>
+                            <div className="flex flex-wrap items-center gap-4">
+                                <div className="h-20 w-20 overflow-hidden rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center">
+                                    {avatarPreview ? (
+                                        <img src={avatarPreview} alt={tr('photoPreview')} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User className="w-8 h-8 text-gray-400" />
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <label htmlFor="student-avatar" className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        <Camera className="w-4 h-4" /> {tr('choosePhoto')}
+                                    </label>
+                                    <input id="student-avatar" type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoSelection} className="hidden" />
+                                    {avatar && (
+                                        <button type="button" onClick={() => { setAvatar(null); setAvatarPreview(null) }} className="inline-flex items-center gap-1 text-sm text-red-600 hover:underline">
+                                            <X className="w-4 h-4" /> {tr('removePhoto')}
+                                        </button>
+                                    )}
+                                    <p className="w-full text-xs text-gray-500">{tr('photoInfo')}</p>
                                 </div>
                             </div>
                         </section>
@@ -255,6 +335,13 @@ export default function AddStudentPage() {
                         </div>
                     </form>
                 </div>
+                {cropImage && (
+                    <ImageCropper
+                        imageSrc={cropImage}
+                        onCropComplete={handlePhotoCrop}
+                        onCancel={() => setCropImage(null)}
+                    />
+                )}
             </div>
         </div>
     )
