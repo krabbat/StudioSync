@@ -132,5 +132,30 @@
     "cancel": "Cancel",
     "saving": "Saving Changes...",
     "saveChanges": "Save Changes"
+  },
+  "DashboardHeader": {
+    "allMarkedRead": "All notifications marked as read",
+    "allCleared": "All notifications cleared",
+    "openMenu": "Open menu",
+    "dashboard": "Dashboard",
+    "welcome": "Welcome back, {name}",
+    "notifications": "Notifications",
+    "markAllRead": "Mark all read",
+    "clearAll": "Clear all",
+    "allCaughtUp": "You're all caught up!",
+    "noNotifications": "No notifications yet.",
+    "viewAll": "View all notifications",
+    "instructor": "Instructor",
+    "student": "Student",
+    "admin": "Admin",
+    "signedInAs": "Signed in as",
+    "quickAccess": "Quick Access",
+    "myLessons": "My Lessons",
+    "myStudents": "My Students",
+    "learningBase": "Learning Base",
+    "resourcesGuide": "Explore resources & guides",
+    "account": "Account",
+    "settings": "Settings",
+    "logout": "Log Out"
   }
 }

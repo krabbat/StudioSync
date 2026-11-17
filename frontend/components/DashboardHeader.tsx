@@ -18,6 +18,7 @@ import { Logo } from "@/components/Logo";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { useNotifications, NOTIFICATION_TYPE_META } from "@/hooks/useNotifications";
+import { useTranslations } from "next-intl";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const H = {
@@ -38,6 +39,7 @@ interface DashboardHeaderProps {
 }
 
 export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+  const t = useTranslations("DashboardHeader");
   const { currentUser, logout } = useUser();
   const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -75,12 +77,12 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
 
   const handleMarkAllRead = async () => {
     await markAllRead();
-    toast.success("All notifications marked as read");
+    toast.success(t("allMarkedRead"));
   };
 
   const handleClearAll = async () => {
     await clearAll();
-    toast.success("All notifications cleared");
+    toast.success(t("allCleared"));
   };
 
   const handleNotificationClick = async (
@@ -110,7 +112,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           onClick={onMenuClick}
           className="md:hidden mr-2"
           style={{ color: H.muted }}
-          aria-label="Open menu"
+          aria-label={t("openMenu")}
         >
           <Menu className="w-6 h-6" />
         </Button>
@@ -120,11 +122,9 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           <h1
             className="text-xl md:text-2xl font-bold truncate"
             style={{ color: H.text, fontFamily: "Outfit, sans-serif" }}
-          >
-            Dashboard
-          </h1>
+          >{t("dashboard")}</h1>
           <p className="text-xs md:text-sm truncate" style={{ color: H.muted }}>
-            Welcome back, {currentUser?.full_name}
+            {t("welcome", {name: currentUser?.full_name || ""})}
           </p>
         </div>
 
@@ -138,7 +138,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
               onClick={() => setShowNotifications(!showNotifications)}
               className="relative"
               style={{ color: H.muted }}
-              aria-label="Notifications"
+              aria-label={t("notifications")}
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
@@ -183,9 +183,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     <h3
                       className="font-bold text-sm"
                       style={{ color: H.text }}
-                    >
-                      Notifications
-                    </h3>
+                    >{t("notifications")}</h3>
                     {unreadCount > 0 && (
                       <span
                         className="text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none"
@@ -201,9 +199,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                         onClick={handleMarkAllRead}
                         className="text-xs font-medium hover:underline"
                         style={{ color: H.amber }}
-                      >
-                        Mark all read
-                      </button>
+                      >{t("markAllRead")}</button>
                     )}
                     {unreadCount > 0 && (
                       <span style={{ color: H.border }}>|</span>
@@ -212,9 +208,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       onClick={handleClearAll}
                       className="text-xs font-medium hover:underline"
                       style={{ color: H.muted }}
-                    >
-                      Clear all
-                    </button>
+                    >{t("clearAll")}</button>
                   </div>
                 </div>
 
@@ -235,10 +229,10 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                         className="text-sm font-medium"
                         style={{ color: H.muted }}
                       >
-                        You&apos;re all caught up!
+                        {t("allCaughtUp")}
                       </p>
                       <p className="text-xs" style={{ color: H.faint }}>
-                        No notifications yet.
+                        {t("noNotifications")}
                       </p>
                     </div>
                   ) : (
@@ -314,7 +308,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     className="text-xs font-semibold hover:underline"
                     style={{ color: H.amber }}
                   >
-                    View all notifications →
+                    {t("viewAll")} →
                   </Link>
                 </div>
               </div>
@@ -389,8 +383,8 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                 </div>
                 <div className="text-xs capitalize" style={{ color: H.muted }}>
                   {currentUser?.role === "teacher"
-                    ? "Instructor"
-                    : currentUser?.role}
+                    ? t("instructor")
+                    : currentUser?.role === "student" ? t("student") : currentUser?.role === "admin" ? t("admin") : currentUser?.role}
                 </div>
               </div>
               <span
@@ -427,9 +421,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     <p
                       className="text-xs font-semibold uppercase tracking-wider mb-1"
                       style={{ color: H.amber }}
-                    >
-                      Signed in as
-                    </p>
+                    >{t("signedInAs")}</p>
                     <p
                       className="text-sm font-medium truncate"
                       style={{ color: H.text }}
@@ -446,12 +438,10 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     <p
                       className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
                       style={{ color: H.faint }}
-                    >
-                      Quick Access
-                    </p>
+                    >{t("quickAccess")}</p>
                     {[
-                      { href: "/dashboard/lessons", label: "My Lessons", icon: BookOpen },
-                      { href: "/dashboard/students", label: "My Students", icon: FileText },
+                      { href: "/dashboard/lessons", label: t("myLessons"), icon: BookOpen },
+                      { href: "/dashboard/students", label: t("myStudents"), icon: FileText },
                     ].map(({ href, label, icon: Icon }) => (
                       <Link
                         key={href}
@@ -515,15 +505,11 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                         <span
                           className="block text-sm font-medium"
                           style={{ color: H.text }}
-                        >
-                          Learning Base
-                        </span>
+                        >{t("learningBase")}</span>
                         <span
                           className="text-[10px]"
                           style={{ color: H.muted }}
-                        >
-                          Explore resources & guides
-                        </span>
+                        >{t("resourcesGuide")}</span>
                       </div>
                     </Link>
                   </div>
@@ -536,9 +522,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     <p
                       className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
                       style={{ color: H.faint }}
-                    >
-                      Account
-                    </p>
+                    >{t("account")}</p>
                     <Link
                       href="/dashboard/settings"
                       className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm"
@@ -553,7 +537,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       }}
                     >
                       <Settings className="w-4 h-4" style={{ color: H.faint }} />
-                      <span>Settings</span>
+                      <span>{t("settings")}</span>
                     </Link>
                   </div>
 
@@ -576,7 +560,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                       }}
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>Log Out</span>
+                      <span>{t("logout")}</span>
                     </Button>
                   </div>
                 </div>

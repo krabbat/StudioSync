@@ -132,5 +132,30 @@
     "cancel": "Abbrechen",
     "saving": "Änderungen werden gespeichert …",
     "saveChanges": "Änderungen speichern"
+  },
+  "DashboardHeader": {
+    "allMarkedRead": "Alle Benachrichtigungen als gelesen markiert",
+    "allCleared": "Alle Benachrichtigungen gelöscht",
+    "openMenu": "Menü öffnen",
+    "dashboard": "Dashboard",
+    "welcome": "Willkommen zurück, {name}",
+    "notifications": "Benachrichtigungen",
+    "markAllRead": "Alle als gelesen markieren",
+    "clearAll": "Alle löschen",
+    "allCaughtUp": "Alles erledigt!",
+    "noNotifications": "Noch keine Benachrichtigungen.",
+    "viewAll": "Alle Benachrichtigungen ansehen",
+    "instructor": "Lehrkraft",
+    "student": "Schüler",
+    "admin": "Administrator",
+    "signedInAs": "Angemeldet als",
+    "quickAccess": "Schnellzugriff",
+    "myLessons": "Mein Unterricht",
+    "myStudents": "Meine Schüler",
+    "learningBase": "Lernmaterialien",
+    "resourcesGuide": "Materialien und Anleitungen ansehen",
+    "account": "Konto",
+    "settings": "Einstellungen",
+    "logout": "Abmelden"
   }
 }
