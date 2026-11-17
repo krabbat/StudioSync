@@ -1,13 +1,15 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, User, Mail, Phone, Music, Users, Info, Plus, Camera, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
 import { formatPhoneNumber } from '@/lib/utils'
 import ImageCropper from '@/components/ImageCropper'
+import { useTeachers } from '@/hooks/useDashboardData'
+import { useUser } from '@/contexts/UserContext'
 
 /** Returns the age in whole years given an ISO date string, or null if blank. */
 function calcAge(birthDate: string): number | null {
@@ -23,6 +25,10 @@ function calcAge(birthDate: string): number | null {
 export default function AddStudentPage() {
     const tr = useTranslations('StudentAdd')
     const router = useRouter()
+    const { currentUser } = useUser()
+    const { teachers } = useTeachers()
+    const [primaryTeacherId, setPrimaryTeacherId] = useState('')
+    const [teacherChoiceTouched, setTeacherChoiceTouched] = useState(false)
     const [loading, setLoading] = useState(false)
     const [cropImage, setCropImage] = useState<string | null>(null)
     const [avatar, setAvatar] = useState<Blob | null>(null)
@@ -38,6 +44,18 @@ export default function AddStudentPage() {
         emergency_contact_name: '',
         emergency_contact_phone: '',
     })
+
+    // Preselect a sole teacher, or the owner in individual-teaching mode.
+    // An explicit choice (including "unassigned") is never overwritten.
+    useEffect(() => {
+        if (teacherChoiceTouched) return
+        const activeTeachers = teachers.filter((teacher: any) => teacher.is_active)
+        const owner = currentUser?.studio?.settings?.solo_teacher_mode
+            ? activeTeachers.find((teacher: any) => teacher.user_id === currentUser?.id)
+            : null
+        const suggested = owner || (activeTeachers.length === 1 ? activeTeachers[0] : null)
+        setPrimaryTeacherId(suggested?.id || '')
+    }, [teachers, teacherChoiceTouched, currentUser?.id, currentUser?.studio?.settings?.solo_teacher_mode])
 
     const age = calcAge(formData.birth_date)
     const isMinor = age !== null && age < 18
@@ -77,7 +95,10 @@ export default function AddStudentPage() {
             // independently of the student detail endpoint.
             const { data: createdStudent } = await api.post('/students/', {
                 ...formData,
-                instrument: formData.instruments[0] || formData.instrument.trim()
+                instrument: formData.instruments[0] || formData.instrument.trim(),
+                ...(teacherChoiceTouched || primaryTeacherId
+                    ? { primary_teacher: primaryTeacherId || null }
+                    : {})
             })
 
             if (avatar) {
@@ -257,6 +278,32 @@ export default function AddStudentPage() {
                                     placeholder={tr('typeAnInstrumentAndPressEnter')}
                                 />
                             </div>
+                        </section>
+
+                        {/* ── Teacher assignment ── */}
+                        <section>
+                            <label htmlFor="new-student-teacher" className="block text-sm font-medium text-gray-700 mb-2">
+                                {tr('assignedTeacher')}
+                            </label>
+                            <select
+                                id="new-student-teacher"
+                                value={primaryTeacherId}
+                                onChange={(e) => {
+                                    setPrimaryTeacherId(e.target.value)
+                                    setTeacherChoiceTouched(true)
+                                }}
+                                className={inputClass}
+                            >
+                                <option value="">{tr('noTeacher')}</option>
+                                {teachers.filter((teacher: any) => teacher.is_active).map((teacher: any) => (
+                                    <option key={teacher.id} value={teacher.id}>
+                                        {teacher.first_name} {teacher.last_name}
+                                    </option>
+                                ))}
+                            </select>
+                            {currentUser?.studio?.settings?.solo_teacher_mode && (
+                                <p className="mt-2 text-xs text-gray-500">{tr('soloTeacherHint')}</p>
+                            )}
                         </section>
 
                         {/* ── Parent / Guardian — conditional ── */}
