@@ -222,3 +222,19 @@ def test_teacher_photo_upload_for_admin_account(authenticated_client, studio, ad
     admin_user.refresh_from_db()
     assert admin_user.avatar.name.startswith("avatars/")
     assert upload_response.data["avatar"].startswith("/media/avatars/")
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_analytics_student_enrollments_ignore_non_students(authenticated_client, student, studio, admin_user):
+    """The growth chart agrees with the roster and uses enrollment_date, not created_at."""
+    from django.utils import timezone
+
+    today = timezone.now().date()
+    student.enrollment_date = today
+    student.save(update_fields=["enrollment_date"])
+    Student.objects.create(user=admin_user, studio=studio, enrollment_date=today)
+
+    response = authenticated_client.get("/api/core/analytics/")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["student_growth"][-1]["students"] == 1
