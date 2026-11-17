@@ -10,6 +10,7 @@ class StudentListSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     email = serializers.EmailField(source="user.email", read_only=True)
+    avatar = serializers.SerializerMethodField()
     teacher_name = serializers.CharField(
         source="primary_teacher.user.get_full_name", read_only=True, allow_null=True
     )
@@ -22,6 +23,8 @@ class StudentListSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "email",
+            "avatar",
+            "enrollment_date",
             "instrument",
             "teacher_name",
             "primary_teacher",
@@ -32,6 +35,11 @@ class StudentListSerializer(serializers.ModelSerializer):
 
     def get_name(self, obj):
         return obj.user.get_full_name()
+
+    def get_avatar(self, obj):
+        if obj.user.avatar:
+            return obj.user.avatar.url
+        return None
 
     def get_status(self, obj):
         return "active" if obj.is_active else "inactive"
@@ -103,6 +111,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
             "family",
             "studio",
             "birth_date",
+            "enrollment_date",
             "emergency_contact_name",
             "emergency_contact_phone",
             "primary_teacher",
