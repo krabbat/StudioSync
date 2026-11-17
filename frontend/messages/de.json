@@ -825,7 +825,8 @@
     "photoInfo": "JPG, PNG oder WebP bis 5 MB; vor dem Speichern zuschneidbar.",
     "invalidPhoto": "Bitte ein JPG-, PNG- oder WebP-Bild auswählen.",
     "photoTooLarge": "Das Foto darf höchstens 5 MB groß sein.",
-    "userSavedPhotoFailed": "Das Benutzerkonto wurde gespeichert, aber das Profilfoto konnte nicht hochgeladen werden."
+    "userSavedPhotoFailed": "Das Benutzerkonto wurde gespeichert, aber das Profilfoto konnte nicht hochgeladen werden.",
+    "studentAccountsFromRoster": "Schüler werden ausschließlich in der Schülerverwaltung angelegt. Ihr Login wird anschließend im Schülerprofil eingerichtet."
   },
   "Resources": {
     "loadingLibrary": "Materialien werden geladen…",
