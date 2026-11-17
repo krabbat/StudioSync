@@ -1,31 +1,38 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import {
     ArrowLeft, User, Mail, Phone, Music,
     Calendar, Edit, Trash2, Clock,
-    CheckCircle2, AlertCircle, MapPin
+    CheckCircle2, AlertCircle, MapPin, Save, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import api from '@/services/api'
 import { toast } from 'react-hot-toast'
-import { formatPhoneNumber } from '@/lib/utils'
+import { formatPhoneNumber, proxyFileUrl } from '@/lib/utils'
+import { useUser } from '@/contexts/UserContext'
 
 export default function StudentProfilePage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const tr = useTranslations('StudentProfile')
+    const locale = useLocale()
+    const { currentUser } = useUser()
     const params = use(paramsPromise)
     const studentId = params.id
     const router = useRouter()
     const [student, setStudent] = useState<any>(null)
     const [loading, setLoading] = useState(true)
+    const [editingEnrollment, setEditingEnrollment] = useState(false)
+    const [enrollmentDraft, setEnrollmentDraft] = useState('')
+    const [savingEnrollment, setSavingEnrollment] = useState(false)
 
     useEffect(() => {
         const fetchStudent = async () => {
             try {
                 const response = await api.get(`/students/${studentId}/`)
                 setStudent(response.data)
+                setEnrollmentDraft(response.data.enrollment_date || '')
             } catch (error) {
                 console.error('Failed to load student:', error)
                 toast.error(tr('loadFailed'))
@@ -35,7 +42,26 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
             }
         }
         if (studentId) fetchStudent()
-    }, [studentId, router])
+    }, [studentId, router, tr])
+
+    const saveEnrollmentDate = async () => {
+        if (!enrollmentDraft) {
+            toast.error(tr('enrollmentRequired'))
+            return
+        }
+        setSavingEnrollment(true)
+        try {
+            await api.patch(`/students/${studentId}/`, { enrollment_date: enrollmentDraft })
+            setStudent((previous: any) => previous ? { ...previous, enrollment_date: enrollmentDraft } : previous)
+            setEditingEnrollment(false)
+            toast.success(tr('enrollmentSaved'))
+        } catch (error: any) {
+            const serverMessage = error?.response?.data?.enrollment_date?.[0]
+            toast.error(serverMessage || tr('enrollmentSaveFailed'))
+        } finally {
+            setSavingEnrollment(false)
+        }
+    }
 
     if (loading) {
         return (
@@ -100,16 +126,24 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                         <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-48 -mt-48 blur-3xl" />
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/10 rounded-full -ml-32 -mb-32 blur-2xl" />
 
-                        <div className="absolute -bottom-16 left-12 p-3 bg-white rounded-[2.5rem] shadow-2xl transition-transform duration-500 group-hover:scale-105">
-                            <div className="w-32 h-32 rounded-[2rem] bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center border-4 border-white overflow-hidden shadow-inner">
-                                <span className="text-4xl font-black text-gray-400 uppercase tracking-tighter">
-                                    {firstName[0]}{lastName[0]}
-                                </span>
+                        <div className="absolute bottom-6 left-10 md:left-12 p-2 bg-white rounded-[2.5rem] shadow-2xl transition-transform duration-500 group-hover:scale-105">
+                            <div className="w-36 h-36 rounded-[2rem] bg-gray-100 flex items-center justify-center border-4 border-white overflow-hidden shadow-inner">
+                                {student.avatar || student.user?.avatar ? (
+                                    <img
+                                        src={proxyFileUrl(student.avatar || student.user?.avatar) || undefined}
+                                        alt={tr('studentPhoto', { name: fullName })}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-4xl font-black text-gray-400 uppercase tracking-tighter">
+                                        {firstName[0]}{lastName[0]}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="pt-24 pb-12 px-12 space-y-8">
+                    <div className="pt-12 pb-12 px-12 space-y-8">
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                             <div className="space-y-4">
                                 <div className="flex items-center gap-4 flex-wrap">
@@ -184,7 +218,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
                                             <Calendar className="w-4 h-4 text-gray-300 group-hover:text-blue-400" />
                                         </div>
-                                        {student.birth_date ? new Date(student.birth_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Waiting to be updated'}
+                                        {student.birth_date ? new Date(`${student.birth_date}T00:00:00`).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' }) : tr('notProvided')}
                                     </p>
                                 </div>
                             </div>
@@ -204,11 +238,11 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black text-amber-700/50 uppercase tracking-widest">{tr('primaryGuardian')}</p>
-                                        <p className="text-xl font-black text-gray-900">{student.emergency_contact_name || 'Not listed yet'}</p>
+                                        <p className="text-xl font-black text-gray-900">{student.emergency_contact_name || tr('notProvided')}</p>
                                     </div>
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black text-amber-700/50 uppercase tracking-widest">{tr('emergencyLine')}</p>
-                                        <p className="text-xl font-black text-gray-900">{formatPhoneNumber(student.emergency_contact_phone) || 'Not listed yet'}</p>
+                                        <p className="text-xl font-black text-gray-900">{formatPhoneNumber(student.emergency_contact_phone) || tr('notProvided')}</p>
                                     </div>
                                 </div>
                             </section>
@@ -224,8 +258,41 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                             <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] relative z-10">{tr('studioJourney')}</h2>
                             <div className="space-y-8 relative z-10">
                                 <div className="space-y-2">
-                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('partOfTheFamilySince')}</span>
-                                    <p className="text-2xl font-black">{student.created_at ? new Date(student.created_at).getFullYear() : '2024'}</p>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('partOfTheFamilySince')}</span>
+                                        {currentUser?.role === 'admin' && !editingEnrollment && (
+                                            <button
+                                                type="button"
+                                                onClick={() => { setEnrollmentDraft(student.enrollment_date || ''); setEditingEnrollment(true) }}
+                                                className="text-gray-400 hover:text-white"
+                                                aria-label={tr('editEnrollment')}
+                                                title={tr('editEnrollment')}
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    {editingEnrollment ? (
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <input
+                                                type="date"
+                                                aria-label={tr('partOfTheFamilySince')}
+                                                value={enrollmentDraft}
+                                                onChange={e => setEnrollmentDraft(e.target.value)}
+                                                className="min-w-0 flex-1 rounded-lg bg-gray-800 text-white p-2 border border-gray-600 focus:border-primary outline-none"
+                                            />
+                                            <button type="button" onClick={saveEnrollmentDate} disabled={savingEnrollment} aria-label={tr('saveEnrollment')} title={tr('saveEnrollment')} className="p-2 rounded-lg bg-primary text-white disabled:opacity-60">
+                                                <Save className="w-5 h-5" />
+                                            </button>
+                                            <button type="button" onClick={() => { setEditingEnrollment(false); setEnrollmentDraft(student.enrollment_date || '') }} disabled={savingEnrollment} aria-label={tr('cancelEnrollment')} title={tr('cancelEnrollment')} className="p-2 rounded-lg bg-gray-700 text-white disabled:opacity-60">
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xl font-black">{student.enrollment_date
+                                            ? new Date(`${student.enrollment_date}T00:00:00`).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })
+                                            : tr('notProvided')}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('milestonesAchieved')}</span>

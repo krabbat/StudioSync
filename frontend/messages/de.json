@@ -282,7 +282,15 @@
     "upcomingLesson": "Nächster Unterricht",
     "nextTuesday": "Nächster Dienstag",
     "400PMSharp": "16:00 Uhr",
-    "loadFailed": "Schülerprofil konnte nicht geladen werden"
+    "loadFailed": "Schülerprofil konnte nicht geladen werden",
+    "studentPhoto": "Profilfoto von {name}",
+    "notProvided": "Nicht angegeben",
+    "editEnrollment": "Aufnahmedatum bearbeiten",
+    "saveEnrollment": "Aufnahmedatum speichern",
+    "cancelEnrollment": "Bearbeitung abbrechen",
+    "enrollmentRequired": "Bitte ein Aufnahmedatum auswählen.",
+    "enrollmentSaved": "Aufnahmedatum gespeichert.",
+    "enrollmentSaveFailed": "Aufnahmedatum konnte nicht gespeichert werden."
   },
   "SettingsHub": {
     "sectionAccount": "Konto",

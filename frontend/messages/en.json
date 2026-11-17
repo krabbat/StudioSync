@@ -282,7 +282,15 @@
     "upcomingLesson": "Upcoming Lesson",
     "nextTuesday": "Next Tuesday",
     "400PMSharp": "4:00 PM Sharp",
-    "loadFailed": "Failed to load student profile"
+    "loadFailed": "Failed to load student profile",
+    "studentPhoto": "Profile photo of {name}",
+    "notProvided": "Not provided",
+    "editEnrollment": "Edit enrollment date",
+    "saveEnrollment": "Save enrollment date",
+    "cancelEnrollment": "Cancel editing",
+    "enrollmentRequired": "Please select an enrollment date.",
+    "enrollmentSaved": "Enrollment date saved.",
+    "enrollmentSaveFailed": "Could not save enrollment date."
   },
   "SettingsHub": {
     "sectionAccount": "Account",
