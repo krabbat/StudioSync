@@ -468,7 +468,7 @@ export default function DashboardPage() {
         trend={
           String(overview.practice_goal?.value || "").includes("100")
             ? { value: t("goalAchieved"), positive: true }
-            : { value: t("keepItUp")}, positive: true }
+            : { value: t("keepItUp"), positive: true }
         }
         color="blue"
         icon={<Check className="w-6 h-6" />}
