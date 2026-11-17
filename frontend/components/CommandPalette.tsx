@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -30,6 +31,7 @@ interface CommandItem {
 }
 
 export function CommandPalette() {
+  const tr = useTranslations('CommandPalette')
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -57,8 +59,8 @@ export function CommandPalette() {
     // Dashboard
     {
       id: 'dashboard',
-      title: 'Dashboard',
-      subtitle: 'View your dashboard',
+      title: tr('item0Title'),
+      subtitle: tr('item0Subtitle'),
       icon: Home,
       action: () => navigate('/dashboard'),
       keywords: ['home', 'overview']
@@ -67,16 +69,16 @@ export function CommandPalette() {
     // Students
     {
       id: 'students',
-      title: 'Students',
-      subtitle: 'Manage students',
+      title: tr('item1Title'),
+      subtitle: tr('item1Subtitle'),
       icon: GraduationCap,
       action: () => navigate('/dashboard/students'),
       keywords: ['pupils', 'learners']
     },
     {
       id: 'add-student',
-      title: 'Add New Student',
-      subtitle: 'Create a new student profile',
+      title: tr('item2Title'),
+      subtitle: tr('item2Subtitle'),
       icon: Users,
       action: () => navigate('/dashboard/students?action=new'),
       keywords: ['create', 'new', 'register']
@@ -85,8 +87,8 @@ export function CommandPalette() {
     // Teachers
     {
       id: 'teachers',
-      title: 'Teachers',
-      subtitle: 'Manage instructors',
+      title: tr('item3Title'),
+      subtitle: tr('item3Subtitle'),
       icon: Users,
       action: () => navigate('/dashboard/teachers'),
       keywords: ['instructors', 'staff']
@@ -95,16 +97,16 @@ export function CommandPalette() {
     // Schedule
     {
       id: 'schedule',
-      title: 'Schedule',
-      subtitle: 'View calendar and lessons',
+      title: tr('item4Title'),
+      subtitle: tr('item4Subtitle'),
       icon: Calendar,
       action: () => navigate('/dashboard/schedule'),
       keywords: ['calendar', 'timetable', 'appointments']
     },
     {
       id: 'lessons',
-      title: 'Lessons',
-      subtitle: 'Manage lessons',
+      title: tr('item5Title'),
+      subtitle: tr('item5Subtitle'),
       icon: Music,
       action: () => navigate('/dashboard/lessons'),
       keywords: ['classes', 'sessions']
@@ -113,8 +115,8 @@ export function CommandPalette() {
     // Billing
     {
       id: 'billing',
-      title: 'Billing',
-      subtitle: 'Invoices and payments',
+      title: tr('item6Title'),
+      subtitle: tr('item6Subtitle'),
       icon: DollarSign,
       action: () => navigate('/dashboard/billing'),
       keywords: ['invoices', 'payments', 'money', 'finance']
@@ -123,8 +125,8 @@ export function CommandPalette() {
     // Resources
     {
       id: 'resources',
-      title: 'Resources',
-      subtitle: 'Files and materials',
+      title: tr('item7Title'),
+      subtitle: tr('item7Subtitle'),
       icon: Library,
       action: () => navigate('/dashboard/resources'),
       keywords: ['files', 'documents', 'materials', 'library']
@@ -133,8 +135,8 @@ export function CommandPalette() {
     // Inventory
     {
       id: 'inventory',
-      title: 'Inventory',
-      subtitle: 'Equipment and instruments',
+      title: tr('item8Title'),
+      subtitle: tr('item8Subtitle'),
       icon: FileText,
       action: () => navigate('/dashboard/inventory'),
       keywords: ['equipment', 'instruments', 'items']
@@ -143,8 +145,8 @@ export function CommandPalette() {
     // Messages
     {
       id: 'messages',
-      title: 'Messages',
-      subtitle: 'Communications',
+      title: tr('item9Title'),
+      subtitle: tr('item9Subtitle'),
       icon: MessageCircle,
       action: () => navigate('/dashboard/messages'),
       keywords: ['chat', 'communications', 'inbox']
@@ -153,8 +155,8 @@ export function CommandPalette() {
     // Reports
     {
       id: 'reports',
-      title: 'Reports',
-      subtitle: 'Analytics and insights',
+      title: tr('item10Title'),
+      subtitle: tr('item10Subtitle'),
       icon: BarChart,
       action: () => navigate('/dashboard/reports'),
       keywords: ['analytics', 'stats', 'insights', 'data']
@@ -163,8 +165,8 @@ export function CommandPalette() {
     // Settings
     {
       id: 'settings',
-      title: 'Settings',
-      subtitle: 'Account preferences',
+      title: tr('item11Title'),
+      subtitle: tr('item11Subtitle'),
       icon: Settings,
       action: () => navigate('/dashboard/settings'),
       keywords: ['preferences', 'config', 'configuration']
@@ -173,8 +175,8 @@ export function CommandPalette() {
     // Logout
     {
       id: 'logout',
-      title: 'Log Out',
-      subtitle: 'Sign out of your account',
+      title: tr('item12Title'),
+      subtitle: tr('item12Subtitle'),
       icon: LogOut,
       action: () => {
         localStorage.removeItem('accessToken')
@@ -217,7 +219,7 @@ export function CommandPalette() {
                   <Command.Input
                     value={search}
                     onValueChange={setSearch}
-                    placeholder="Type a command or search..."
+                    placeholder={tr('search')}
                     className="flex-1 bg-transparent border-none outline-none py-4 text-gray-900 placeholder:text-gray-400 text-sm"
                     autoFocus
                   />
@@ -228,11 +230,11 @@ export function CommandPalette() {
 
                 <Command.List className="max-h-96 overflow-y-auto p-2">
                   <Command.Empty className="py-12 text-center text-sm text-gray-500">
-                    No results found.
+                    {tr('noResults')}
                   </Command.Empty>
 
                   {/* Navigation Section */}
-                  <Command.Group heading="Navigation" className="text-xs font-semibold text-gray-500 px-2 py-2">
+                  <Command.Group heading={tr('navigation')} className="text-xs font-semibold text-gray-500 px-2 py-2">
                     {commands.filter(cmd => ['dashboard', 'students', 'teachers', 'schedule', 'lessons'].includes(cmd.id)).map((item) => (
                       <Command.Item
                         key={item.id}
@@ -254,7 +256,7 @@ export function CommandPalette() {
                   </Command.Group>
 
                   {/* Management Section */}
-                  <Command.Group heading="Management" className="text-xs font-semibold text-gray-500 px-2 py-2 mt-2">
+                  <Command.Group heading={tr('management')} className="text-xs font-semibold text-gray-500 px-2 py-2 mt-2">
                     {commands.filter(cmd => ['billing', 'resources', 'inventory', 'messages'].includes(cmd.id)).map((item) => (
                       <Command.Item
                         key={item.id}
@@ -276,7 +278,7 @@ export function CommandPalette() {
                   </Command.Group>
 
                   {/* Actions Section */}
-                  <Command.Group heading="Actions" className="text-xs font-semibold text-gray-500 px-2 py-2 mt-2">
+                  <Command.Group heading={tr('actions')} className="text-xs font-semibold text-gray-500 px-2 py-2 mt-2">
                     {commands.filter(cmd => ['add-student', 'reports', 'settings', 'logout'].includes(cmd.id)).map((item) => (
                       <Command.Item
                         key={item.id}
@@ -304,18 +306,18 @@ export function CommandPalette() {
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-1">
                         <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono">↑↓</kbd>
-                        <span>Navigate</span>
+                        <span>{tr('navigate')}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono">↵</kbd>
-                        <span>Select</span>
+                        <span>{tr('select')}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono">ESC</kbd>
-                        <span>Close</span>
+                        <span>{tr('close')}</span>
                       </div>
                     </div>
-                    <div className="hidden sm:block">Press <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono">⌘K</kbd> to toggle</div>
+                    <div className="hidden sm:block">{tr('press')} <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono">⌘K</kbd> {tr('toToggle')}</div>
                   </div>
                 </div>
               </Command>
