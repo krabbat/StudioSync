@@ -38,6 +38,9 @@ export default function AddStudentPage() {
         last_name: '',
         email: '',
         phone: '',
+        address_line1: '',
+        postal_code: '',
+        city: '',
         instrument: '',
         instruments: [] as string[],
         birth_date: '',
@@ -277,6 +280,25 @@ export default function AddStudentPage() {
                                     className={inputClass}
                                     placeholder={tr('typeAnInstrumentAndPressEnter')}
                                 />
+                            </div>
+                        </section>
+
+                        {/* ── Home teaching address ── */}
+                        <section className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-900">{tr('teachingAddress')}</h2>
+                            <div>
+                                <label htmlFor="student-street" className="block text-sm font-medium text-gray-700 mb-1">{tr('streetAddress')}</label>
+                                <input id="student-street" type="text" name="address_line1" value={formData.address_line1} onChange={handleChange} className={inputClass} autoComplete="street-address" />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="student-postal" className="block text-sm font-medium text-gray-700 mb-1">{tr('postalCode')}</label>
+                                    <input id="student-postal" type="text" name="postal_code" value={formData.postal_code} onChange={handleChange} className={inputClass} autoComplete="postal-code" />
+                                </div>
+                                <div>
+                                    <label htmlFor="student-city" className="block text-sm font-medium text-gray-700 mb-1">{tr('city')}</label>
+                                    <input id="student-city" type="text" name="city" value={formData.city} onChange={handleChange} className={inputClass} autoComplete="address-level2" />
+                                </div>
                             </div>
                         </section>
 
