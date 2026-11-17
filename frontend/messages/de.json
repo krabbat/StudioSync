@@ -133,7 +133,17 @@
     "saving": "Änderungen werden gespeichert …",
     "saveChanges": "Änderungen speichern",
     "enrollmentDate": "Schüler seit (Aufnahmedatum)",
-    "studentPhoto": "Profilfoto von {name}"
+    "studentPhoto": "Profilfoto von {name}",
+    "assigningToTeacher": "Schüler zuordnen",
+    "assignTeacherHint": "Bei jedem Schüler die Zuordnung auswählen oder aufheben.",
+    "teacherNotFound": "Die gewählte Lehrkraft ist nicht mehr verfügbar.",
+    "closeAssignment": "Zuordnung beenden",
+    "assignmentSaved": "Schüler wurde der Lehrkraft zugeordnet.",
+    "assignmentRemoved": "Lehrkraftzuordnung aufgehoben.",
+    "assignmentFailed": "Zuordnung konnte nicht geändert werden.",
+    "assigning": "Wird gespeichert…",
+    "removeAssignment": "Zuordnung aufheben",
+    "assignNow": "Zuweisen"
   },
   "DashboardHeader": {
     "allMarkedRead": "Alle Benachrichtigungen als gelesen markiert",
@@ -258,7 +268,10 @@
     "photoInfo": "JPG, PNG oder WebP bis 5 MB. Das Foto kann zugeschnitten werden.",
     "invalidPhoto": "Bitte eine JPG-, PNG- oder WebP-Datei auswählen.",
     "photoTooLarge": "Das Foto darf höchstens 5 MB groß sein.",
-    "studentCreatedPhotoFailed": "Schüler angelegt, aber das Foto konnte nicht gespeichert werden. Bitte das Foto anschließend ergänzen."
+    "studentCreatedPhotoFailed": "Schüler angelegt, aber das Foto konnte nicht gespeichert werden. Bitte das Foto anschließend ergänzen.",
+    "assignedTeacher": "Lehrkraft zuweisen",
+    "noTeacher": "Noch keine Lehrkraft zugewiesen",
+    "soloTeacherHint": "Im Einzelunterrichtsmodus wird deine Lehrkraft automatisch vorgeschlagen. Die Auswahl kann geändert werden."
   },
   "StudentProfile": {
     "profileAccess": "Schülerprofil",
@@ -460,7 +473,18 @@
     "accountDetailsFailedAfterSave": "Die Lehrkraft wurde gespeichert, aber Foto oder Kontaktdaten konnten nicht aktualisiert werden.",
     "phoneNumber": "Telefonnummer",
     "phoneExample": "+49 30 1234567",
-    "specialtyCount": "{count, plural, one {# Schwerpunkt} other {# Schwerpunkte}}"
+    "specialtyCount": "{count, plural, one {# Schwerpunkt} other {# Schwerpunkte}}",
+    "soloModeTitle": "Einzelunterricht",
+    "soloModeDescription": "Dein Administratorkonto kann auch als Lehrkraft verwendet werden. Ein zweiter Login und ein Stundenhonorar sind nicht erforderlich.",
+    "soloModeActiveDescription": "Einzelunterricht aktiv: Neue Schüler werden standardmäßig deinem Lehrkräfteprofil zugeordnet.",
+    "soloSaving": "Wird umgestellt…",
+    "soloEnable": "Einzelunterricht aktivieren",
+    "soloDisable": "Einzelunterricht deaktivieren",
+    "soloEnabled": "Einzelunterricht ist aktiviert.",
+    "soloDisabled": "Einzelunterricht ist deaktiviert. Dein Lehrkräfteprofil bleibt erhalten.",
+    "soloFailed": "Der Einzelunterrichtsmodus konnte nicht geändert werden.",
+    "claimProfileConfirm": "Das vorhandene Lehrkräfteprofil ({email}) an dein Administratorkonto übertragen? Schülerzuordnungen bleiben bestehen. Das bisherige Benutzerkonto bleibt erhalten, verliert aber dieses Lehrkräfteprofil.",
+    "assignStudents": "Schüler zuweisen"
   },
   "Lessons": {
     "synchronizingLessons": "Unterrichtsstunden werden geladen…",
