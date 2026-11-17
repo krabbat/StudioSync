@@ -42,7 +42,7 @@ export default function GeneralSettingsPage() {
             if (geo.country && !studioSettings.country) updates.country = geo.country
             setStudioSettings(prev => ({ ...prev, ...updates }))
             const label = geo.city && geo.country_name ? `${geo.city}, ${geo.country_name}` : geo.timezone
-            toast.success(`Location detected: ${label}`)
+            toast.success(t("locationDetected", {location: label}))
         } catch {
             toast.error(t('msgCouldNotDetectLocationCheckYourConnectionAndTryAgain'))
         } finally {
@@ -175,7 +175,7 @@ export default function GeneralSettingsPage() {
         if (!trimmed) return
         const normalised = trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
         if (instrumentList.includes(normalised)) {
-            toast.error(`"${normalised}" is already in the list`)
+            toast.error(t("instrumentAlreadyListed", {instrument: normalised}))
             return
         }
         setInstrumentList(prev => [...prev, normalised].sort())
@@ -306,7 +306,7 @@ export default function GeneralSettingsPage() {
                 updatedUser.avatar = `${updatedUser.avatar}${updatedUser.avatar.includes('?') ? '&' : '?'}t=${Date.now()}`
             }
             setCurrentUser(updatedUser)
-            toast.success(`Avatar set for ${instrument} player!`)
+            toast.success(t("avatarSetForInstrument", {instrument}))
         } catch (error) {
             console.error('Auto-select failed:', error)
             toast.error(t('msgFailedToSetAvatarAutomatically'))
@@ -330,10 +330,10 @@ export default function GeneralSettingsPage() {
                 smtp_use_tls: technicalSettings.smtp_use_tls,
             }
             const res = await api.post('/core/users/send_test_email/', payload)
-            toast.success(res.data.detail || 'Test email sent successfully!')
+            toast.success(res.data.detail || t('testEmailSent'))
         } catch (error: any) {
             console.error(error)
-            toast.error(error.response?.data?.detail || 'Failed to send test email')
+            toast.error(error.response?.data?.detail || t('testEmailFailed'))
         } finally {
             setTestingEmail(false)
         }
@@ -382,7 +382,7 @@ export default function GeneralSettingsPage() {
             setTimeout(() => window.location.reload(), 2000)
         } catch (error: any) {
             console.error('Import failed:', error)
-            toast.error(error.response?.data?.error || 'Failed to import system data')
+            toast.error(error.response?.data?.error || t('importFailed'))
         } finally {
             setIsImporting(false)
             e.target.value = ''
@@ -484,11 +484,11 @@ export default function GeneralSettingsPage() {
                 })
 
                 updateCurrentUserSafe(response.data)
-                toast.success(`${settingsType} settings saved successfully`)
+                toast.success(t("sectionSettingsSaved", {section: settingsType}))
             }
         } catch (error) {
             console.error(`Failed to save ${settingsType} settings:`, error)
-            toast.error(`Failed to save ${settingsType} settings`)
+            toast.error(t("sectionSettingsFailed", {section: settingsType}))
         } finally {
             setLoading(false)
         }
@@ -689,7 +689,7 @@ export default function GeneralSettingsPage() {
                                         value={formData.bio}
                                         onChange={e => setFormData({ ...formData, bio: e.target.value })}
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                        placeholder="Tell us about yourself..."
+                                        placeholder={t('detailTellUsAboutYourself')}
                                     />
                                 </div>
 
@@ -699,7 +699,7 @@ export default function GeneralSettingsPage() {
                                         type="text"
                                         value={formData.instrument}
                                         onChange={e => setFormData({ ...formData, instrument: e.target.value })}
-                                        placeholder="e.g. Piano, Violin, Voice"
+                                        placeholder={t('detailEGPianoViolinVoice')}
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                     />
                                     <p className="text-xs text-gray-500 mt-1">{t('usedForPersonalization')}</p>
@@ -754,7 +754,7 @@ export default function GeneralSettingsPage() {
                                     toast.success(t('msgPasswordChangedSuccessfully'))
                                     form.reset()
                                 } catch (error: any) {
-                                    toast.error(error.response?.data?.detail || 'Failed to change password')
+                                    toast.error(error.response?.data?.detail || t('changePasswordFailed'))
                                 } finally {
                                     setLoading(false)
                                 }
@@ -795,7 +795,7 @@ export default function GeneralSettingsPage() {
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('studioName')}</label>
-                                    <input type="text" value={studioSettings.studio_name} onChange={e => setStudioSettings({ ...studioSettings, studio_name: e.target.value })} placeholder="My Music Studio" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                    <input type="text" value={studioSettings.studio_name} onChange={e => setStudioSettings({ ...studioSettings, studio_name: e.target.value })} placeholder={t('detailMyMusicStudio')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -816,15 +816,15 @@ export default function GeneralSettingsPage() {
 
                                 <div className="space-y-3">
                                     <label className="block text-sm font-medium text-gray-700">{t('address')}</label>
-                                    <input type="text" value={studioSettings.address_line1} onChange={e => setStudioSettings({ ...studioSettings, address_line1: e.target.value })} placeholder="Address Line 1" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-                                    <input type="text" value={studioSettings.address_line2} onChange={e => setStudioSettings({ ...studioSettings, address_line2: e.target.value })} placeholder="Address Line 2 (Optional)" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                    <input type="text" value={studioSettings.address_line1} onChange={e => setStudioSettings({ ...studioSettings, address_line1: e.target.value })} placeholder={t('detailAddressLine1')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                    <input type="text" value={studioSettings.address_line2} onChange={e => setStudioSettings({ ...studioSettings, address_line2: e.target.value })} placeholder={t('detailAddressLine2Optional')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                     <div className="grid grid-cols-2 gap-4">
-                                        <input type="text" value={studioSettings.city} onChange={e => setStudioSettings({ ...studioSettings, city: e.target.value })} placeholder="City" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-                                        <input type="text" value={studioSettings.state} onChange={e => setStudioSettings({ ...studioSettings, state: e.target.value })} placeholder="State" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                        <input type="text" value={studioSettings.city} onChange={e => setStudioSettings({ ...studioSettings, city: e.target.value })} placeholder={t('detailCity')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                        <input type="text" value={studioSettings.state} onChange={e => setStudioSettings({ ...studioSettings, state: e.target.value })} placeholder={t('detailState')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <input type="text" value={studioSettings.postal_code} onChange={e => setStudioSettings({ ...studioSettings, postal_code: e.target.value })} placeholder="Postal Code" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-                                        <input type="text" value={studioSettings.country} onChange={e => setStudioSettings({ ...studioSettings, country: e.target.value })} placeholder="Country (ISO)" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                        <input type="text" value={studioSettings.postal_code} onChange={e => setStudioSettings({ ...studioSettings, postal_code: e.target.value })} placeholder={t('detailPostalCode')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                        <input type="text" value={studioSettings.country} onChange={e => setStudioSettings({ ...studioSettings, country: e.target.value })} placeholder={t('detailCountryISO')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                     </div>
                                 </div>
 
@@ -882,7 +882,7 @@ export default function GeneralSettingsPage() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('studioDescription')}</label>
-                                    <textarea rows={4} value={studioSettings.studio_description} onChange={e => setStudioSettings({ ...studioSettings, studio_description: e.target.value })} placeholder="Tell students about your studio..." className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                    <textarea rows={4} value={studioSettings.studio_description} onChange={e => setStudioSettings({ ...studioSettings, studio_description: e.target.value })} placeholder={t('detailTellStudentsAboutYourStudio')} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                 </div>
 
                                 {/* Instrument List */}
@@ -904,7 +904,7 @@ export default function GeneralSettingsPage() {
                                         ))}
                                     </div>
                                     <div className="flex gap-2">
-                                        <input type="text" value={newInstrument} onChange={e => setNewInstrument(e.target.value)} onKeyDown={handleInstrumentKeyDown} placeholder="e.g. Drums, Cello, Voice..." className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
+                                        <input type="text" value={newInstrument} onChange={e => setNewInstrument(e.target.value)} onKeyDown={handleInstrumentKeyDown} placeholder={t('detailEGDrumsCelloVoice')} className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" />
                                         <button type="button" onClick={handleAddInstrument} className="flex items-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-sm rounded-lg border border-indigo-200 transition-colors">
                                             <Plus className="w-4 h-4" /> {t('add')}
                                         </button>
@@ -1155,31 +1155,31 @@ export default function GeneralSettingsPage() {
                                         <div>
                                             <label className="block text-xs font-medium text-gray-700 mb-1">{t('password')}</label>
                                             <div className="relative">
-                                                <input type={showSmtpPassword ? 'text' : 'password'} value={technicalSettings.smtp_password} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_password: e.target.value })} placeholder={currentUser?.preferences?.technical?.smtp_password_set ? 'Saved password on file' : '••••••••'} className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                                <input type={showSmtpPassword ? 'text' : 'password'} value={technicalSettings.smtp_password} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_password: e.target.value })} placeholder={currentUser?.preferences?.technical?.smtp_password_set ? t('detailSavedPasswordOnFile') : '••••••••'} className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                                 <p className="text-xs text-gray-500 mt-1">{t('leaveBlankToKeepTheSavedPasswordItIsNotSentBackByTheAPI')}</p>
                                                 <button type="button" onClick={() => setShowSmtpPassword(!showSmtpPassword)} className="absolute right-3 top-2.5 text-gray-500">
                                                     {showSmtpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                 </button>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">For Gmail, use an App Password</p>
+                                            <p className="text-xs text-gray-500 mt-1">{t('detailForGmailUseAnAppPassword')}</p>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">From Email</label>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromEmail')}</label>
                                                 <input type="email" value={technicalSettings.smtp_from_email} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_from_email: e.target.value })} placeholder="noreply@studio.com" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">From Name</label>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromName')}</label>
                                                 <input type="text" value={technicalSettings.smtp_from_name} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_from_name: e.target.value })} placeholder="My Studio" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                             </div>
                                         </div>
                                         <label className="flex items-center justify-between p-3 bg-white rounded-lg">
-                                            <span className="text-sm text-gray-700">Use TLS / STARTTLS</span>
+                                            <span className="text-sm text-gray-700">{t('detailUseTLSSTARTTLS')}</span>
                                             <input type="checkbox" checked={technicalSettings.smtp_use_tls} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_use_tls: e.target.checked })} className="w-4 h-4 text-primary rounded focus:ring-primary" />
                                         </label>
                                         <div className="pt-2">
                                             <button type="button" onClick={handleTestEmail} disabled={testingEmail} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-semibold disabled:opacity-50">
-                                                {testingEmail ? <><Loader2 className="w-4 h-4 animate-spin" />Sending Test Email...</> : <><Mail className="w-4 h-4" />Test Connection</>}
+                                                {testingEmail ? <><Loader2 className="w-4 h-4 animate-spin" />{t('detailSendingTestEmail')}</> : <><Mail className="w-4 h-4" />{t('detailTestConnection')}</>}
                                             </button>
                                         </div>
                                     </div>
@@ -1188,11 +1188,11 @@ export default function GeneralSettingsPage() {
                                 <div className="pt-6 border-t border-gray-200">
                                     <div className="flex items-center gap-2 mb-4">
                                         <Bell className="w-5 h-5 text-gray-600" />
-                                        <h3 className="font-semibold text-gray-900">SMS Configuration</h3>
+                                        <h3 className="font-semibold text-gray-900">{t('detailSMSConfiguration')}</h3>
                                     </div>
                                     <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">SMS Provider</label>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailSMSProvider')}</label>
                                             <select value={technicalSettings.sms_provider} onChange={e => setTechnicalSettings({ ...technicalSettings, sms_provider: e.target.value })} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
                                                 <option value="twilio">Twilio</option>
                                                 <option value="aws-sns">Amazon SNS</option>
@@ -1201,11 +1201,11 @@ export default function GeneralSettingsPage() {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">Account SID</label>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailAccountSID')}</label>
                                             <input type="text" value={technicalSettings.sms_account_sid} onChange={e => setTechnicalSettings({ ...technicalSettings, sms_account_sid: e.target.value })} placeholder="ACxxxxxxxx" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">Auth Token</label>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailAuthToken')}</label>
                                             <div className="relative">
                                                 <input type={showSmsApiKey ? 'text' : 'password'} value={technicalSettings.sms_auth_token} onChange={e => setTechnicalSettings({ ...technicalSettings, sms_auth_token: e.target.value })} placeholder="••••••••" className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                                 <button type="button" onClick={() => setShowSmsApiKey(!showSmsApiKey)} className="absolute right-3 top-2.5 text-gray-500">
@@ -1214,7 +1214,7 @@ export default function GeneralSettingsPage() {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">From Number</label>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromNumber')}</label>
                                             <input type="tel" value={technicalSettings.sms_from_number} onChange={e => setTechnicalSettings({ ...technicalSettings, sms_from_number: formatPhoneNumber(e.target.value) })} placeholder="+1234567890" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                         </div>
                                     </div>
@@ -1222,7 +1222,7 @@ export default function GeneralSettingsPage() {
 
                                 <div className="pt-4 border-t border-gray-200">
                                     <button onClick={() => handleSaveSettings('Technical', technicalSettings)} disabled={loading} className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors font-medium disabled:opacity-50">
-                                        {loading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('saving')}</> : <><Save className="w-4 h-4" />Save Settings</>}
+                                        {loading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('saving')}</> : <><Save className="w-4 h-4" />{t('detailSaveSettings')}</>}
                                     </button>
                                 </div>
                             </div>
@@ -1232,16 +1232,16 @@ export default function GeneralSettingsPage() {
                     {/* Maintenance Tab (Admin only) */}
                     {activeTab === 'maintenance' && currentUser?.role === 'admin' && (
                         <div className="max-w-3xl">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-6">System Maintenance & Migration</h2>
+                            <h2 className="text-lg font-semibold text-gray-900 mb-6">{t('detailSystemMaintenanceMigration')}</h2>
                             <div className="space-y-8">
                                 <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100">
                                     <div className="flex items-start gap-4">
                                         <div className="p-3 bg-blue-100 rounded-xl text-blue-600"><Download className="w-6 h-6" /></div>
                                         <div className="flex-1">
-                                            <h3 className="text-lg font-bold text-blue-900 mb-1">Export System Data</h3>
-                                            <p className="text-sm text-blue-700 mb-4">Download a complete backup of your studio including all database records and uploaded media files.</p>
+                                            <h3 className="text-lg font-bold text-blue-900 mb-1">{t('detailExportSystemData')}</h3>
+                                            <p className="text-sm text-blue-700 mb-4">{t('detailDownloadACompleteBackupOfYourStudioIncludingAllDatabaseRecordsAndUploadedMediaFiles')}</p>
                                             <button onClick={handleExportSystem} disabled={isExporting} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50 shadow-md shadow-blue-200">
-                                                {isExporting ? <><Loader2 className="w-5 h-5 animate-spin" />Preparing Export...</> : <><Download className="w-5 h-5" />Download Migration Bundle (.zip)</>}
+                                                {isExporting ? <><Loader2 className="w-5 h-5 animate-spin" />{t('detailPreparingExport')}</> : <><Download className="w-5 h-5" />{t('detailDownloadMigrationBundleZip')}</>}
                                             </button>
                                         </div>
                                     </div>
@@ -1251,14 +1251,14 @@ export default function GeneralSettingsPage() {
                                     <div className="flex items-start gap-4">
                                         <div className="p-3 bg-orange-100 rounded-xl text-orange-600"><Upload className="w-6 h-6" /></div>
                                         <div className="flex-1">
-                                            <h3 className="text-lg font-bold text-orange-900 mb-1">Import System Data</h3>
-                                            <p className="text-sm text-orange-700 mb-2">Restore your studio from a previously exported migration bundle.</p>
+                                            <h3 className="text-lg font-bold text-orange-900 mb-1">{t('detailImportSystemData')}</h3>
+                                            <p className="text-sm text-orange-700 mb-2">{t('detailRestoreYourStudioFromAPreviouslyExportedMigrationBundle')}</p>
                                             <div className="flex items-center gap-2 mb-4 p-3 bg-white/50 rounded-lg border border-orange-200">
                                                 <ShieldAlert className="w-5 h-5 text-orange-600 shrink-0" />
-                                                <p className="text-xs font-bold text-orange-800">CRITICAL: This will overwrite ALL existing data. This action cannot be undone.</p>
+                                                <p className="text-xs font-bold text-orange-800">{t('detailCRITICALThisWillOverwriteALLExistingDataThisActionCannotBeUndone')}</p>
                                             </div>
                                             <label className={`inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all cursor-pointer shadow-md shadow-orange-200 ${isImporting ? 'opacity-50 pointer-events-none' : ''}`}>
-                                                {isImporting ? <><Loader2 className="w-5 h-5 animate-spin" />Restoring System...</> : <><Upload className="w-5 h-5" />Select Backup File (.zip)</>}
+                                                {isImporting ? <><Loader2 className="w-5 h-5 animate-spin" />{t('detailRestoringSystem')}</> : <><Upload className="w-5 h-5" />{t('detailSelectBackupFileZip')}</>}
                                                 <input type="file" accept=".zip" onChange={handleImportSystem} className="hidden" disabled={isImporting} />
                                             </label>
                                         </div>
@@ -1268,13 +1268,13 @@ export default function GeneralSettingsPage() {
                                 <div className="p-6 bg-gray-50 rounded-2xl border border-gray-200">
                                     <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                                         <Server className="w-5 h-5" />
-                                        How to migrate to a new host:
+                                        {t('detailHowToMigrateToANewHost')}
                                     </h3>
                                     <ol className="space-y-3 text-sm text-gray-600 list-decimal pl-4">
-                                        <li><strong>On your current machine:</strong> Download the Migration Bundle using the button above.</li>
-                                        <li><strong>On your new VPS:</strong> Install StudioSync and run the initial setup wizard.</li>
-                                        <li><strong>In the new instance:</strong> Go to Settings &gt; Maintenance and upload the Migration Bundle.</li>
-                                        <li><strong>Verify:</strong> Check that your students, lessons, and media are all present.</li>
+                                        <li><strong>{t('detailOnYourCurrentMachine')}</strong> {t('detailDownloadTheMigrationBundleUsingTheButtonAbove')}</li>
+                                        <li><strong>{t('detailOnYourNewVPS')}</strong> {t('detailInstallStudioSyncAndRunTheInitialSetupWizard')}</li>
+                                        <li><strong>{t('detailInTheNewInstance')}</strong> {t('detailGoToSettingsGtMaintenanceAndUploadTheMigrationBundle')}</li>
+                                        <li><strong>{t('detailVerify')}</strong> {t('detailCheckThatYourStudentsLessonsAndMediaAreAllPresent')}</li>
                                     </ol>
                                 </div>
                             </div>
