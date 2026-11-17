@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { SetupWizardData, TIMEZONES, CURRENCIES, StudioInfo, AdminAccount } from '@/types/setup'
 import { HelpTooltip } from '@/components/ui/help-tooltip'
@@ -41,6 +42,7 @@ const inputClass = 'block w-full py-2.5 px-3 rounded-xl border text-sm transitio
 const inputStyle = { borderColor: A.border, backgroundColor: A.bg, color: A.text }
 
 export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, onNext }: StepProps) => {
+  const t = useTranslations('SetupAdmin')
     const { studio_info, admin_account } = data
     const [geoStatus, setGeoStatus] = useState<GeoStatus>('idle')
     const [geoLocation, setGeoLocation] = useState<GeoLocation | null>(null)
@@ -107,17 +109,17 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
             <div className="space-y-6">
                 <div className="pb-4" style={{ borderBottom: `1px solid ${A.divider}` }}>
                     <h2 className="text-2xl font-bold" style={{ color: A.text, fontFamily: 'Outfit, sans-serif' }}>
-                        Studio Information
+                        {t('studioInformation')}
                     </h2>
                     <p className="mt-1 text-sm" style={{ color: A.muted }}>
-                        Tell us about your organization. This will appear on invoices and emails.
+                        {t('tellUsAboutYourOrganizationThisWillAppearOnInvoicesAndEmails')}
                     </p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                         <label htmlFor="studio-name" className="flex items-center text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                            Studio Name *
+                            {t('studioName')}
                             <HelpTooltip content="The official name of your music school or studio. Used on invoices and emails." />
                         </label>
                         <input
@@ -128,7 +130,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
                             onChange={e => updateStudioInfo({ studio_name: e.target.value })}
                             className={inputClass}
                             style={inputStyle}
-                            placeholder="e.g. Melody Music School"
+                            placeholder={t('eGMelodyMusicSchool')}
                             onFocus={fieldFocus}
                             onBlur={e => fieldBlur(e)}
                         />
@@ -136,7 +138,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
 
                     <div className="sm:col-span-2">
                         <label htmlFor="studio-email" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                            Business Email *
+                            {t('businessEmail')}
                         </label>
                         <input
                             type="email"
@@ -154,7 +156,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
 
                     <div className="sm:col-span-1">
                         <label htmlFor="timezone" className="flex items-center text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                            Timezone *
+                            {t('timezone')}
                             <HelpTooltip content="Affects all calendar events and notifications." />
                         </label>
                         <div className="space-y-2">
@@ -183,13 +185,13 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
                                     onMouseLeave={e => (e.currentTarget.style.color = A.amber)}
                                 >
                                     <MapPin className="w-3 h-3" />
-                                    Detect my location
+                                    {t('detectMyLocation')}
                                 </button>
                             )}
                             {geoStatus === 'loading' && (
                                 <span className="flex items-center gap-1.5 text-xs" style={{ color: A.faint }}>
                                     <Loader2 className="w-3 h-3 animate-spin" />
-                                    Detecting…
+                                    {t('detecting')}
                                 </span>
                             )}
                             {geoStatus === 'detected' && geoLocation && (
@@ -210,7 +212,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
                                 <span className="flex items-center gap-1.5 text-xs" style={{ color: '#b54040' }}>
                                     Could not detect location.{' '}
                                     <button type="button" onClick={() => setGeoStatus('idle')} className="underline">
-                                        Try again
+                                        {t('tryAgain')}
                                     </button>
                                 </span>
                             )}
@@ -219,7 +221,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
 
                     <div className="sm:col-span-1">
                         <label htmlFor="currency" className="flex items-center text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                            Currency *
+                            {t('currency')}
                             <HelpTooltip content="The default currency for all invoicing and transactions." />
                         </label>
                         <select
@@ -244,17 +246,17 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
             <div className="space-y-6">
                 <div className="pb-4" style={{ borderBottom: `1px solid ${A.divider}` }}>
                     <h2 className="text-2xl font-bold" style={{ color: A.text, fontFamily: 'Outfit, sans-serif' }}>
-                        Admin Account
+                        {t('adminAccount')}
                     </h2>
                     <p className="mt-1 text-sm" style={{ color: A.muted }}>
-                        This will be your primary administrator account for logging into StudioSync.
+                        {t('thisWillBeYourPrimaryAdministratorAccountForLoggingIntoStudioSync')}
                     </p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
                     <div className="sm:col-span-1">
                         <label htmlFor="first-name" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                            First Name *
+                            {t('firstName')}
                         </label>
                         <input
                             type="text"
@@ -271,7 +273,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
 
                     <div className="sm:col-span-1">
                         <label htmlFor="last-name" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                            Last Name *
+                            {t('lastName')}
                         </label>
                         <input
                             type="text"
@@ -288,7 +290,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
 
                     <div className="sm:col-span-2">
                         <label htmlFor="admin-email" className="flex items-center text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                            Email Address *
+                            {t('emailAddress')}
                             <HelpTooltip content="This email will be used to log into the StudioSync dashboard." />
                         </label>
                         <input
@@ -307,7 +309,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
 
                     <div className="sm:col-span-2">
                         <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                            Password *
+                            {t('password')}
                         </label>
                         <input
                             type="password"
@@ -323,7 +325,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
                             onFocus={fieldFocus}
                             onBlur={e => fieldBlur(e)}
                         />
-                        <p className="mt-1.5 text-xs" style={{ color: A.faint }}>Must be at least 8 characters.</p>
+                        <p className="mt-1.5 text-xs" style={{ color: A.faint }}>{t('mustBeAtLeast8Characters')}</p>
                     </div>
                 </div>
             </div>
@@ -337,7 +339,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
                     onMouseEnter={e => { if (isValid) e.currentTarget.style.backgroundColor = A.amberDark }}
                     onMouseLeave={e => { e.currentTarget.style.backgroundColor = A.amber }}
                 >
-                    Continue
+                    {t('continue')}
                     <ArrowRight className="w-4 h-4" />
                 </button>
             </div>

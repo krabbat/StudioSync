@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { Mail, Loader2, AlertCircle, CheckCircle, ArrowLeft, Send } from 'lucide-react'
 import Link from 'next/link'
@@ -29,6 +30,7 @@ const staffLines: React.CSSProperties = {
 }
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('ForgotPassword')
     const [email, setEmail] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
@@ -44,10 +46,10 @@ export default function ForgotPasswordPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email }),
             })
-            if (!res.ok) throw new Error('No account found with this email address')
+            if (!res.ok) throw new Error(t('noAccountFound'))
             setSuccess(true)
         } catch (err: any) {
-            setError(err.message || 'Something went wrong. Please try again.')
+            setError(err.message || t('requestFailed'))
         } finally {
             setIsLoading(false)
         }
@@ -78,10 +80,10 @@ export default function ForgotPasswordPage() {
                         transition={{ duration: 0.45 }}
                     >
                         <h1 className="text-2xl font-bold mb-2" style={{ color: A.text, fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.02em' }}>
-                            Reset your password
+                            {t('resetYourPassword')}
                         </h1>
                         <p className="text-sm" style={{ color: A.muted }}>
-                            We&apos;ll send you a link to get back into your account.
+                            {t('wellSendYouALinkToGetBackIntoYourAccount')}
                         </p>
                     </motion.div>
                 </div>
@@ -102,7 +104,7 @@ export default function ForgotPasswordPage() {
                                 <CheckCircle className="w-8 h-8" style={{ color: '#3d9e3d' }} />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold mb-2" style={{ color: A.text }}>Check your email</h3>
+                                <h3 className="text-lg font-bold mb-2" style={{ color: A.text }}>{t('checkYourEmail')}</h3>
                                 <p className="text-sm leading-relaxed" style={{ color: A.muted }}>
                                     We&apos;ve sent a reset link to{' '}
                                     <span className="font-semibold" style={{ color: A.text }}>{email}</span>
@@ -116,7 +118,7 @@ export default function ForgotPasswordPage() {
                                 onMouseLeave={e => (e.currentTarget.style.color = A.amber)}
                             >
                                 <ArrowLeft className="w-4 h-4" />
-                                Back to sign in
+                                {t('backToSignIn')}
                             </Link>
                         </div>
                     ) : (
@@ -130,7 +132,7 @@ export default function ForgotPasswordPage() {
 
                             <div>
                                 <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                                    Email address
+                                    {t('emailAddress')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -155,7 +157,7 @@ export default function ForgotPasswordPage() {
                                 onMouseEnter={e => { if (!isLoading) e.currentTarget.style.backgroundColor = A.amberDark }}
                                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = A.amber }}
                             >
-                                {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : <><Send className="w-4 h-4" /> Send reset link</>}
+                                {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('sending')}</> : <><Send className="w-4 h-4" /> {t('sendResetLink')}</>}
                             </button>
 
                             <div className="text-center">
@@ -182,7 +184,7 @@ export default function ForgotPasswordPage() {
                         onMouseEnter={e => (e.currentTarget.style.color = A.amberDark)}
                         onMouseLeave={e => (e.currentTarget.style.color = A.amber)}
                     >
-                        Sign up
+                        {t('signUp')}
                     </Link>
                 </p>
             </div>

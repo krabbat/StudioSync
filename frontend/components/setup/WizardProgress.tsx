@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
 
@@ -14,13 +15,15 @@ const A = {
     faint: '#b09870',
 } as const
 
-const STEPS = [
-    { name: 'Studio & Admin' },
-    { name: 'Features' },
-    { name: 'Done' },
-]
+
 
 export const WizardProgress = ({ currentStep, totalSteps }: Props) => {
+  const t = useTranslations('SetupProgress')
+const STEPS = [
+  { name: t('studioAdmin') },
+  { name: t('features') },
+  { name: t('done') },
+]
     return (
         <div className="w-full max-w-4xl mx-auto mb-8 px-4">
             <div className="relative flex justify-between">

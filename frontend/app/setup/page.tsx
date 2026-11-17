@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSetupWizard } from '@/hooks/useSetupWizard'
@@ -35,6 +36,7 @@ const staffLines: React.CSSProperties = {
 }
 
 export default function SetupPage() {
+  const t = useTranslations('Setup')
     const router = useRouter()
     const wizard = useSetupWizard()
 
@@ -116,7 +118,7 @@ export default function SetupPage() {
                             border: '1px solid rgba(193,124,46,0.2)',
                         }}
                     >
-                        Setup Wizard
+                        {t('setupWizard')}
                     </span>
                 </div>
 

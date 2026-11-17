@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -47,6 +48,7 @@ const inpPlain = (A: any) => ({
 })
 
 export default function SignupPage() {
+  const t = useTranslations('Signup')
     const router = useRouter()
     const searchParams = useSearchParams()
     const [formData, setFormData] = useState({
@@ -79,8 +81,8 @@ export default function SignupPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
-        if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return }
-        if (formData.password.length < 8) { setError('Password must be at least 8 characters'); return }
+        if (formData.password !== formData.confirmPassword) { setError(t('passwordMismatch')); return }
+        if (formData.password.length < 8) { setError(t('passwordTooShort')); return }
         setLoading(true)
         try {
             const response = await fetch('/api/auth/register/', {
@@ -99,10 +101,10 @@ export default function SignupPage() {
                 router.push('/login?registered=true')
             } else {
                 const data = await response.json()
-                setError(data.error || data.detail || data.email?.[0] || 'Registration failed')
+                setError(data.error || data.detail || data.email?.[0] || t('registrationFailed'))
             }
         } catch {
-            setError('Connection error. Please try again.')
+            setError(t('connectionError'))
         } finally {
             setLoading(false)
         }
@@ -138,10 +140,10 @@ export default function SignupPage() {
                         className="text-4xl font-extrabold leading-tight"
                         style={{ color: A.panelText, fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.025em' }}
                     >
-                        Built for musicians, not bookers.
+                        {t('builtForMusiciansNotBookers')}
                     </h1>
                     <p className="text-lg leading-relaxed" style={{ color: A.panelMuted }}>
-                        Bands set their own availability. Studios post gigs. Everyone gets paid fairly.
+                        {t('bandsSetTheirOwnAvailabilityStudiosPostGigsEveryoneGetsPaidFairly')}
                     </p>
                     <div className="space-y-3 pt-2">
                         {[
@@ -183,7 +185,7 @@ export default function SignupPage() {
                     >
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold mb-1" style={{ color: A.text, fontFamily: 'Outfit, sans-serif' }}>
-                                Create your account
+                                {t('createYourAccount')}
                             </h2>
                             <p className="text-sm" style={{ color: A.muted }}>
                                 Already have an account?{' '}
@@ -194,7 +196,7 @@ export default function SignupPage() {
                                     onMouseEnter={e => (e.currentTarget.style.color = A.amberDark)}
                                     onMouseLeave={e => (e.currentTarget.style.color = A.amber)}
                                 >
-                                    Sign in
+                                    {t('signIn')}
                                 </Link>
                             </p>
                         </div>
@@ -220,7 +222,7 @@ export default function SignupPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label htmlFor="firstName" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                                        First Name
+                                        {t('firstName')}
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -231,27 +233,27 @@ export default function SignupPage() {
                                             value={formData.firstName} onChange={handleChange}
                                             className={inp} style={inpStyle(A)}
                                             onFocus={focusStyle} onBlur={blurStyle}
-                                            placeholder="First"
+                                            placeholder={t('first')}
                                         />
                                     </div>
                                 </div>
                                 <div>
                                     <label htmlFor="lastName" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                                        Last Name
+                                        {t('lastName')}
                                     </label>
                                     <input
                                         id="lastName" name="lastName" type="text" required
                                         value={formData.lastName} onChange={handleChange}
                                         className={inp} style={inpPlain(A)}
                                         onFocus={focusStyle} onBlur={blurStyle}
-                                        placeholder="Last"
+                                        placeholder={t('last')}
                                     />
                                 </div>
                             </div>
 
                             <div>
                                 <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                                    Email address
+                                    {t('emailAddress')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -269,7 +271,7 @@ export default function SignupPage() {
 
                             <div>
                                 <label htmlFor="role" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                                    I am a
+                                    {t('iAmA')}
                                 </label>
                                 <select
                                     id="role" name="role"
@@ -277,16 +279,16 @@ export default function SignupPage() {
                                     className={inp} style={inpPlain(A)}
                                     onFocus={focusStyle} onBlur={blurStyle}
                                 >
-                                    <option value="student">Musician / Student</option>
-                                    <option value="teacher">Instructor</option>
-                                    <option value="parent">Parent</option>
-                                    <option value="staff">Studio Staff</option>
+                                    <option value="student">{t('musicianStudent')}</option>
+                                    <option value="teacher">{t('instructor')}</option>
+                                    <option value="parent">{t('parent')}</option>
+                                    <option value="staff">{t('studioStaff')}</option>
                                 </select>
                             </div>
 
                             <div>
                                 <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                                    Password
+                                    {t('password')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -300,12 +302,12 @@ export default function SignupPage() {
                                         placeholder="••••••••"
                                     />
                                 </div>
-                                <p className="mt-1 text-xs" style={{ color: A.faint }}>At least 8 characters</p>
+                                <p className="mt-1 text-xs" style={{ color: A.faint }}>{t('atLeast8Characters')}</p>
                             </div>
 
                             <div>
                                 <label htmlFor="confirmPassword" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: A.muted }}>
-                                    Confirm Password
+                                    {t('confirmPassword')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -328,15 +330,15 @@ export default function SignupPage() {
                                 onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = A.amberDark }}
                                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = A.amber }}
                             >
-                                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating account…</> : <>Create account <ArrowRight className="w-4 h-4" /></>}
+                                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('creatingAccount')}</> : <>{t('createAccount')} <ArrowRight className="w-4 h-4" /></>}
                             </button>
                         </form>
 
                         <p className="mt-5 text-center text-xs" style={{ color: A.faint }}>
                             By signing up, you agree to our{' '}
-                            <Link href="/terms" style={{ color: A.muted }} className="hover:underline">Terms</Link>
+                            <Link href="/terms" style={{ color: A.muted }} className="hover:underline">{t('terms')}</Link>
                             {' '}and{' '}
-                            <Link href="/privacy" style={{ color: A.muted }} className="hover:underline">Privacy Policy</Link>
+                            <Link href="/privacy" style={{ color: A.muted }} className="hover:underline">{t('privacyPolicy')}</Link>
                         </p>
                     </div>
 

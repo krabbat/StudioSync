@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl'
 import { Switch } from '@headlessui/react'
 import { SetupWizardData, FeatureFlags, FEATURE_DESCRIPTIONS } from '@/types/setup'
 import { ArrowRight, Loader2 } from 'lucide-react'
@@ -24,6 +25,7 @@ const A = {
 } as const
 
 export const FeatureSelectionStep = ({ data, updateFeatures, onNext, onBack, isLoading = false }: StepProps) => {
+  const t = useTranslations('SetupFeatures')
     const { features } = data
 
     const toggleFeature = (key: keyof FeatureFlags) => {
@@ -34,10 +36,10 @@ export const FeatureSelectionStep = ({ data, updateFeatures, onNext, onBack, isL
         <div className="space-y-6 max-w-4xl mx-auto py-4 animate-in fade-in slide-in-from-right-8 duration-500">
             <div className="pb-6 text-center" style={{ borderBottom: `1px solid ${A.divider}` }}>
                 <h2 className="text-2xl font-bold" style={{ color: A.text, fontFamily: 'Outfit, sans-serif' }}>
-                    Customize Your Studio
+                    {t('customizeYourStudio')}
                 </h2>
                 <p className="mt-1 text-sm" style={{ color: A.muted }}>
-                    Enable the features you need right now. You can always change this later in settings.
+                    {t('enableTheFeaturesYouNeedRightNowYouCanAlwaysChangeThisLaterInSettings')}
                 </p>
             </div>
 
@@ -102,7 +104,7 @@ export const FeatureSelectionStep = ({ data, updateFeatures, onNext, onBack, isL
                     onMouseEnter={e => (e.currentTarget.style.color = A.text)}
                     onMouseLeave={e => (e.currentTarget.style.color = A.muted)}
                 >
-                    ← Back
+                    {t('back')}
                 </button>
                 <button
                     onClick={onNext}
@@ -113,8 +115,8 @@ export const FeatureSelectionStep = ({ data, updateFeatures, onNext, onBack, isL
                     onMouseLeave={e => { e.currentTarget.style.backgroundColor = A.amber }}
                 >
                     {isLoading
-                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Setting up…</>
-                        : <>Complete Setup <ArrowRight className="w-4 h-4" /></>
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('settingUp')}</>
+                        : <>{t('completeSetup')} <ArrowRight className="w-4 h-4" /></>
                     }
                 </button>
             </div>

@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { CheckCircle, ArrowRight } from 'lucide-react'
@@ -11,6 +12,7 @@ const A = {
 } as const
 
 export const CompletionStep = () => {
+  const t = useTranslations('SetupComplete')
     return (
         <>
             <Confetti numberOfPieces={300} recycle={false} />
@@ -26,10 +28,10 @@ export const CompletionStep = () => {
                 </motion.div>
 
                 <h1 className="text-4xl font-bold tracking-tight mb-4" style={{ color: A.text, fontFamily: 'Outfit, sans-serif' }}>
-                    All Set!
+                    {t('allSet')}
                 </h1>
                 <p className="text-lg max-w-md mb-8" style={{ color: A.muted }}>
-                    Your studio has been configured. You&apos;re ready to start managing your music school.
+                    {t('yourStudioHasBeenConfiguredYoureReadyToStartManagingYourMusicSchool')}
                 </p>
 
                 <Link
@@ -39,7 +41,7 @@ export const CompletionStep = () => {
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = A.amberDark)}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = A.amber)}
                 >
-                    Go to Dashboard
+                    {t('goToDashboard')}
                     <ArrowRight className="w-5 h-5" />
                 </Link>
             </div>
