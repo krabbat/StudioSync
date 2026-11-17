@@ -134,7 +134,9 @@ export default function AddStudentPage() {
             toast.success(tr('studentCreated'))
             router.push('/dashboard/students')
         } catch (error: any) {
-            console.error('Failed to create student:', error)
+            // Do not log the Axios error object: its request config can contain
+            // the password submitted for the student's login.
+            console.error('Student creation failed (HTTP status):', error?.response?.status ?? 'network error')
             const details = error.response?.data
             const fieldMessage = details && Object.values(details).find(value =>
                 typeof value === 'string' || (Array.isArray(value) && typeof value[0] === 'string')
