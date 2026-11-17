@@ -186,3 +186,39 @@ def test_dashboard_student_count_matches_student_roster(authenticated_client, st
     assert roster_stats.status_code == status.HTTP_200_OK
     assert dashboard.data["overview"]["total_students"]["value"] == 1
     assert roster_stats.data["active_students"] == 1
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_teacher_photo_upload_for_admin_account(authenticated_client, studio, admin_user, settings, tmp_path):
+    """An admin with a teacher profile must be editable without an email/role lookup."""
+    from io import BytesIO
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from PIL import Image
+
+    from apps.core.models import Teacher
+
+    settings.MEDIA_ROOT = tmp_path
+    teacher = Teacher.objects.create(user=admin_user, studio=studio)
+
+    roster_response = authenticated_client.get("/api/core/teachers/")
+    assert roster_response.status_code == status.HTTP_200_OK
+    rows = roster_response.data.get("results", []) if isinstance(roster_response.data, dict) else roster_response.data
+    row = next(row for row in rows if str(row["id"]) == str(teacher.id))
+    assert str(row["user_id"]) == str(admin_user.id)
+
+    stream = BytesIO()
+    Image.new("RGB", (12, 12), "white").save(stream, format="JPEG")
+    uploaded_photo = SimpleUploadedFile("teacher-avatar.jpg", stream.getvalue(), content_type="image/jpeg")
+
+    upload_response = authenticated_client.patch(
+        f"/api/core/users/{row['user_id']}/",
+        {"avatar": uploaded_photo},
+        format="multipart",
+    )
+
+    assert upload_response.status_code == status.HTTP_200_OK
+    admin_user.refresh_from_db()
+    assert admin_user.avatar.name.startswith("avatars/")
+    assert upload_response.data["avatar"].startswith("/media/avatars/")
