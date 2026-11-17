@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
@@ -341,13 +341,13 @@ class DashboardAnalyticsView(APIView):
         # date and the same student-role / active filters as the dashboard counter.
         # Count six actual calendar months, not 30-day approximations.
         student_growth = []
-        current_month_index = today.year * 12 + today.month - 1
+        today_date = timezone.localdate()
+        current_month_index = today_date.year * 12 + today_date.month - 1
         months = [
             ((current_month_index - offset) // 12, (current_month_index - offset) % 12 + 1)
             for offset in range(5, -1, -1)
         ]
         first_year, first_month = months[0]
-        from datetime import date
 
         enrollment_qs = (
             Student.objects.filter(
@@ -355,7 +355,7 @@ class DashboardAnalyticsView(APIView):
                 user__role="student",
                 is_active=True,
                 enrollment_date__gte=date(first_year, first_month, 1),
-                enrollment_date__lte=today.date(),
+                enrollment_date__lte=today_date,
             )
             .annotate(month=TruncMonth("enrollment_date"))
             .values("month")
