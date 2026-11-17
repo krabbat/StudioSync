@@ -1298,45 +1298,6 @@
     "draftSaved": "Entwurf gespeichert",
     "saveFailed": "Speichern fehlgeschlagen",
     "draft": "Entwurf",
-    "weekdayShort": [
-      "So",
-      "Mo",
-      "Di",
-      "Mi",
-      "Do",
-      "Fr",
-      "Sa"
-    ],
-    "weekdayNames": [
-      [
-        "So",
-        "So"
-      ],
-      [
-        "Mo",
-        "Mo"
-      ],
-      [
-        "Di",
-        "Di"
-      ],
-      [
-        "Mi",
-        "Mi"
-      ],
-      [
-        "Do",
-        "Do"
-      ],
-      [
-        "Fr",
-        "Fr"
-      ],
-      [
-        "Sa",
-        "Sa"
-      ]
-    ],
     "daysSelected": "{count, plural, one {# Tag ausgewählt} other {# Tage ausgewählt}}",
     "saveDraft": "Entwurf speichern",
     "submitAvailability": "Verfügbarkeit übermitteln"

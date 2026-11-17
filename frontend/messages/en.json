@@ -1298,45 +1298,6 @@
     "draftSaved": "Draft saved",
     "saveFailed": "Failed to save",
     "draft": "Draft",
-    "weekdayShort": [
-      "S",
-      "M",
-      "T",
-      "W",
-      "T",
-      "F",
-      "S"
-    ],
-    "weekdayNames": [
-      [
-        "S",
-        "Sun"
-      ],
-      [
-        "M",
-        "Mon"
-      ],
-      [
-        "T",
-        "Tue"
-      ],
-      [
-        "W",
-        "Wed"
-      ],
-      [
-        "T",
-        "Thu"
-      ],
-      [
-        "F",
-        "Fri"
-      ],
-      [
-        "S",
-        "Sat"
-      ]
-    ],
     "daysSelected": "{count, plural, one {# day selected} other {# days selected}}",
     "saveDraft": "Save Draft",
     "submitAvailability": "Submit Availability"

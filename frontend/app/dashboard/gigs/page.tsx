@@ -86,8 +86,8 @@ const STATUS_COLOR: Record<string, string> = {
     cancelled: 'bg-red-50 text-red-600',
 }
 
-function fmt(dt: string) {
-    return new Date(dt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+function fmt(dt: string, locale: string) {
+    return new Date(dt).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 function gigHours(gig: Gig) {
@@ -257,7 +257,7 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
     gig: Gig | null; bands: Band[]; open: boolean; onClose: () => void; onClaimed: () => void
 }) {
   const t = useTranslations('Gigs')
-  const { money } = useStudioFormatting()
+  const { money, locale } = useStudioFormatting()
     const [bandId, setBandId] = useState('')
     const [notes, setNotes] = useState('')
     const [saving, setSaving] = useState(false)
@@ -300,7 +300,7 @@ function ClaimModal({ gig, bands, open, onClose, onClaimed }: {
                                 </div>
                                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{fmt(gig.scheduled_start)}</span>
+                                        <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{fmt(gig.scheduled_start, locale)}</span>
                                         <span className="font-bold text-emerald-600">
                                             {t('estimatedEarningsAmount', {amount: money(gigEarnings(gig))})}
                                         </span>
@@ -339,6 +339,7 @@ function ApproveClaimModal({ gig, open, onClose, onApproved }: {
     gig: Gig | null; open: boolean; onClose: () => void; onApproved: () => void
 }) {
   const t = useTranslations('Gigs')
+  const { locale } = useStudioFormatting()
     const [saving, setSaving] = useState<string | null>(null)
 
     if (!gig) return null
@@ -369,7 +370,7 @@ function ApproveClaimModal({ gig, open, onClose, onApproved }: {
                                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                                     <div>
                                         <h2 className="text-base font-bold text-gray-900">{t('reviewClaims')}</h2>
-                                        <p className="text-xs text-gray-400 mt-0.5">{gig.title} · {gigVenue(gig)} · {fmt(gig.scheduled_start)}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">{gig.title} · {gigVenue(gig)} · {fmt(gig.scheduled_start, locale)}</p>
                                     </div>
                                     <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"><X className="w-4 h-4" /></button>
                                 </div>
@@ -382,7 +383,7 @@ function ApproveClaimModal({ gig, open, onClose, onApproved }: {
                                                 <div>
                                                     <p className="font-semibold text-sm text-gray-900">{claim.band_name}</p>
                                                     {claim.notes && <p className="text-xs text-gray-500 mt-1 max-w-xs">{claim.notes}</p>}
-                                                    <p className="text-[10px] text-gray-400 mt-1">{t('submittedOn', {date: new Date(claim.created_at).toLocaleDateString()})}</p>
+                                                    <p className="text-[10px] text-gray-400 mt-1">{t('submittedOn', {date: new Date(claim.created_at).toLocaleDateString(locale)})}</p>
                                                 </div>
                                                 <button
                                                     onClick={() => approve(claim.id)}
@@ -410,7 +411,7 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
     gig: Gig | null; open: boolean; onClose: () => void; onPaid: () => void
 }) {
   const t = useTranslations('Gigs')
-  const { money, currency } = useStudioFormatting()
+  const { money, currency, locale } = useStudioFormatting()
     const [amount, setAmount] = useState('')
     const [method, setMethod] = useState('bank_transfer')
     const [saving, setSaving] = useState(false)
@@ -461,7 +462,7 @@ function PayoutModal({ gig, open, onClose, onPaid }: {
                                     <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm space-y-1">
                                         <div className="flex justify-between"><span className="text-gray-500">{t('gig')}</span><span className="font-semibold text-gray-800">{gig.title}</span></div>
                                         <div className="flex justify-between"><span className="text-gray-500">{t('venue')}</span><span className="font-semibold text-gray-800">{gigVenue(gig)}</span></div>
-                                        <div className="flex justify-between"><span className="text-gray-500">{t('date')}</span><span className="font-semibold text-gray-800">{fmt(gig.scheduled_start)}</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500">{t('date')}</span><span className="font-semibold text-gray-800">{fmt(gig.scheduled_start, locale)}</span></div>
                                         <div className="flex justify-between"><span className="text-gray-500">{t('duration')}</span><span className="font-semibold text-gray-800">{t('hoursCount', {count: gigHours(gig)})}</span></div>
                                         <div className="flex justify-between"><span className="text-gray-500">{t('baseRate')}</span><span className="font-semibold text-gray-800"><PayBadge gig={gig} /></span></div>
                                     </div>
@@ -501,7 +502,7 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
     gigs: Gig[]; bands: Band[]; isAdmin: boolean; onClaim: (g: Gig) => void; onRefresh: () => void
 }) {
   const t = useTranslations('Gigs')
-  const { money } = useStudioFormatting()
+  const { money, locale } = useStudioFormatting()
     const [search, setSearch] = useState('')
     const open = gigs.filter(g => g.status === 'open' &&
         (g.title.toLowerCase().includes(search.toLowerCase()) || gigVenue(g).toLowerCase().includes(search.toLowerCase()))
@@ -540,7 +541,7 @@ function MarketplaceTab({ gigs, bands, isAdmin, onClaim, onRefresh }: {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Calendar className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
-                                        {fmt(gig.scheduled_start)}
+                                        {fmt(gig.scheduled_start, locale)}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Clock className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
@@ -583,6 +584,7 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
     gigs: Gig[]; onApprove: (g: Gig) => void; onPayout: (g: Gig) => void; onRefresh: () => void
 }) {
   const t = useTranslations('Gigs')
+  const { locale } = useStudioFormatting()
     const [filter, setFilter] = useState<string>('all')
 
     const filtered = filter === 'all' ? gigs : gigs.filter(g => g.status === filter)
@@ -621,7 +623,7 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
                                         <p className="truncate">{gig.title}</p>
                                     </td>
                                     <td className="px-5 py-4 text-xs text-gray-500">{gigVenue(gig)}</td>
-                                    <td className="px-5 py-4 text-xs text-gray-500 whitespace-nowrap">{fmt(gig.scheduled_start)}</td>
+                                    <td className="px-5 py-4 text-xs text-gray-500 whitespace-nowrap">{fmt(gig.scheduled_start, locale)}</td>
                                     <td className="px-5 py-4"><PayBadge gig={gig} /></td>
                                     <td className="px-5 py-4 text-xs font-semibold text-gray-600">{gig.band_name || <span className="text-gray-300">—</span>}</td>
                                     <td className="px-5 py-4">
@@ -661,7 +663,7 @@ function ManageTab({ gigs, onApprove, onPayout, onRefresh }: {
 // ─── My Gigs Tab (band/student) ────────────────────────────────────────────────
 function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) {
   const t = useTranslations('Gigs')
-  const { money } = useStudioFormatting()
+  const { money, locale } = useStudioFormatting()
     const [releasing, setReleasing] = useState<string | null>(null)
 
     const release = async (gig: Gig) => {
@@ -701,7 +703,7 @@ function MyGigsTab({ gigs, onRefresh }: { gigs: Gig[]; onRefresh: () => void }) 
                         </div>
                         <div className="space-y-1.5 text-sm text-gray-500 mb-4">
                             <div className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-gray-300" />{gigVenue(gig)}</div>
-                            <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-gray-300" />{fmt(gig.scheduled_start)}</div>
+                            <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-gray-300" />{fmt(gig.scheduled_start, locale)}</div>
                         </div>
                         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                             <div>
@@ -745,6 +747,13 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
 
     const monthKey = `${year}-${String(month + 1).padStart(2, '0')}-01`
     const monthName = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(year, month, 1))
+    const weekdays = Array.from({ length: 7 }, (_, index) => {
+        const day = new Date(Date.UTC(2024, 0, 7 + index)) // Sunday first
+        return {
+            short: new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(day),
+            long: new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(day)
+        }
+    })
 
     const prevMonth = () => { if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1) }
     const nextMonth = () => { if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1) }
@@ -844,8 +853,8 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
                                     </div>
                                     {ba ? (
                                         <div className="grid grid-cols-7 gap-1">
-                                            {t.raw('weekdayShort').map((d: string, i: number) => (
-                                                <div key={i} className="text-center text-[10px] font-black text-gray-400 uppercase pb-1">{d}</div>
+                                            {weekdays.map((d, i) => (
+                                                <div key={i} className="text-center text-[10px] font-black text-gray-400 uppercase pb-1">{d.short}</div>
                                             ))}
                                             {calDays.map((day, i) => (
                                                 <div key={i} className={`aspect-square flex items-center justify-center rounded-lg text-xs font-bold
@@ -901,10 +910,10 @@ function AvailabilityTab({ bands, isAdmin }: { bands: Band[]; isAdmin: boolean }
             {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div> : (
                 <div className="bg-white rounded-2xl border border-gray-100 p-5">
                     <div className="grid grid-cols-7 gap-1 mb-1">
-                        {t.raw('weekdayNames').map(([s, l]: [string, string], i: number) => (
+                        {weekdays.map((day, i) => (
                             <div key={i} className="text-center text-[10px] font-black text-gray-400 uppercase pb-2">
-                                <span className="sm:hidden">{s}</span>
-                                <span className="hidden sm:inline">{l}</span>
+                                <span className="sm:hidden">{day.short}</span>
+                                <span className="hidden sm:inline">{day.long}</span>
                             </div>
                         ))}
                     </div>
