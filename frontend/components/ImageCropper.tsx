@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslations } from 'next-intl'
 import Cropper from 'react-easy-crop'
 import type { Point, Area } from 'react-easy-crop'
@@ -86,8 +87,9 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
         }
     }
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+    // Render outside any parent dialog stacking context and above its z-50 backdrop.
+    return createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
             <div className="bg-white rounded-lg w-full max-w-lg overflow-hidden flex flex-col h-[500px]">
                 <div className="flex items-center justify-between p-4 border-b">
                     <h3 className="font-semibold text-lg">{t('cropImage')}</h3>
@@ -144,6 +146,7 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
