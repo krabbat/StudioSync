@@ -14,57 +14,24 @@ User = get_user_model()
 @pytest.mark.auth
 @pytest.mark.django_db
 class TestUserRegistration:
-    """Test user registration functionality."""
+    """Accounts are created by the teacher, never through public signup."""
 
-    def test_register_new_user(self, api_client):
-        """Test successful user registration."""
-        url = reverse("register")
-        data = {
-            "email": "newuser@test.com",
-            "password": "testpass123",
-            "password2": "testpass123",
-            "first_name": "New",
-            "last_name": "User",
-            "role": "student",
-        }
-        response = api_client.post(url, data, format="json")
-
-        assert response.status_code == status.HTTP_201_CREATED
-        assert User.objects.filter(email="newuser@test.com").exists()
-        user = User.objects.get(email="newuser@test.com")
-        assert user.first_name == "New"
-        assert user.last_name == "User"
-        assert user.role == "student"
-
-    def test_register_duplicate_email(self, api_client, admin_user):
-        """Test registration with duplicate email fails."""
-        url = reverse("register")
-        data = {
-            "email": admin_user.email,
-            "password": "testpass123",
-            "password2": "testpass123",
-            "first_name": "Duplicate",
-            "last_name": "User",
-            "role": "student",
-        }
-        response = api_client.post(url, data, format="json")
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    def test_register_password_mismatch(self, api_client):
-        """Test registration with mismatched passwords fails."""
-        url = reverse("register")
-        data = {
-            "email": "newuser@test.com",
-            "password": "testpass123",
-            "password2": "differentpass",
-            "first_name": "New",
-            "last_name": "User",
-            "role": "student",
-        }
-        response = api_client.post(url, data, format="json")
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+    @pytest.mark.parametrize("role", ["student", "parent", "teacher", "admin"])
+    def test_public_registration_forbidden_for_every_role(self, api_client, role):
+        before = User.objects.count()
+        response = api_client.post(
+            reverse("register"),
+            {
+                "email": "uninvited@test.com",
+                "password": "testpass123",
+                "first_name": "New",
+                "last_name": "User",
+                "role": role,
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert User.objects.count() == before
 
 
 @pytest.mark.auth
