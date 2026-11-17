@@ -1664,5 +1664,16 @@
     "actions": "Aktionen",
     "press": "Drücke",
     "toToggle": "zum Öffnen"
+  },
+  "StatusBadges": {
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "pending": "Ausstehend",
+    "error": "Fehler"
+  },
+  "ConfirmDialog": {
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "processing": "Wird verarbeitet…"
   }
 }

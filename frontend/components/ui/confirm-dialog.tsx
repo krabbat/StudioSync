@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useTranslations } from 'next-intl'
 import { AlertTriangle } from 'lucide-react'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from './dialog'
 import { Button } from './button'
@@ -31,13 +32,14 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   variant = 'default',
   onConfirm,
   onCancel,
   loading = false,
 }: ConfirmDialogProps) {
+  const tr = useTranslations('ConfirmDialog')
   const [isProcessing, setIsProcessing] = React.useState(false)
 
   const handleConfirm = async () => {
@@ -92,7 +94,7 @@ export function ConfirmDialog({
           disabled={isProcessing || loading}
           className="flex-1 md:flex-initial"
         >
-          {cancelText}
+          {cancelText ?? tr('cancel')}
         </Button>
         <Button
           variant={variant === 'destructive' ? 'destructive' : 'default'}
@@ -100,7 +102,7 @@ export function ConfirmDialog({
           disabled={isProcessing || loading}
           className="flex-1 md:flex-initial"
         >
-          {isProcessing || loading ? 'Processing...' : confirmText}
+          {isProcessing || loading ? tr('processing') : (confirmText ?? tr('confirm'))}
         </Button>
       </DialogFooter>
     </Dialog>

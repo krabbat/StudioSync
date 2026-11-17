@@ -1664,5 +1664,16 @@
     "actions": "Actions",
     "press": "Press",
     "toToggle": "to toggle"
+  },
+  "StatusBadges": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "error": "Error"
+  },
+  "ConfirmDialog": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "processing": "Processing..."
   }
 }

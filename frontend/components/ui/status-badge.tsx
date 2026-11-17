@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useTranslations } from 'next-intl'
 
 // ============================================================================
 // Types
@@ -109,9 +110,10 @@ export function StatusBadge({
 // ============================================================================
 
 export function ActiveBadge({ className = '' }: { className?: string }) {
+  const tr = useTranslations('StatusBadges')
   return (
     <StatusBadge
-      label="Active"
+      label={tr('active')}
       variant="success"
       showPulse={true}
       className={className}
@@ -120,9 +122,10 @@ export function ActiveBadge({ className = '' }: { className?: string }) {
 }
 
 export function InactiveBadge({ className = '' }: { className?: string }) {
+  const tr = useTranslations('StatusBadges')
   return (
     <StatusBadge
-      label="Inactive"
+      label={tr('inactive')}
       variant="neutral"
       showPulse={false}
       className={className}
@@ -131,9 +134,10 @@ export function InactiveBadge({ className = '' }: { className?: string }) {
 }
 
 export function PendingBadge({ className = '' }: { className?: string }) {
+  const tr = useTranslations('StatusBadges')
   return (
     <StatusBadge
-      label="Pending"
+      label={tr('pending')}
       variant="warning"
       showPulse={true}
       className={className}
@@ -142,9 +146,10 @@ export function PendingBadge({ className = '' }: { className?: string }) {
 }
 
 export function ErrorBadge({ className = '' }: { className?: string }) {
+  const tr = useTranslations('StatusBadges')
   return (
     <StatusBadge
-      label="Error"
+      label={tr('error')}
       variant="error"
       showPulse={false}
       className={className}
