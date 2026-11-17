@@ -380,7 +380,8 @@ class UserSerializer(serializers.ModelSerializer):
         return None
 
     def get_teacher_profile(self, obj):
-        if obj.role == "teacher" and hasattr(obj, "teacher_profile"):
+        # A studio owner may teach while retaining the admin role.
+        if hasattr(obj, "teacher_profile"):
             teacher = obj.teacher_profile
             return {
                 "id": teacher.id,
