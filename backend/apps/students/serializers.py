@@ -3,6 +3,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.core.models import Student, User
+from apps.core.tenancy import studio_for_request
 
 
 class StudentListSerializer(serializers.ModelSerializer):
@@ -122,6 +123,17 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
             "is_active",
         ]
         read_only_fields = ["studio"]
+
+    def validate_primary_teacher(self, teacher):
+        if teacher is None:
+            return None
+        request = self.context.get("request")
+        studio = self.instance.studio if self.instance else (
+            studio_for_request(request) if request else None
+        )
+        if studio is None or teacher.studio_id != studio.id or not teacher.is_active:
+            raise serializers.ValidationError("Select an active teacher from your own studio.")
+        return teacher
 
     def create(self, validated_data):
         user_data = {
