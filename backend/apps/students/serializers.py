@@ -94,6 +94,9 @@ class StudentDetailSerializer(serializers.ModelSerializer):
 class StudentCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating students with nested user data"""
 
+    # Return the linked account ID directly on creation, so avatar upload does not
+    # depend on a second student-detail request.
+    user = serializers.UUIDField(source="user_id", read_only=True)
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
     email = serializers.EmailField(write_only=True)
@@ -103,6 +106,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
         model = Student
         fields = [
             "id",
+            "user",
             "first_name",
             "last_name",
             "email",
