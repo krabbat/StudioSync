@@ -1,0 +1,15 @@
+{
+  "Common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "search": "Suchen",
+    "loading": "Wird geladen..."
+  },
+  "Login": {
+    "signIn": "Anmelden",
+    "welcomeBack": "Willkommen zurück."
+  }
+}

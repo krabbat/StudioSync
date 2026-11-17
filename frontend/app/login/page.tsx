@@ -5,6 +5,7 @@ import { useUser } from '@/contexts/UserContext'
 import { Mail, Lock, Loader2, AlertCircle, ArrowRight, Music2 } from 'lucide-react'
 import Link from 'next/link'
 import { Logo } from '@/components/Logo'
+import {useTranslations} from 'next-intl'
 
 const A = {
     bg: '#faf7f2',
@@ -39,6 +40,7 @@ const DEMO_USERS = [
 ] as const
 
 export default function LoginPage() {
+    const t = useTranslations('Login')
     const { login } = useUser()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -104,7 +106,7 @@ export default function LoginPage() {
                         className="text-4xl font-extrabold leading-tight"
                         style={{ color: A.panelText, fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.025em' }}
                     >
-                        Welcome back.
+                        {t('welcomeBack')}
                     </h1>
                     <p className="text-lg leading-relaxed" style={{ color: A.panelMuted }}>
                         Your gigs, bands, and bookings are waiting.
@@ -146,7 +148,7 @@ export default function LoginPage() {
                     >
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold mb-1" style={{ color: A.text, fontFamily: 'Outfit, sans-serif' }}>
-                                Sign in
+                                {t('signIn')}
                             </h2>
                             <p className="text-sm" style={{ color: A.muted }}>
                                 Don&apos;t have an account?{' '}
