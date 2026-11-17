@@ -489,9 +489,9 @@ export default function SchedulePage() {
           payload.band = null;
         }
 
-        // House calls use the pupil's address; no studio room is booked.
+        // New house-call lessons do not need a room. Existing room references
+        // are left untouched when editing legacy appointments.
         payload.is_online = newBooking.is_online;
-        payload.room = null;
         payload.online_meeting_url = newBooking.is_online ? newBooking.online_meeting_url : "";
       }
 
