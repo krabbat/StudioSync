@@ -331,9 +331,9 @@ class DashboardAnalyticsView(APIView):
         }
 
         for i in range(5, -1, -1):
-            date = today - timedelta(days=i * 30)  # Approx
-            key = date.strftime("%Y-%m")
-            month_label = date.strftime("%b")
+            revenue_month = today - timedelta(days=i * 30)  # Approx
+            key = revenue_month.strftime("%Y-%m")
+            month_label = revenue_month.strftime("%b")
 
             revenue_trend.append({"month": month_label, "revenue": float(revenue_map.get(key, 0))})
 
