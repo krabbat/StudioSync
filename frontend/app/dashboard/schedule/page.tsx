@@ -8,7 +8,6 @@ import {
   useStudents,
   useTeachers,
   useBands,
-  useRooms,
   useStudios,
 } from "@/hooks/useDashboardData";
 import api from "@/services/api";
@@ -125,7 +124,6 @@ export default function SchedulePage() {
   const { students } = useStudents();
   const { teachers } = useTeachers();
   const { bands } = useBands();
-  const { rooms } = useRooms();
   const { studios } = useStudios();
 
   const currentStudio = studios?.[0];
@@ -280,6 +278,9 @@ export default function SchedulePage() {
   });
 
   const [bookingMode, setBookingMode] = useState<"individual" | "band" | "event">("individual");
+  const bookingStudent = students.find((student: any) => student.id === newBooking.student);
+  const bookingCityLine = [bookingStudent?.postal_code, bookingStudent?.city].filter(Boolean).join(" ");
+  const bookingAddress = [bookingStudent?.address_line1, bookingCityLine].filter(Boolean).join(", ");
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -488,14 +489,10 @@ export default function SchedulePage() {
           payload.band = null;
         }
 
-        if (newBooking.room === "external") {
-          payload.is_online = true;
-          payload.online_meeting_url = newBooking.online_meeting_url;
-          payload.room = null;
-        } else if (newBooking.room) {
-          payload.room = newBooking.room;
-          payload.is_online = false;
-        }
+        // House calls use the pupil's address; no studio room is booked.
+        payload.is_online = newBooking.is_online;
+        payload.room = null;
+        payload.online_meeting_url = newBooking.is_online ? newBooking.online_meeting_url : "";
       }
 
       if (editingLessonId) {
@@ -1262,32 +1259,20 @@ export default function SchedulePage() {
               )}
               <div className="space-y-2">
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                  {tr('roomLocation')}
+                  {tr('teachingAddress')}
                 </label>
-                <select
-                  value={newBooking.room}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setNewBooking({
-                      ...newBooking,
-                      room: val,
-                      is_online: val === "external",
-                    });
-                  }}
-                  className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
-                >
-                  <option value="">{tr('selectRoom')}</option>
-                  {rooms.map((r: any) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                  <option value="external">{tr('externalOnline')}</option>
-                </select>
+                <div className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold text-gray-700 min-h-[48px]">
+                  {bookingAddress || tr('addressMissing')}
+                </div>
+                <label className="flex gap-2 items-center text-sm font-medium text-gray-600">
+                  <input type="checkbox" checked={newBooking.is_online}
+                    onChange={(e) => setNewBooking({ ...newBooking, is_online: e.target.checked })} />
+                  {tr('onlineLesson')}
+                </label>
               </div>
             </div>
 
-            {newBooking.room === "external" && (
+            {newBooking.is_online && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
                   {tr('onlineMeetingLinkPlatform')}
