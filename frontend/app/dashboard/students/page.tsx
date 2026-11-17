@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import { useLocale, useTranslations } from 'next-intl'
 
 // --- Types ---
 interface TeacherProfile {
@@ -44,7 +45,7 @@ interface StudentData {
 }
 
 // --- Helper Functions ---
-const getTeacherName = (student: StudentData, teachers: any[]): string => {
+const getTeacherName = (student: StudentData, teachers: any[], fallback: string): string => {
     if (student.teacher_name) return student.teacher_name
     if (student.primary_teacher && typeof student.primary_teacher === 'object') {
         const t = student.primary_teacher as TeacherProfile
@@ -58,7 +59,7 @@ const getTeacherName = (student: StudentData, teachers: any[]): string => {
             return `${teacher.first_name} ${teacher.last_name}`
         }
     }
-    return 'Unassigned'
+    return fallback
 }
 
 const getNextLessonDate = (student: StudentData): Date | null => {
@@ -66,12 +67,14 @@ const getNextLessonDate = (student: StudentData): Date | null => {
     return d ? new Date(d) : null
 }
 
-const formatDate = (date: Date | null): string => {
-    if (!date) return 'TBD'
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+const formatDate = (date: Date | null, locale: string, fallback: string): string => {
+    if (!date) return fallback
+    return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: '2-digit' })
 }
 
 export default function StudentsPage() {
+    const t = useTranslations('Students')
+    const locale = useLocale()
     const router = useRouter()
     const { currentUser } = useUser()
     const { teachers } = useTeachers()
@@ -133,13 +136,13 @@ export default function StudentsPage() {
         setIsSubmitting(true)
         try {
             await api.patch(`/students/${selectedStudent.id}/`, formData)
-            toast.success('Changes saved')
+            toast.success(t('saved'))
             setIsEditModalOpen(false)
             if (refresh) refresh()
             refreshInstruments() // update instrument list in case a new one was added
         } catch (error: any) {
             console.error('Update failed:', error)
-            toast.error(error.response?.data?.detail || 'Failed to update member')
+            toast.error(error.response?.data?.detail || t('saveFailed'))
         } finally {
             setIsSubmitting(false)
         }
@@ -149,12 +152,12 @@ export default function StudentsPage() {
         return isActive ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-100">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                Active
+                {t('active')}
             </span>
         ) : (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400 border border-gray-100">
                 <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                Inactive
+                {t('inactive')}
             </span>
         )
     }
@@ -163,7 +166,7 @@ export default function StudentsPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Loading Roster...</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('loading')}</p>
             </div>
         )
     }
@@ -174,29 +177,29 @@ export default function StudentsPage() {
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
                 <div className="space-y-2">
                     <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                        Student Roster
+                        {t('rosterTitle')}
                         <div className="bg-primary/10 px-3 py-1 rounded-full text-xs font-black text-primary uppercase tracking-widest">
-                            {meta?.count || 0} Students
+                            {t('studentCount', {count: meta?.count || 0})}
                         </div>
                     </h1>
-                    <p className="text-gray-500 font-medium max-w-lg">Nurture development, oversee learning goals, and verify enrollment status.</p>
+                    <p className="text-gray-500 font-medium max-w-lg">{t('rosterDescription')}</p>
                 </div>
                 <Button
                     onClick={() => router.push('/dashboard/students/add')}
                     className="gap-2 hover:scale-105 shadow-lg shadow-primary/20 transition-all py-6 px-8"
                 >
                     <Plus className="w-4 h-4" />
-                    Add Student
+                    {t('addStudent')}
                 </Button>
             </header>
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { label: 'Total Roster', value: statsLoading ? '-' : (studentStats?.total_students || 0), icon: GraduationCap, color: 'blue' },
-                    { label: 'Active Students', value: statsLoading ? '-' : (studentStats?.active_students || 0), icon: Target, color: 'purple' },
-                    { label: 'Engagement Rate', value: statsLoading ? '-' : (studentStats?.total_students ? Math.round((studentStats.active_students / studentStats.total_students) * 100) + '%' : '0%'), icon: Star, color: 'emerald' },
-                    { label: 'Unassigned', value: statsLoading ? '-' : (studentStats?.unassigned_students || 0), icon: UserCog, color: 'orange' }
+                    { label: t('totalStudents'), value: statsLoading ? '-' : (studentStats?.total_students || 0), icon: GraduationCap, color: 'blue' },
+                    { label: t('activeStudents'), value: statsLoading ? '-' : (studentStats?.active_students || 0), icon: Target, color: 'purple' },
+                    { label: t('engagementRate'), value: statsLoading ? '-' : (studentStats?.total_students ? Math.round((studentStats.active_students / studentStats.total_students) * 100) + '%' : '0%'), icon: Star, color: 'emerald' },
+                    { label: t('unassigned'), value: statsLoading ? '-' : (studentStats?.unassigned_students || 0), icon: UserCog, color: 'orange' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between mb-4">
@@ -218,7 +221,7 @@ export default function StudentsPage() {
                         onChange={(e) => setFilterInstrument(e.target.value)}
                         className="px-4 py-3 bg-white border-2 border-transparent focus:border-primary/20 focus:ring-2 focus:ring-primary/20 focus:ring-inset rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-700 outline-none transition-all shadow-sm appearance-none min-w-[140px] text-center"
                     >
-                        <option value="all">Every Instrument</option>
+                        <option value="all">{t('allInstruments')}</option>
                         {allInstruments.map(inst => <option key={inst} value={inst}>{inst}</option>)}
                     </select>
 
@@ -230,7 +233,7 @@ export default function StudentsPage() {
                                 onClick={() => setShowAllStudents(false)}
                                 className={`px-6 rounded-xl text-[10px] font-black uppercase tracking-widest ${!showAllStudents ? 'bg-white shadow-sm' : 'text-gray-400'}`}
                             >
-                                My Scholars
+                                {t('myStudents')}
                             </Button>
                             <Button
                                 variant={showAllStudents ? 'secondary' : 'ghost'}
@@ -238,7 +241,7 @@ export default function StudentsPage() {
                                 onClick={() => setShowAllStudents(true)}
                                 className={`px-6 rounded-xl text-[10px] font-black uppercase tracking-widest ${showAllStudents ? 'bg-white shadow-sm' : 'text-gray-400'}`}
                             >
-                                Studio Wide
+                                {t('allStudio')}
                             </Button>
                         </div>
                     )}
@@ -248,7 +251,7 @@ export default function StudentsPage() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Search student or focus areas..."
+                        placeholder={t('searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all shadow-sm"
@@ -262,12 +265,12 @@ export default function StudentsPage() {
                     <table className="w-full border-separate border-spacing-0">
                         <thead className="bg-gray-50/50">
                             <tr>
-                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">The Scholar</th>
-                                <th className="px-8 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Areas of Focus</th>
-                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Mentor</th>
-                                <th className="px-8 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Up Next</th>
-                                <th className="px-8 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('studentColumn')}</th>
+                                <th className="px-8 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('statusColumn')}</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('focusColumn')}</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('teacherColumn')}</th>
+                                <th className="px-8 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('nextColumn')}</th>
+                                <th className="px-8 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('actionsColumn')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -291,7 +294,7 @@ export default function StudentsPage() {
                                     </td>
                                     <td className="px-8 py-6">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            {(student.instruments?.length > 0 ? student.instruments : [student.instrument || 'Foundation']).map((inst: string) => (
+                                            {(student.instruments?.length > 0 ? student.instruments : [student.instrument || t('foundation')]).map((inst: string) => (
                                                 <div key={inst} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-100/50">
                                                     <Music className="w-3 h-3" />
                                                     <span className="text-[9px] font-black uppercase tracking-wider">{inst}</span>
@@ -305,17 +308,17 @@ export default function StudentsPage() {
                                                 <User className="w-4 h-4 text-gray-400" />
                                             </div>
                                             <span className="text-sm font-bold text-gray-600">
-                                                {getTeacherName(student, teachers)}
+                                                {getTeacherName(student, teachers, t('unassigned'))}
                                             </span>
                                         </div>
                                     </td>
                                     <td className="px-8 py-6 text-right">
                                         <div className="flex flex-col items-end">
                                             <span className={`text-[10px] font-black uppercase tracking-widest ${getNextLessonDate(student) ? 'text-primary' : 'text-gray-300'}`}>
-                                                {formatDate(getNextLessonDate(student))}
+                                                {formatDate(getNextLessonDate(student), locale, t('datePending'))}
                                             </span>
                                             {getNextLessonDate(student) && (
-                                                <span className="text-[9px] font-bold text-gray-400 uppercase">Confirmed</span>
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase">{t('confirmed')}</span>
                                             )}
                                         </div>
                                     </td>
@@ -347,7 +350,7 @@ export default function StudentsPage() {
                                             <div className="w-20 h-20 bg-gray-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-gray-100">
                                                 <BookOpen className="w-10 h-10 text-gray-200" />
                                             </div>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Roster is currently empty</p>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('emptyRoster')}</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -359,7 +362,7 @@ export default function StudentsPage() {
                 {/* Pagination */}
                 <div className="p-6 bg-gray-50/30 border-t border-gray-50 flex items-center justify-between">
                     <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        Page <span className="text-gray-900">{page}</span> of <span className="text-gray-900">{Math.max(1, Math.ceil((meta?.count || 0) / 20))}</span>
+                        {t('pagination', {page, total: Math.max(1, Math.ceil((meta?.count || 0) / 20))})}
                     </div>
                     <div className="flex items-center gap-3">
                         <Button
@@ -390,11 +393,11 @@ export default function StudentsPage() {
             {/* Edit Modal */}
             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
                 <DialogContent size="lg">
-                    <DialogHeader title="Update Student Profile" />
+                    <DialogHeader title={t('editStudent')} />
                     <form id="edit-student-form" onSubmit={handleSubmit} className="space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">First Name</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('firstName')}</label>
                                 <input
                                     required
                                     value={formData.first_name}
@@ -403,7 +406,7 @@ export default function StudentsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Last Name</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('lastName')}</label>
                                 <input
                                     required
                                     value={formData.last_name}
@@ -412,7 +415,7 @@ export default function StudentsPage() {
                                 />
                             </div>
                             <div className="space-y-2 md:col-span-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Email Address</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('email')}</label>
                                 <input
                                     type="email"
                                     required
@@ -426,12 +429,12 @@ export default function StudentsPage() {
                         <div className="p-8 bg-primary/5 rounded-3xl border border-primary/10 space-y-6">
                             <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Trophy className="w-4 h-4" />
-                                Curriculum
+                                {t('curriculum')}
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Areas of Focus</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('focusColumn')}</label>
                                     <div className="flex flex-wrap gap-2 mb-2">
                                         {formData.instruments.map(inst => (
                                             <div key={inst} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-primary/20 rounded-xl text-[10px] font-black text-primary uppercase tracking-widest transition-all hover:bg-red-50 hover:border-red-200 hover:text-red-500 cursor-pointer group" onClick={() => {
@@ -470,7 +473,7 @@ export default function StudentsPage() {
                                                     }
                                                 }
                                             }}
-                                            placeholder="Type and press Enter to add..."
+                                            placeholder={t('addInstrumentPlaceholder')}
                                             className="w-full px-5 py-3.5 bg-white border-transparent focus:border-primary border-2 rounded-2xl font-bold text-gray-700 outline-none transition-all"
                                         />
                                         <datalist id="instrument-options">
@@ -479,13 +482,13 @@ export default function StudentsPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Teacher</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('teacherColumn')}</label>
                                     <select
                                         value={formData.primary_teacher}
                                         onChange={e => setFormData({ ...formData, primary_teacher: e.target.value })}
                                         className="w-full px-5 py-3.5 bg-white border-transparent focus:border-primary border-2 rounded-2xl font-bold text-gray-700 outline-none transition-all appearance-none"
                                     >
-                                        <option value="">Unassigned</option>
+                                        <option value="">{t('unassigned')}</option>
                                         {teachers.map((t: any) => (
                                             <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
                                         ))}
@@ -493,14 +496,14 @@ export default function StudentsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Enrollment</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('enrollment')}</label>
                                     <div
                                         onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                                         className={`flex items-center justify-between px-5 py-3.5 rounded-2xl border-2 transition-all cursor-pointer h-[54px] ${formData.is_active ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'
                                             }`}
                                     >
                                         <span className={`text-[10px] font-black uppercase tracking-widest ${formData.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                            {formData.is_active ? 'Active' : 'Inactive'}
+                                            {formData.is_active ? t('active') : t('inactive')}
                                         </span>
                                         <div className={`w-10 h-6 rounded-full p-1 transition-colors ${formData.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`}>
                                             <div className={`w-4 h-4 bg-white rounded-full transition-transform ${formData.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
@@ -516,7 +519,7 @@ export default function StudentsPage() {
                             onClick={() => setIsEditModalOpen(false)}
                             className="flex-1"
                         >
-                            Cancel
+                            {t('cancel')}
                         </Button>
                         <Button
                             type="submit"
@@ -527,10 +530,10 @@ export default function StudentsPage() {
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                    Saving Changes...
+                                    {t('saving')}
                                 </>
                             ) : (
-                                'Save Changes'
+                                t('saveChanges')
                             )}
                         </Button>
                     </DialogFooter>
