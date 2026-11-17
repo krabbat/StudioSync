@@ -1608,5 +1608,23 @@
     "runStudio": "Run your studio,",
     "heroDescription": "Students, scheduling, billing, and communication — all in tune, all in one place. Free and open source.",
     "selfHostingInfo": "One command spins up the full stack — PostgreSQL, Django, and Next.js. Your data stays on your server, always."
+  },
+  "ResourceSelector": {
+    "selectResources": "Select Resources",
+    "description": "Choose resources to attach to this lesson plan",
+    "allTypes": "All Types",
+    "pdfs": "PDFs",
+    "audio": "Audio",
+    "video": "Video",
+    "images": "Images",
+    "links": "Links",
+    "physicalItems": "Physical Items",
+    "loading": "Loading resources...",
+    "noneFound": "No resources found",
+    "cancel": "Cancel",
+    "search": "Search resources...",
+    "selectedCount": "{count} resources selected",
+    "addSelected": "Add Selected ({count})",
+    "other": "Other"
   }
 }

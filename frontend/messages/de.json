@@ -1608,5 +1608,23 @@
     "runStudio": "Verwalte dein Studio,",
     "heroDescription": "Schüler, Termine, Abrechnung und Kommunikation an einem Ort. Kostenlos und Open Source.",
     "selfHostingInfo": "Mit einem Befehl starten PostgreSQL, Django und Next.js. Deine Daten bleiben auf deinem Server."
+  },
+  "ResourceSelector": {
+    "selectResources": "Materialien auswählen",
+    "description": "Materialien auswählen, die diesem Unterrichtsplan hinzugefügt werden sollen",
+    "allTypes": "Alle Arten",
+    "pdfs": "PDFs",
+    "audio": "Audio",
+    "video": "Video",
+    "images": "Bilder",
+    "links": "Links",
+    "physicalItems": "Physische Materialien",
+    "loading": "Materialien werden geladen…",
+    "noneFound": "Keine Materialien gefunden",
+    "cancel": "Abbrechen",
+    "search": "Materialien suchen…",
+    "selectedCount": "{count} Materialien ausgewählt",
+    "addSelected": "Auswahl hinzufügen ({count})",
+    "other": "Sonstiges"
   }
 }

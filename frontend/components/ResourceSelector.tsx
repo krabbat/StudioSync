@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { X, Search, FileText, Music, Video, Image, Link as LinkIcon, Package, CheckCircle2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -34,6 +35,7 @@ const RESOURCE_TYPE_COLORS = {
 }
 
 export default function ResourceSelector({ selectedIds, onSelectionChange, isOpen, onClose }: ResourceSelectorProps) {
+  const tr = useTranslations('ResourceSelector')
   const { resources, loading } = useResources()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
@@ -43,6 +45,11 @@ export default function ResourceSelector({ selectedIds, onSelectionChange, isOpe
     setLocalSelectedIds(selectedIds)
   }, [selectedIds, isOpen])
 
+  const resourceTypeLabels: Record<string, string> = {
+    pdf: tr('pdfs'), audio: tr('audio'), video: tr('video'),
+    image: tr('images'), link: tr('links'), physical: tr('physicalItems'),
+    other: tr('other')
+  }
   const filteredResources = resources.filter((resource: any) => {
     const matchesSearch = resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          resource.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -69,12 +76,12 @@ export default function ResourceSelector({ selectedIds, onSelectionChange, isOpe
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
-        <DialogHeader title="Select Resources" />
+        <DialogHeader title={tr('selectResources')} />
 
         {/* Description */}
         <div className="px-6 -mt-2 mb-4">
           <p className="text-sm text-gray-600">
-            Choose resources to attach to this lesson plan
+            {tr('description')}
           </p>
         </div>
 
@@ -84,7 +91,7 @@ export default function ResourceSelector({ selectedIds, onSelectionChange, isOpe
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search resources..."
+              placeholder={tr('search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:ring-inset focus:border-primary/30 outline-none"
@@ -95,31 +102,31 @@ export default function ResourceSelector({ selectedIds, onSelectionChange, isOpe
             onChange={(e) => setFilterType(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:ring-inset focus:border-primary/30 outline-none"
           >
-            <option value="all">All Types</option>
-            <option value="pdf">PDFs</option>
-            <option value="audio">Audio</option>
-            <option value="video">Video</option>
-            <option value="image">Images</option>
-            <option value="link">Links</option>
-            <option value="physical">Physical Items</option>
+            <option value="all">{tr('allTypes')}</option>
+            <option value="pdf">{tr('pdfs')}</option>
+            <option value="audio">{tr('audio')}</option>
+            <option value="video">{tr('video')}</option>
+            <option value="image">{tr('images')}</option>
+            <option value="link">{tr('links')}</option>
+            <option value="physical">{tr('physicalItems')}</option>
           </select>
         </div>
 
         {/* Selected Count */}
         <div className="mb-3 text-sm text-gray-600">
-          {localSelectedIds.length} resource{localSelectedIds.length !== 1 ? 's' : ''} selected
+          {tr('selectedCount', {count: localSelectedIds.length})}
         </div>
 
         {/* Resource List */}
         <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-gray-500">Loading resources...</div>
+              <div className="text-gray-500">{tr('loading')}</div>
             </div>
           ) : filteredResources.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-500">
               <Package className="w-12 h-12 mb-2 opacity-50" />
-              <p>No resources found</p>
+              <p>{tr('noneFound')}</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
@@ -157,7 +164,7 @@ export default function ResourceSelector({ selectedIds, onSelectionChange, isOpe
                         )}
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
-                            {resource.resource_type.toUpperCase()}
+                            {resourceTypeLabels[resource.resource_type] || resource.resource_type.toUpperCase()}
                           </span>
                           {resource.category && (
                             <span className="text-xs text-gray-500">{resource.category}</span>
@@ -177,13 +184,13 @@ export default function ResourceSelector({ selectedIds, onSelectionChange, isOpe
             onClick={handleCancel}
             className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            {tr('cancel')}
           </Button>
           <Button
             onClick={handleConfirm}
             className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
           >
-            Add Selected ({localSelectedIds.length})
+            {tr('addSelected', {count: localSelectedIds.length})}
           </Button>
         </DialogFooter>
       </DialogContent>
