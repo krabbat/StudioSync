@@ -1,6 +1,8 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth.password_validation import validate_password
 from django.db import models
 
-from rest_framework import filters, permissions, viewsets
+from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -105,6 +107,34 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "unassigned_students": unassigned,
             }
         )
+
+    @action(detail=True, methods=["post"], url_path="set-password")
+    def set_password(self, request, pk=None):
+        """Activate the existing pupil's account; never create another account."""
+        if request.user.role != "admin":
+            return Response({"detail": "Only administrators can set student passwords."},
+                            status=status.HTTP_403_FORBIDDEN)
+        student = self.get_object()
+        password = request.data.get("password")
+        if not isinstance(password, str) or not password:
+            return Response({"password": ["A password is required."]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if password != request.data.get("confirm_password"):
+            return Response({"confirm_password": ["Passwords do not match."]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            validate_password(password, user=student.user)
+        except DjangoValidationError as error:
+            return Response({"password": error.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+        account = student.user
+        if not account.is_active:
+            return Response({"detail": "The student account is inactive."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        account.set_password(password)
+        account.is_approved = True
+        account.save(update_fields=["password", "is_approved"])
+        return Response({"detail": "Student login is ready."})
 
     def perform_create(self, serializer):
         user = self.request.user
