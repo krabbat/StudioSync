@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import Cropper from 'react-easy-crop'
 import type { Point, Area } from 'react-easy-crop'
 import { X, Check, ZoomIn, ZoomOut } from 'lucide-react'
@@ -10,6 +11,7 @@ interface ImageCropperProps {
 }
 
 export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCropperProps) {
+    const t = useTranslations('ImageCropper')
     const [crop, setCrop] = useState<Point>({ x: 0, y: 0 })
     const [zoom, setZoom] = useState(1)
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
@@ -88,8 +90,8 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <div className="bg-white rounded-lg w-full max-w-lg overflow-hidden flex flex-col h-[500px]">
                 <div className="flex items-center justify-between p-4 border-b">
-                    <h3 className="font-semibold text-lg">Crop Image</h3>
-                    <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
+                    <h3 className="font-semibold text-lg">{t('cropImage')}</h3>
+                    <button type="button" onClick={onCancel} className="text-gray-500 hover:text-gray-700">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -115,7 +117,7 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
                             min={1}
                             max={3}
                             step={0.1}
-                            aria-labelledby="Zoom"
+                            aria-label={t('zoom')}
                             onChange={(e) => {
                                 setZoom(Number(e.target.value))
                             }}
@@ -126,16 +128,18 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
 
                     <div className="flex justify-end gap-3">
                         <button
+                            type="button"
                             onClick={onCancel}
                             className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                         >
-                            Cancel
+                            {t('cancel')}
                         </button>
                         <button
+                            type="button"
                             onClick={handleSave}
                             className="px-4 py-2 bg-[#F39C12] text-white rounded-lg hover:bg-[#E67E22] transition-colors flex items-center gap-2"
                         >
-                            <Check className="w-4 h-4" /> Save Avatar
+                            <Check className="w-4 h-4" /> {t('savePhoto')}
                         </button>
                     </div>
                 </div>

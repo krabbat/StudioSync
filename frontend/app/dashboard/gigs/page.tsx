@@ -189,9 +189,9 @@ function PostGigModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
                                         <label className={lbl}>{t('venue')} <span className="text-red-400">*</span></label>
                                         {venues.length === 0 ? (
                                             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                                                No venues set up yet.{' '}
+                                                {t('noVenuesConfigured')}{' '}
                                                 <a href="/dashboard/settings/gig-venues/" className="underline font-bold">{t('addVenuesInSettingsGigVenues')}</a>
-                                                {' '}before posting gigs.
+                                                {' '}{t('beforePostingGigs')}
                                             </p>
                                         ) : (
                                             <select value={form.venue_ref} onChange={set('venue_ref')} className={inp} required>

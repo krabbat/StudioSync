@@ -243,7 +243,12 @@
     "minorAge": "Minor — age {age}",
     "adultAge": "Adult — age {age}",
     "creating": "Creating...",
-    "submit": "Welcome to the Studio"
+    "submit": "Welcome to the Studio",
+    "guardianContact": "Parent / Guardian Contact",
+    "guardianName": "Parent / Guardian Name",
+    "guardianPhone": "Parent / Guardian Phone",
+    "exampleEmail": "john.doe@example.com",
+    "examplePhone": "(555) 123-4567"
   },
   "StudentProfile": {
     "profileAccess": "Profile Access",
@@ -482,7 +487,12 @@
     "typeMakeup": "Make-up lesson",
     "unknown": "Unknown",
     "saveChanges": "Save Changes",
-    "showingRange": "Showing {from} to {to} of {count} lessons"
+    "showingRange": "Showing {from} to {to} of {count} lessons",
+    "templateCount": "{count, plural, =0 {0 plans} one {# plan} other {# plans}}",
+    "resourceCount": "{count, plural, one {# resource selected} other {# resources selected}}",
+    "selectResources": "Select Resources",
+    "missingTitleOrContent": "Please fill in title and content",
+    "updatePlan": "Update Plan"
   },
   "Billing": {
     "loadingBilling": "Loading Billing...",
@@ -718,7 +728,13 @@
     "saveUserFailed": "Failed to save user",
     "deleteUserFailed": "Failed to delete user",
     "confirmDeleteUser": "Are you sure you want to delete {name}? This action cannot be undone.",
-    "userDeleted": "{name} has been deleted successfully"
+    "userDeleted": "{name} has been deleted successfully",
+    "editMember": "Edit System Member",
+    "newMember": "Onboard New Member",
+    "authorized": "Authorized",
+    "suspended": "Suspended",
+    "saveMember": "Commit Changes",
+    "createMember": "Activate Membership"
   },
   "Resources": {
     "loadingLibrary": "Loading Library...",
@@ -1307,7 +1323,9 @@
     "draft": "Draft",
     "daysSelected": "{count, plural, one {# day selected} other {# days selected}}",
     "saveDraft": "Save Draft",
-    "submitAvailability": "Submit Availability"
+    "submitAvailability": "Submit Availability",
+    "noVenuesConfigured": "No venues set up yet.",
+    "beforePostingGigs": "before posting gigs."
   },
   "Projects": {
     "projectBoard": "Project Board",
@@ -1834,5 +1852,11 @@
     "scheduled": "Scheduled",
     "studentCount": "{count, plural, one {# student} other {# students}}",
     "lessonCount": "{count, plural, one {# lesson} other {# lessons}}"
+  },
+  "ImageCropper": {
+    "cropImage": "Crop Image",
+    "cancel": "Cancel",
+    "savePhoto": "Save Avatar",
+    "zoom": "Zoom"
   }
 }

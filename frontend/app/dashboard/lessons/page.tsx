@@ -534,7 +534,7 @@ export default function LessonsPage() {
                         <p className="text-sm text-gray-600 mt-1">{tr('reusableCurriculumFrameworksWithAttachedResources')}</p>
                     </div>
                     <div className="text-sm text-gray-500">
-                        {plans.length} plan{plans.length !== 1 ? 's' : ''}
+                        {tr('templateCount', {count: plans.length})}
                     </div>
                 </div>
 
@@ -747,7 +747,7 @@ export default function LessonsPage() {
                                 className="w-full px-4 py-3 bg-gray-50 border-2 border-dashed border-gray-300 hover:border-primary rounded-xl font-semibold text-gray-600 hover:text-primary transition-all flex items-center justify-center gap-2"
                             >
                                 <Plus className="w-4 h-4" />
-                                {formData.resource_ids.length > 0 ? `${formData.resource_ids.length} resource(s) selected` : 'Select Resources'}
+                                {formData.resource_ids.length > 0 ? tr('resourceCount', {count: formData.resource_ids.length}) : tr('selectResources')}
                             </button>
                         </div>
 
@@ -780,7 +780,7 @@ export default function LessonsPage() {
                     <Button
                         onClick={async () => {
                             if (!formData.title.trim() || !formData.content.trim()) {
-                                alert('Please fill in title and content')
+                                alert(tr('missingTitleOrContent'))
                                 return
                             }
                             setSubmitting(true)
@@ -818,7 +818,7 @@ export default function LessonsPage() {
                         ) : (
                             <>
                                 <CheckCircle2 className="w-4 h-4" />
-                                {editingPlan ? 'Update Plan' : 'Create Plan'}
+                                {editingPlan ? tr('updatePlan') : tr('createPlan')}
                             </>
                         )}
                     </Button>

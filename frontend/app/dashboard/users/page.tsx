@@ -363,7 +363,7 @@ export default function UsersPage() {
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${user.is_active ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'
                                             }`}>
                                             <div className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-500'}`} />
-                                            {user.is_active ? 'Authorized' : 'Suspended'}
+                                            {user.is_active ? t('authorized') : t('suspended')}
                                         </span>
                                     </td>
                                     <td className="px-6 py-6 text-right">
@@ -431,7 +431,7 @@ export default function UsersPage() {
                 onOpenChange={setIsUserModalOpen}
                 size="lg"
             >
-                <DialogHeader title={selectedUser ? 'Edit System Member' : 'Onboard New Member'} />
+                <DialogHeader title={selectedUser ? t('editMember') : t('newMember')} />
                 <DialogContent>
                     <form id="user-onboarding-form" onSubmit={handleSubmit} className="space-y-8">
                         {/* Basic Info */}
@@ -495,7 +495,7 @@ export default function UsersPage() {
                                         }`}
                                 >
                                     <span className={`text-sm font-black uppercase tracking-widest ${formData.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                                        {formData.is_active ? 'Authorized' : 'Suspended'}
+                                        {formData.is_active ? t('authorized') : t('suspended')}
                                     </span>
                                     <div className={`w-10 h-6 rounded-full p-1 transition-colors ${formData.is_active ? 'bg-green-500' : 'bg-red-400'}`}>
                                         <div className={`w-4 h-4 bg-white rounded-full transition-transform ${formData.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
@@ -659,7 +659,7 @@ export default function UsersPage() {
                                 {t('synchronizing')}
                             </>
                         ) : (
-                            selectedUser ? 'Commit Changes' : 'Activate Membership'
+                            selectedUser ? t('saveMember') : t('createMember')
                         )}
                     </Button>
                 </DialogFooter>

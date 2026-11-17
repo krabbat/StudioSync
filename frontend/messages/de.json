@@ -243,7 +243,12 @@
     "minorAge": "Minderjährig – {age} Jahre",
     "adultAge": "Volljährig – {age} Jahre",
     "creating": "Wird angelegt…",
-    "submit": "Schüler aufnehmen"
+    "submit": "Schüler aufnehmen",
+    "guardianContact": "Kontaktperson / Sorgeberechtigte",
+    "guardianName": "Name der sorgeberechtigten Person",
+    "guardianPhone": "Telefon der sorgeberechtigten Person",
+    "exampleEmail": "max.mustermann@beispiel.de",
+    "examplePhone": "+49 30 1234567"
   },
   "StudentProfile": {
     "profileAccess": "Schülerprofil",
@@ -482,7 +487,12 @@
     "typeMakeup": "Nachholstunde",
     "unknown": "Unbekannt",
     "saveChanges": "Änderungen speichern",
-    "showingRange": "{from}–{to} von {count} Unterrichtsstunden"
+    "showingRange": "{from}–{to} von {count} Unterrichtsstunden",
+    "templateCount": "{count, plural, =0 {0 Vorlagen} one {# Vorlage} other {# Vorlagen}}",
+    "resourceCount": "{count, plural, one {# Material ausgewählt} other {# Materialien ausgewählt}}",
+    "selectResources": "Materialien auswählen",
+    "missingTitleOrContent": "Bitte Titel und Unterrichtsinhalt eingeben.",
+    "updatePlan": "Vorlage aktualisieren"
   },
   "Billing": {
     "loadingBilling": "Abrechnung wird geladen…",
@@ -718,7 +728,13 @@
     "saveUserFailed": "Benutzer konnte nicht gespeichert werden",
     "deleteUserFailed": "Benutzer konnte nicht gelöscht werden",
     "confirmDeleteUser": "{name} wirklich löschen? Dies kann nicht rückgängig gemacht werden.",
-    "userDeleted": "{name} wurde gelöscht."
+    "userDeleted": "{name} wurde gelöscht.",
+    "editMember": "Benutzer bearbeiten",
+    "newMember": "Neuen Benutzer anlegen",
+    "authorized": "Freigeschaltet",
+    "suspended": "Gesperrt",
+    "saveMember": "Änderungen speichern",
+    "createMember": "Benutzer anlegen"
   },
   "Resources": {
     "loadingLibrary": "Materialien werden geladen…",
@@ -1307,7 +1323,9 @@
     "draft": "Entwurf",
     "daysSelected": "{count, plural, one {# Tag ausgewählt} other {# Tage ausgewählt}}",
     "saveDraft": "Entwurf speichern",
-    "submitAvailability": "Verfügbarkeit übermitteln"
+    "submitAvailability": "Verfügbarkeit übermitteln",
+    "noVenuesConfigured": "Noch keine Auftrittsorte angelegt.",
+    "beforePostingGigs": "bevor du einen Auftritt veröffentlichst."
   },
   "Projects": {
     "projectBoard": "Projektübersicht",
@@ -1834,5 +1852,11 @@
     "scheduled": "Geplant",
     "studentCount": "{count, plural, one {# Schüler} other {# Schüler}}",
     "lessonCount": "{count, plural, one {# Unterrichtsstunde} other {# Unterrichtsstunden}}"
+  },
+  "ImageCropper": {
+    "cropImage": "Bild zuschneiden",
+    "cancel": "Abbrechen",
+    "savePhoto": "Foto übernehmen",
+    "zoom": "Zoom"
   }
 }

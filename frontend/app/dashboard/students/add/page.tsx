@@ -118,7 +118,7 @@ export default function AddStudentPage() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         {tr('emailAddress')} <span className="text-red-500">*</span>
                                     </label>
-                                    <input type="email" name="email" required value={formData.email} onChange={handleChange} className={inputClass} placeholder="john.doe@example.com" />
+                                    <input type="email" name="email" required value={formData.email} onChange={handleChange} className={inputClass} placeholder={tr('exampleEmail')} />
                                     <p className="text-xs text-gray-500 mt-1">{tr('usedForLoginCanBeTheStudentSOrParentSEmailForMinors')}</p>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -126,7 +126,7 @@ export default function AddStudentPage() {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             {tr('studentPhoneNumber')}
                                         </label>
-                                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="(555) 123-4567" />
+                                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder={tr('examplePhone')} />
                                         <p className="text-xs text-gray-500 mt-1">{tr('directLineForTheStudent')}</p>
                                     </div>
                                     <div>
@@ -186,7 +186,7 @@ export default function AddStudentPage() {
                             <section className={`rounded-xl border p-6 space-y-4 ${isMinor ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
                                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                                     <Users className={`w-5 h-5 ${isMinor ? 'text-amber-600' : 'text-gray-500'}`} />
-                                    Parent / Guardian Contact
+                                    {tr('guardianContact')}
                                     {isMinor && (
                                         <span className="ml-2 text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
                                             {tr('requiredForMinors')}
@@ -204,7 +204,7 @@ export default function AddStudentPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Parent / Guardian Name
+                                            {tr('guardianName')}
                                             {isMinor && <span className="text-red-500 ml-1">*</span>}
                                         </label>
                                         <input
@@ -219,7 +219,7 @@ export default function AddStudentPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Parent / Guardian Phone
+                                            {tr('guardianPhone')}
                                             {isMinor && <span className="text-red-500 ml-1">*</span>}
                                         </label>
                                         <input
@@ -229,7 +229,7 @@ export default function AddStudentPage() {
                                             value={formData.emergency_contact_phone}
                                             onChange={handleChange}
                                             className={inputClass}
-                                            placeholder="(555) 123-4567"
+                                            placeholder={tr('examplePhone')}
                                         />
                                     </div>
                                 </div>
