@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { useState } from 'react'
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { useUser } from '@/contexts/UserContext'
-import { useLessons, useUsers, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
+import { useLessons, useUsers, useStudents, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
 import ResourceSelector from '@/components/ResourceSelector'
 import type { LessonPlan, LessonPlanFormData } from '@/types/lessonPlan'
 import {
@@ -46,6 +46,7 @@ interface Lesson {
     lesson_type: 'private' | 'group' | 'workshop' | 'recital' | 'makeup'
     status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
     location: string
+    student_address?: string
     is_online?: boolean
     is_paid: boolean
 }
@@ -57,6 +58,7 @@ export default function LessonsPage() {
     const { lessons, loading, createLesson, updateLesson } = useLessons()
     const typedLessons = lessons as Lesson[]
     const { users } = useUsers({ page_size: 100 })
+    const { students: studentProfiles } = useStudents({ page_size: 100 })
 
     // Derive students from users for consistent name rendering
     const students = users
@@ -111,6 +113,9 @@ export default function LessonsPage() {
         location: '',
         is_online: false,
     })
+    const selectedStudentProfile = studentProfiles.find((student: any) => student.id === lessonData.student)
+    const selectedCityLine = [selectedStudentProfile?.postal_code, selectedStudentProfile?.city].filter(Boolean).join(' ')
+    const selectedAddress = [selectedStudentProfile?.address_line1, selectedCityLine].filter(Boolean).join(', ')
 
     const statusLabels: Record<string, string> = {
         all: tr('all'), scheduled: tr('statusScheduled'),
@@ -369,6 +374,9 @@ export default function LessonsPage() {
                                                     <div>
                                                         <div className="text-sm font-black text-gray-900 tracking-tight uppercase tracking-tighter">{lesson.student_name}</div>
                                                         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{lesson.student_instrument}</div>
+                                                        {lesson.student_address && (
+                                                            <div className="text-xs text-gray-600 mt-1">{lesson.student_address}</div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -431,6 +439,9 @@ export default function LessonsPage() {
                                             <div>
                                                 <div className="text-sm font-black text-gray-900 tracking-tight uppercase">{lesson.student_name}</div>
                                                 <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{lesson.student_instrument}</div>
+                                                        {lesson.student_address && (
+                                                            <div className="text-xs text-gray-600 mt-1">{lesson.student_address}</div>
+                                                        )}
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-1">
@@ -894,14 +905,10 @@ export default function LessonsPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('location')}</label>
-                                <input
-                                    type="text"
-                                    value={lessonData.location}
-                                    placeholder={tr('roomAZoomLinkEtc')}
-                                    onChange={(e) => setLessonData({ ...lessonData, location: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
-                                />
+                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('teachingAddress')}</label>
+                                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-gray-900">
+                                    {lessonData.is_online ? tr('online') : (selectedAddress || tr('addressMissing'))}
+                                </div>
                             </div>
                         </div>
                     </div>
