@@ -195,6 +195,7 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+    const t = useTranslations('ResetPassword')
     return (
         <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
             {/* Background Orbs */}
