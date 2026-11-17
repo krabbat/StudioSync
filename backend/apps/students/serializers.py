@@ -1,3 +1,6 @@
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.utils import timezone
 
 from rest_framework import serializers
@@ -110,6 +113,14 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(write_only=True)
     email = serializers.EmailField(write_only=True)
     phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    password = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, trim_whitespace=False,
+        style={"input_type": "password"},
+    )
+    confirm_password = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, trim_whitespace=False,
+        style={"input_type": "password"},
+    )
 
     class Meta:
         model = Student
@@ -120,6 +131,8 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "phone",
+            "password",
+            "confirm_password",
             "instrument",
             "family",
             "studio",
@@ -146,7 +159,38 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Select an active teacher from your own studio.")
         return teacher
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance is not None and (
+            "password" in attrs or "confirm_password" in attrs
+        ):
+            raise serializers.ValidationError(
+                {"password": "Change an existing student's password through their profile."}
+            )
+
+        password = attrs.get("password", "")
+        confirmation = attrs.get("confirm_password", "")
+        if password != confirmation:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
+        if password:
+            account = User(
+                email=attrs.get("email", ""),
+                first_name=attrs.get("first_name", ""),
+                last_name=attrs.get("last_name", ""),
+                role="student",
+            )
+            try:
+                validate_password(password, user=account)
+            except DjangoValidationError as error:
+                raise serializers.ValidationError({"password": error.messages})
+        return attrs
+
+    @transaction.atomic
     def create(self, validated_data):
+        password = validated_data.pop("password", "")
+        validated_data.pop("confirm_password", None)
         user_data = {
             "first_name": validated_data.pop("first_name"),
             "last_name": validated_data.pop("last_name"),
@@ -154,6 +198,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
             "phone": validated_data.pop("phone", ""),
             "role": "student",
             "is_active": True,
+            "is_approved": bool(password),
         }
 
         # Check if user exists (by email) -> Logical decision: for now fail if exists, or link?
@@ -161,7 +206,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
         if User.objects.filter(email=user_data["email"]).exists():
             raise serializers.ValidationError({"email": "User with this email already exists."})
 
-        user = User.objects.create_user(**user_data)
+        user = User.objects.create_user(password=password or None, **user_data)
 
         # Get studio context from view
         if "studio" not in validated_data:
