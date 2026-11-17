@@ -390,6 +390,11 @@ class Student(models.Model):
     enrollment_date = models.DateField(default=timezone.now)
     birth_date = models.DateField(null=True, blank=True)
 
+    # Lesson address (home tuition); stored on the student, not in a room record.
+    address_line1 = models.CharField(max_length=200, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+
     # Medical/emergency information
     emergency_contact_name = models.CharField(max_length=200, blank=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True)
