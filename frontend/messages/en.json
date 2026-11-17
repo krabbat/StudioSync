@@ -280,7 +280,12 @@
     "teachingAddress": "Lesson address",
     "streetAddress": "Street and house number",
     "postalCode": "Postal code",
-    "city": "City"
+    "city": "City",
+    "studentLogin": "Student login",
+    "studentLoginHint": "Optional: Set a password for the linked student account now. Leave it blank to activate the account later from the student profile.",
+    "newPassword": "Password",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match."
   },
   "StudentProfile": {
     "profileAccess": "Profile Access",
