@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
@@ -7,6 +8,7 @@ import { Mail, MessageCircle, HelpCircle, ArrowRight, Sparkles, Clock, ExternalL
 import Link from 'next/link'
 
 export default function SupportPage() {
+    const t = useTranslations('Support')
     return (
         <>
             <Navigation />
@@ -23,13 +25,13 @@ export default function SupportPage() {
                         >
                             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-sm font-medium mb-6">
                                 <HelpCircle className="w-3.5 h-3.5" />
-                                Help & Support
+                                {t('helpSupport')}
                             </div>
 
                             <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight text-gray-900">
                                 How can we{' '}
                                 <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                                    help you?
+                                    {t('helpYou')}
                                 </span>
                             </h1>
 
@@ -55,9 +57,9 @@ export default function SupportPage() {
                                 <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6">
                                     <Mail className="w-6 h-6" />
                                 </div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Email Support</h2>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('emailSupport')}</h2>
                                 <p className="text-gray-500 mb-6 text-sm leading-relaxed">
-                                    The best way to get technical help or account assistance. We typicaly respond within 24 hours.
+                                    {t('theBestWayToGetTechnicalHelpOrAccountAssistanceWeTypicalyRespondWithin24Hours')}
                                 </p>
                                 <a
                                     href="mailto:tristan@fddl.dev"
@@ -68,7 +70,7 @@ export default function SupportPage() {
                                 </a>
                                 <div className="mt-8 pt-6 border-t border-gray-50 flex items-center gap-2 text-xs text-gray-400">
                                     <Clock className="w-3.5 h-3.5" />
-                                    Response time: ~24-48 hours
+                                    {t('responseTime2448Hours')}
                                 </div>
                             </motion.div>
 
@@ -82,20 +84,20 @@ export default function SupportPage() {
                                 <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-6">
                                     <MessageCircle className="w-6 h-6" />
                                 </div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Documentation</h2>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('documentation')}</h2>
                                 <p className="text-gray-500 mb-6 text-sm leading-relaxed">
-                                    Detailed guides on everything from setting up your studio to advanced billing and custom domains.
+                                    {t('detailedGuidesOnEverythingFromSettingUpYourStudioToAdvancedBillingAndCustomDomains')}
                                 </p>
                                 <Link
                                     href="/docs"
                                     className="inline-flex items-center gap-2 text-purple-600 font-semibold hover:gap-3 transition-all"
                                 >
-                                    Browse the Guides
+                                    {t('browseTheGuides')}
                                     <ArrowRight className="w-4 h-4" />
                                 </Link>
                                 <div className="mt-8 pt-6 border-t border-gray-50 flex items-center gap-2 text-xs text-gray-400">
                                     <ExternalLink className="w-3.5 h-3.5" />
-                                    Self-service knowledge base
+                                    {t('selfServiceKnowledgeBase')}
                                 </div>
                             </motion.div>
                         </div>
@@ -112,18 +114,18 @@ export default function SupportPage() {
                                 <div>
                                     <div className="flex items-center gap-2 mb-3">
                                         <Sparkles className="w-5 h-5 text-amber-400" />
-                                        <span className="text-sm font-semibold uppercase tracking-wider text-gray-400">Premium Support</span>
+                                        <span className="text-sm font-semibold uppercase tracking-wider text-gray-400">{t('premiumSupport')}</span>
                                     </div>
-                                    <h3 className="text-2xl font-bold mb-2">Need priority assistance?</h3>
+                                    <h3 className="text-2xl font-bold mb-2">{t('needPriorityAssistance')}</h3>
                                     <p className="text-gray-400 text-sm max-w-md">
-                                        Professional and Enterprise plans include dedicated support with 4-hour response times during business hours.
+                                        {t('professionalAndEnterprisePlansIncludeDedicatedSupportWith4HourResponseTimesDuringBusinessHours')}
                                     </p>
                                 </div>
                                 <Link
                                     href="/pricing"
                                     className="px-6 py-3.5 bg-white text-gray-900 rounded-xl font-bold hover:bg-gray-100 transition-colors whitespace-nowrap"
                                 >
-                                    See Plans
+                                    {t('seePlans')}
                                 </Link>
                             </div>
                         </motion.div>

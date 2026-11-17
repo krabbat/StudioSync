@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useState, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import Navigation from '@/components/Navigation'
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react'
 
 function PricingCard({ plan, index, onSelect }: any) {
+    const t = useTranslations('Pricing')
     const ref = useRef(null)
     const isInView = useInView(ref, { once: true, margin: "-100px" })
 
@@ -38,7 +40,7 @@ function PricingCard({ plan, index, onSelect }: any) {
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
                     <div className="bg-gray-900 text-white px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5">
                         <Sparkles className="w-3 h-3" />
-                        Most Popular
+                        {t('mostPopular')}
                     </div>
                 </div>
             )} */}
@@ -57,9 +59,9 @@ function PricingCard({ plan, index, onSelect }: any) {
                     {/* Pricing */}
                     <div className="mb-6">
                         {plan.price === 'Custom' ? (
-                            <div className="text-3xl font-bold text-gray-900">Custom</div>
+                            <div className="text-3xl font-bold text-gray-900">{t('custom')}</div>
                         ) : plan.price === 'Free' ? (
-                            <div className="text-3xl font-bold text-gray-900">Free</div>
+                            <div className="text-3xl font-bold text-gray-900">{t('free')}</div>
                         ) : (
                             <div className="flex flex-col">
                                 <div className="flex items-baseline">
@@ -67,7 +69,7 @@ function PricingCard({ plan, index, onSelect }: any) {
                                     <span className="text-gray-400 ml-1.5 text-sm">/month</span>
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 mt-1">
-                                    Tentative Pricing
+                                    {t('tentativePricing')}
                                 </span>
                             </div>
                         )}
@@ -106,7 +108,7 @@ function PricingCard({ plan, index, onSelect }: any) {
 
                     {plan.featured && (
                         <p className="text-xs text-center text-gray-400 mt-3">
-                            Free forever with self-hosting
+                            {t('freeForeverWithSelfHosting')}
                         </p>
                     )}
                 </div>
@@ -116,6 +118,7 @@ function PricingCard({ plan, index, onSelect }: any) {
 }
 
 function FeatureComparison() {
+    const t = useTranslations('Pricing')
     const ref = useRef(null)
     const isInView = useInView(ref, { once: true })
 
@@ -160,12 +163,12 @@ function FeatureComparison() {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="border-b border-gray-100">
-                            <th className="text-left p-5 text-sm font-semibold text-gray-900 w-1/4">Features</th>
-                            <th className="text-center p-5 text-sm font-semibold text-gray-500 w-1/4">Starter</th>
+                            <th className="text-left p-5 text-sm font-semibold text-gray-900 w-1/4">{t('features')}</th>
+                            <th className="text-center p-5 text-sm font-semibold text-gray-500 w-1/4">{t('starter')}</th>
                             <th className="text-center p-5 text-sm font-semibold w-1/4 bg-indigo-50/50">
-                                <span className="text-indigo-600">Professional</span>
+                                <span className="text-indigo-600">{t('professional')}</span>
                             </th>
-                            <th className="text-center p-5 text-sm font-semibold text-gray-500 w-1/4">Enterprise</th>
+                            <th className="text-center p-5 text-sm font-semibold text-gray-500 w-1/4">{t('enterprise')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -194,15 +197,15 @@ function FeatureComparison() {
                         <h3 className="text-sm font-semibold text-gray-900 mb-3 text-center">{feature.name}</h3>
                         <div className="grid grid-cols-3 gap-2">
                             <div className="flex flex-col items-center p-2 rounded-lg bg-gray-50">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Starter</span>
+                                <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">{t('starter')}</span>
                                 {renderCell(feature.starter)}
                             </div>
                             <div className="flex flex-col items-center p-2 rounded-lg bg-indigo-50 border border-indigo-100">
-                                <span className="text-[10px] uppercase tracking-wider text-indigo-500 font-semibold mb-1.5">Pro</span>
+                                <span className="text-[10px] uppercase tracking-wider text-indigo-500 font-semibold mb-1.5">{t('pro')}</span>
                                 {renderCell(feature.pro, true)}
                             </div>
                             <div className="flex flex-col items-center p-2 rounded-lg bg-gray-50">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Enterprise</span>
+                                <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">{t('enterprise')}</span>
                                 {renderCell(feature.enterprise)}
                             </div>
                         </div>
@@ -214,6 +217,7 @@ function FeatureComparison() {
 }
 
 function FAQItem({ question, answer, index }: any) {
+    const t = useTranslations('Pricing')
     const [isOpen, setIsOpen] = useState(false)
 
     return (
@@ -243,93 +247,94 @@ function FAQItem({ question, answer, index }: any) {
 }
 
 export default function PricingPage() {
+    const t = useTranslations('Pricing')
     const router = useRouter()
 
     const plans = [
         {
             id: 'starter',
             name: 'Starter',
-            description: 'Perfect for individual teachers',
+            description: t('propertyPerfectForIndividualTeachers'),
             price: 'Free',
             color: 'from-blue-500 to-cyan-500',
             icon: Zap,
-            cta: 'Get Started',
+            cta: t('propertyGetStarted'),
             featured: false,
             features: [
-                { text: 'Up to 10 students', included: true },
-                { text: 'Basic scheduling', included: true },
-                { text: 'Calendar integration', included: true },
-                { text: 'Email notifications', included: true },
-                { text: 'SMS notifications', included: false },
-                { text: 'Custom branding', included: false },
-                { text: 'Custom domain', included: false },
+                { text: t('propertyUpTo10Students'), included: true },
+                { text: t('propertyBasicScheduling'), included: true },
+                { text: t('propertyCalendarIntegration'), included: true },
+                { text: t('propertyEmailNotifications'), included: true },
+                { text: t('propertySmsNotifications'), included: false },
+                { text: t('propertyCustomBranding'), included: false },
+                { text: t('propertyCustomDomain'), included: false },
             ]
         },
         {
             id: 'professional',
             name: 'Professional',
-            description: 'For growing studios',
+            description: t('propertyForGrowingStudios'),
             price: '29',
             color: 'from-indigo-500 to-purple-500',
             icon: TrendingUp,
-            cta: 'Get Started',
+            cta: t('propertyGetStarted'),
             featured: true,
             features: [
-                { text: 'Unlimited students', included: true },
-                { text: 'Advanced scheduling', included: true },
-                { text: 'Fluid Stripe integration', included: true },
-                { text: 'Billing & invoicing', included: true },
-                { text: 'SMS notifications', included: true },
-                { text: 'Custom branding', included: true },
-                { text: 'Custom domain (yourstudio.com)', included: true },
-                { text: 'Priority support', included: true },
+                { text: t('propertyUnlimitedStudents'), included: true },
+                { text: t('propertyAdvancedScheduling'), included: true },
+                { text: t('propertyFluidStripeIntegration'), included: true },
+                { text: t('propertyBillingInvoicing'), included: true },
+                { text: t('propertySmsNotifications'), included: true },
+                { text: t('propertyCustomBranding'), included: true },
+                { text: t('propertyCustomDomainYourstudioCom'), included: true },
+                { text: t('propertyPrioritySupport'), included: true },
             ]
         },
         {
             id: 'enterprise',
             name: 'Enterprise',
-            description: 'For large studios & institutions',
+            description: t('propertyForLargeStudiosInstitutions'),
             price: 'Custom',
             color: 'from-emerald-500 to-teal-500',
             icon: Award,
             cta: 'Contact Sales',
             featured: false,
             features: [
-                { text: 'Everything in Professional', included: true },
-                { text: 'Fluid Stripe integration', included: true },
-                { text: 'Multiple locations', included: true },
-                { text: 'White-label branding', included: true },
-                { text: 'API access', included: true },
-                { text: 'Dedicated support', included: true },
-                { text: 'Custom integrations', included: true },
+                { text: t('propertyEverythingInProfessional'), included: true },
+                { text: t('propertyFluidStripeIntegration'), included: true },
+                { text: t('propertyMultipleLocations'), included: true },
+                { text: t('propertyWhiteLabelBranding'), included: true },
+                { text: t('propertyApiAccess'), included: true },
+                { text: t('propertyDedicatedSupport'), included: true },
+                { text: t('propertyCustomIntegrations'), included: true },
             ]
         }
     ]
 
     const faqs = [
         {
-            question: 'Is there a free version?',
-            answer: 'Yes! StudioSync is open-source and free to self-host on your own infrastructure. Our cloud-hosted plans provide a managed experience for those who prefer not to handle the technical setup.'
+            question: t('propertyIsThereAFreeVersion'),
+            answer: t('propertyYesStudioSyncIsOpenSourceAndFreeToSelfHostOnYourOwnInfrastructureOurCloudHostedPlansProvideAManagedE')
         },
         {
-            question: 'How do I self-host?',
-            answer: 'You can find our source code and deployment guides on GitHub. We provide a Docker Compose configuration that makes it easy to get started on any server.'
+            question: t('propertyHowDoISelfHost'),
+            answer: t('propertyYouCanFindOurSourceCodeAndDeploymentGuidesOnGitHubWeProvideADockerComposeConfigurationThatMakesItEas')
         },
         {
-            question: 'What payment methods do you accept?',
-            answer: 'For our cloud-hosted plans, we accept all major credit cards (Visa, MasterCard, American Express) and ACH bank transfers.'
+            question: t('propertyWhatPaymentMethodsDoYouAccept'),
+            answer: t('propertyForOurCloudHostedPlansWeAcceptAllMajorCreditCardsVisaMasterCardAmericanExpressAndACHBankTransfers')
         },
         {
-            question: 'Does it integrate with Stripe?',
-            answer: 'Yes! Our Stripe integration is fully functional and fluid. You can accept payments from students directly, handle recurring subscriptions, and manage pending invoices automatically.'
+            question: t('propertyDoesItIntegrateWithStripe'),
+            answer: t('propertyYesOurStripeIntegrationIsFullyFunctionalAndFluidYouCanAcceptPaymentsFromStudentsDirectlyHandleRecurr')
         },
         {
-            question: 'Is my data secure?',
-            answer: 'Yes. Whether you use our cloud hosting or self-host, we prioritize security. Our code follows industry-standard security practices, including data encryption and regular audits.'
+            question: t('propertyIsMyDataSecure'),
+            answer: t('propertyYesWhetherYouUseOurCloudHostingOrSelfHostWePrioritizeSecurityOurCodeFollowsIndustryStandardSecurityP')
         },
         {
-            question: 'Can I migrate from cloud to self-hosted?',
-            answer: 'Yes, you can export your data at any time. We believe in data ownership and provide tools to help you move your studio data between hosting environments.'
+            question: t('propertyCanIMigrateFromCloudToSelfHosted'),
+            answer: t('propertyYesYouCanExportYourDataAtAnyTimeWeBelieveInDataOwnershipAndProvideToolsToHelpYouMoveYourStudioDataBe')
         }
     ]
 
@@ -356,32 +361,32 @@ export default function PricingPage() {
                         >
                             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-sm font-medium mb-6">
                                 <Sparkles className="w-3.5 h-3.5" />
-                                Simple, Transparent Pricing
+                                {t('simpleTransparentPricing')}
                             </div>
 
                             <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight text-gray-900">
                                 Choose your{' '}
                                 <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                                    perfect plan
+                                    {t('perfectPlan')}
                                 </span>
                             </h1>
 
                             <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-8">
-                                Start free, scale as you grow. No hidden fees, no surprises.
+                                {t('startFreeScaleAsYouGrowNoHiddenFeesNoSurprises')}
                             </p>
 
                             <div className="flex items-center justify-center gap-5 text-sm text-gray-400">
                                 <div className="flex items-center gap-1.5">
                                     <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                    Open-source
+                                    {t('openSource')}
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                    Self-hostable
+                                    {t('selfHostable')}
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                    No Lock-in
+                                    {t('noLockIn')}
                                 </div>
                             </div>
                         </motion.div>
@@ -404,13 +409,13 @@ export default function PricingPage() {
                                     <div className="text-white">
                                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-sm font-medium mb-4">
                                             <Code className="w-3.5 h-3.5" />
-                                            Open Source
+                                            {t('openSource')}
                                         </div>
                                         <h2 className="text-2xl md:text-3xl font-bold mb-3">
-                                            Choose your hosting
+                                            {t('chooseYourHosting')}
                                         </h2>
                                         <p className="text-gray-300 mb-6 leading-relaxed text-sm">
-                                            Use our cloud-based solution for hassle-free management, or self-host for complete control and data ownership.
+                                            {t('useOurCloudBasedSolutionForHassleFreeManagementOrSelfHostForCompleteControlAndDataOwnership')}
                                         </p>
                                         <div className="flex flex-wrap gap-2">
                                             {['Cloud Hosted', 'Self Hosted', 'Docker Ready'].map((label) => (
@@ -433,12 +438,12 @@ export default function PricingPage() {
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-0.5">
-                                                        <h3 className="font-bold text-gray-900 text-sm">Cloud Hosted</h3>
+                                                        <h3 className="font-bold text-gray-900 text-sm">{t('cloudHosted')}</h3>
                                                         <span className="text-[8px] font-bold uppercase tracking-widest bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100">
-                                                            Soon
+                                                            {t('soon')}
                                                         </span>
                                                     </div>
-                                                    <p className="text-xs text-gray-500">We manage everything — updates, backups, and infrastructure.</p>
+                                                    <p className="text-xs text-gray-500">{t('weManageEverythingUpdatesBackupsAndInfrastructure')}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -452,8 +457,8 @@ export default function PricingPage() {
                                                     </svg>
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-bold text-gray-900 text-sm mb-0.5">Self Hosted</h3>
-                                                    <p className="text-xs text-gray-500">Deploy on your own infrastructure. Free forever with open-source.</p>
+                                                    <h3 className="font-bold text-gray-900 text-sm mb-0.5">{t('selfHosted')}</h3>
+                                                    <p className="text-xs text-gray-500">{t('deployOnYourOwnInfrastructureFreeForeverWithOpenSource')}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -475,13 +480,13 @@ export default function PricingPage() {
                         >
                             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider mb-4 mx-auto">
                                 <Clock className="w-3 h-3" />
-                                Coming Soon
+                                {t('comingSoon')}
                             </div>
                             <h2 className="text-3xl md:text-4xl font-bold mb-3 text-gray-900">
-                                Cloud-Hosted Plans
+                                {t('cloudHostedPlans')}
                             </h2>
                             <p className="text-gray-500">
-                                Or self-host for free today using our open-source code
+                                {t('orSelfHostForFreeTodayUsingOurOpenSourceCode')}
                             </p>
                         </motion.div>
 
@@ -508,10 +513,10 @@ export default function PricingPage() {
                             className="text-center mb-12"
                         >
                             <h2 className="text-3xl md:text-4xl font-bold mb-3 text-gray-900">
-                                Compare Plans
+                                {t('comparePlans')}
                             </h2>
                             <p className="text-gray-500">
-                                Find the perfect fit for your studio
+                                {t('findThePerfectFitForYourStudio')}
                             </p>
                         </motion.div>
 
@@ -557,7 +562,7 @@ export default function PricingPage() {
                             className="text-center mb-12"
                         >
                             <h2 className="text-3xl md:text-4xl font-bold mb-3 text-gray-900">
-                                Frequently asked questions
+                                {t('frequentlyAskedQuestions')}
                             </h2>
                         </motion.div>
 
@@ -583,10 +588,10 @@ export default function PricingPage() {
 
                             <div className="relative px-8 py-14 md:p-14 text-center text-white">
                                 <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                                    Ready to get started?
+                                    {t('readyToGetStarted')}
                                 </h2>
                                 <p className="text-lg mb-8 text-gray-300 max-w-2xl mx-auto">
-                                    Try StudioSync and streamline your studio operations today.
+                                    {t('tryStudioSyncAndStreamlineYourStudioOperationsToday')}
                                 </p>
 
                                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -594,7 +599,7 @@ export default function PricingPage() {
                                         href="/signup"
                                         className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
                                     >
-                                        Get Started Now
+                                        {t('getStartedNow')}
                                         <ArrowRight className="w-4 h-4" />
                                     </Link>
 
@@ -602,7 +607,7 @@ export default function PricingPage() {
                                         href="mailto:tristan@fddl.dev"
                                         className="inline-flex items-center gap-2 px-7 py-3.5 bg-white/10 border border-white/20 text-white rounded-xl font-semibold hover:bg-white/15 transition-colors"
                                     >
-                                        Contact Sales
+                                        {t('contactSales')}
                                     </a>
                                 </div>
                             </div>

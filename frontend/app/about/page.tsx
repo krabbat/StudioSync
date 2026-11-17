@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import Navigation from '@/components/Navigation'
@@ -57,51 +58,52 @@ function TimelineItem({ item, index }: any) {
 }
 
 export default function AboutPage() {
+    const t = useTranslations('About')
     const values = [
         {
             icon: Heart,
-            title: 'Instructor First',
-            description: 'Every feature we build starts with the question: "Does this make an instructor\'s life easier?"',
+            title: t('dataInstructorFirst'),
+            description: t('dataEveryFeatureWeBuildStartsWithTheQuestionDoesThisMakeAnInstructorSLifeEasier'),
             color: 'from-indigo-500 to-indigo-600'
         },
         {
             icon: Zap,
-            title: 'Simplicity',
-            description: 'Powerful doesn\'t have to mean complicated. We believe in intuitive design that just works.',
+            title: t('dataSimplicity'),
+            description: t('dataPowerfulDoesnTHaveToMeanComplicatedWeBelieveInIntuitiveDesignThatJustWorks'),
             color: 'from-emerald-500 to-teal-500'
         },
         {
             icon: Users,
-            title: 'Community',
-            description: 'We\'re building more than software—we\'re building a community of passionate music educators.',
+            title: t('dataCommunity'),
+            description: t('dataWeReBuildingMoreThanSoftwareWeReBuildingACommunityOfPassionateMusicEducators'),
             color: 'from-purple-500 to-indigo-500'
         }
     ]
 
     const timeline = [
         {
-            title: 'The Challenge',
+            title: t('dataTheChallenge'),
             icon: Target,
             color: 'from-red-500 to-pink-500',
-            description: 'Managing a growing music studio with manual spreadsheets and disconnected apps was unsustainable. Teachers were losing hours to administration instead of doing what they love: teaching.'
+            description: t('dataManagingAGrowingMusicStudioWithManualSpreadsheetsAndDisconnectedAppsWasUnsustainableTeachersWereLosi')
         },
         {
-            title: 'The Discovery',
+            title: t('dataTheDiscovery'),
             icon: Music,
             color: 'from-amber-500 to-orange-500',
-            description: 'Existing tools were often overly complex, outdated, or prohibitively expensive for independent instructors. We knew there had to be a better way to support the music education community.'
+            description: t('dataExistingToolsWereOftenOverlyComplexOutdatedOrProhibitivelyExpensiveForIndependentInstructorsWeKnewTh')
         },
         {
-            title: 'The Innovation',
+            title: t('dataTheInnovation'),
             icon: Code,
             color: 'from-indigo-500 to-indigo-600',
-            description: 'We built StudioSync to unify everything. Scheduling, billing, and communication now live in a single, elegant interface designed to flow with the rhythm of a music studio.'
+            description: t('dataWeBuiltStudioSyncToUnifyEverythingSchedulingBillingAndCommunicationNowLiveInASingleElegantInterfaceD')
         },
         {
-            title: 'Open For All',
+            title: t('dataOpenForAll'),
             icon: Github,
             color: 'from-gray-700 to-gray-900',
-            description: 'We chose to make StudioSync open source to ensure professional-grade tools are accessible to every instructor, regardless of studio size. No gatekeeping, just pure empowerment.'
+            description: t('dataWeChoseToMakeStudioSyncOpenSourceToEnsureProfessionalGradeToolsAreAccessibleToEveryInstructorRegardl')
         }
     ]
 
@@ -125,13 +127,13 @@ export default function AboutPage() {
                         >
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-sm font-bold mb-8">
                                 <Sparkles className="w-4 h-4" />
-                                Our Story
+                                {t('ourStory')}
                             </div>
 
                             <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight text-gray-900 tracking-tight">
                                 Built by teachers,{' '}
                                 <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 bg-clip-text text-transparent">
-                                    for teachers
+                                    {t('forTeachers')}
                                 </span>
                             </h1>
 
@@ -160,7 +162,7 @@ export default function AboutPage() {
                                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
                                             <Music className="w-6 h-6 text-white" />
                                         </div>
-                                        <h2 className="text-3xl font-bold text-gray-900">Our Mission</h2>
+                                        <h2 className="text-3xl font-bold text-gray-900">{t('ourMission')}</h2>
                                     </div>
                                     <div className="space-y-6 text-gray-500 text-lg leading-relaxed font-medium">
                                         <p>
@@ -188,10 +190,10 @@ export default function AboutPage() {
                                 className="text-center mb-16"
                             >
                                 <h2 className="text-4xl md:text-5xl font-bold mb-5 text-gray-900 tracking-tight">
-                                    Our Values
+                                    {t('ourValues')}
                                 </h2>
                                 <p className="text-xl text-gray-500 font-medium max-w-2xl mx-auto">
-                                    The principles that guide every pixel and line of code we write.
+                                    {t('thePrinciplesThatGuideEveryPixelAndLineOfCodeWeWrite')}
                                 </p>
                             </motion.div>
 
@@ -213,10 +215,10 @@ export default function AboutPage() {
                                 className="text-center mb-16"
                             >
                                 <h2 className="text-4xl md:text-5xl font-bold mb-5 text-gray-900 tracking-tight">
-                                    The Evolution
+                                    {t('theEvolution')}
                                 </h2>
                                 <p className="text-xl text-gray-500 font-medium">
-                                    How we went from solving a personal challenge to empowering music educators everywhere.
+                                    {t('howWeWentFromSolvingAPersonalChallengeToEmpoweringMusicEducatorsEverywhere')}
                                 </p>
                             </motion.div>
 
@@ -245,7 +247,7 @@ export default function AboutPage() {
                                         <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 backdrop-blur-sm shadow-xl">
                                             <Github className="w-8 h-8" />
                                         </div>
-                                        <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Open Source & Free</h2>
+                                        <h2 className="text-3xl md:text-4xl font-bold tracking-tight">{t('openSourceFree')}</h2>
                                     </div>
                                     <div className="space-y-6 text-gray-300 text-lg leading-relaxed mb-10 font-medium max-w-3xl">
                                         <p>
@@ -253,7 +255,7 @@ export default function AboutPage() {
                                             instructors the freedom to customize and self-host their own solution.
                                         </p>
                                         <p>
-                                            The code is available on GitHub and proudly licensed under the GPL-3.0 license.
+                                            {t('theCodeIsAvailableOnGitHubAndProudlyLicensedUnderTheGPL30License')}
                                         </p>
                                     </div>
                                     <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -264,14 +266,14 @@ export default function AboutPage() {
                                             className="px-8 py-4 bg-white text-gray-900 rounded-2xl hover:bg-gray-100 transition-all font-bold flex items-center gap-3 shadow-lg active:scale-95"
                                         >
                                             <Github className="w-5 h-5" />
-                                            View on GitHub
+                                            {t('viewOnGitHub')}
                                             <ArrowRight className="w-5 h-5 ml-2" />
                                         </a>
                                         <p className="text-sm text-gray-500 font-medium">
-                                            Self-hosting guides available inside
+                                            {t('selfHostingGuidesAvailableInside')}
                                         </p>
                                         <p className="text-sm text-white-500 font-medium">
-                                            <a href="https://github.com/aviatorcards/StudioSync/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a>
+                                            <a href="https://github.com/aviatorcards/StudioSync/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">{t('license')}</a>
                                         </p>
                                     </div>
                                 </div>
@@ -292,10 +294,10 @@ export default function AboutPage() {
                                 <div className="px-10 py-16 md:p-20 text-center relative overflow-hidden">
                                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
                                     <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white tracking-tight relative z-10">
-                                        Manage your music studio with ease!
+                                        {t('manageYourMusicStudioWithEase')}
                                     </h2>
                                     <p className="text-xl mb-10 text-indigo-100 max-w-2xl mx-auto font-medium relative z-10">
-                                        Experience the all-in-one platform built specifically for music educators.
+                                        {t('experienceTheAllInOnePlatformBuiltSpecificallyForMusicEducators')}
                                     </p>
 
                                     <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
@@ -303,14 +305,14 @@ export default function AboutPage() {
                                             href="/signup"
                                             className="px-10 py-4 bg-white text-indigo-600 rounded-[1.5rem] font-bold shadow-xl hover:shadow-2xl transition-all active:scale-95"
                                         >
-                                            Get Started Now
+                                            {t('getStartedNow')}
                                         </Link>
 
                                         <Link
                                             href="/pricing"
                                             className="px-10 py-4 bg-indigo-500/20 border border-white/20 text-white rounded-[1.5rem] font-bold backdrop-blur-sm hover:bg-white/10 transition-all active:scale-95"
                                         >
-                                            View Pricing
+                                            {t('viewPricing')}
                                         </Link>
                                     </div>
                                 </div>
