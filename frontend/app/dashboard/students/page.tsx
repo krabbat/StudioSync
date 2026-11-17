@@ -155,7 +155,7 @@ export default function StudentsPage() {
         if (target) {
             handleOpenEdit(target)
             url.searchParams.delete('edit')
-            window.history.replaceState(null, '', url.pathname + url.search)
+            window.history.replaceState(window.history.state, '', url.pathname + url.search)
         }
     }, [students])
 
