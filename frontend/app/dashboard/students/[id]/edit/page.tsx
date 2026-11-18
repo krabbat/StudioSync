@@ -416,7 +416,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                             </div>
                         </section>
 
-                        {/* ── Parent / Guardian — conditional ── */
+                        {/* ── Parent / Guardian — conditional ── */}
                         {showParentSection && (
                             <section className={`rounded-[2rem] border p-8 space-y-6 ${isMinor ? 'bg-amber-50/50 border-amber-200/50' : 'bg-gray-50/50 border-gray-100'}`}>
                                 <h2 className="text-xs font-black text-gray-900 flex items-center gap-3">
