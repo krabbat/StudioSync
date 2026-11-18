@@ -147,6 +147,9 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
         return teacher
 
     def create(self, validated_data):
+        # Django's DateField needs a date, not the datetime returned by timezone.now.
+        # Supply it explicitly so the subsequent API response serializes correctly.
+        validated_data.setdefault("enrollment_date", timezone.localdate())
         user_data = {
             "first_name": validated_data.pop("first_name"),
             "last_name": validated_data.pop("last_name"),
