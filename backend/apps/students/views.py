@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.password_validation import validate_password
-from django.db import models
+from django.db import models, transaction
 
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -33,6 +33,11 @@ class StudentViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update"]:
             return StudentCreateUpdateSerializer
         return StudentDetailSerializer
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        # Roll back user creation if the student profile or response serialization fails.
+        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         user = self.request.user

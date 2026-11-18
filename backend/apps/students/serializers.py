@@ -190,6 +190,8 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        # DateField must receive a date (not a datetime) for correct response serialization.
+        validated_data.setdefault("enrollment_date", timezone.localdate())
         password = validated_data.pop("password", "")
         validated_data.pop("confirm_password", None)
         user_data = {
