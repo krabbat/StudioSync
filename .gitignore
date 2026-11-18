@@ -69,3 +69,6 @@ celerybeat-schedule
 
 
 frontend/public/logo-new.png
+
+# Next.js-generated types vary between dev and production builds
+/frontend/next-env.d.ts

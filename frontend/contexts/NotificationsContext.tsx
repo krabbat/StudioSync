@@ -112,7 +112,9 @@ export function NotificationsProvider({ children, pollInterval = 30000 }: { chil
 
     // ── WebSocket — single connection for the lifetime of the session ──────
     useEffect(() => {
-        if (!currentUser?.id) return
+        // Next.js dev proxies HTTP APIs, but not /ws/.
+        // Keep notification polling active without repeated failed connections.
+        if (!currentUser?.id || process.env.NODE_ENV === 'development') return
 
         let socket: WebSocket | null = null
         let reconnectTimeout: any = null
