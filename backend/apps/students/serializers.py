@@ -134,6 +134,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
             "password",
             "confirm_password",
             "instrument",
+            "instruments",
             "family",
             "studio",
             "birth_date",

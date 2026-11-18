@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast'
 import {
     X, Loader2, UserPlus, Music, Link as LinkIcon, Edit, UserCog, Trash2,
     Search, ChevronLeft, ChevronRight, Users as UsersIcon, Mail, Shield,
-    User, CheckCircle2, AlertCircle, Sparkles, Filter, Camera
+    User, CheckCircle2, AlertCircle, Sparkles, Filter, Camera, Eye
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
@@ -417,11 +417,33 @@ export default function UsersPage() {
                                     </td>
                                     <td className="px-6 py-6 text-right">
                                         <div className="flex items-center justify-end gap-2 opactiy-0 group-hover:opacity-100 transition-opacity">
+                                            {user.role === 'student' && user.student_profile?.id && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => router.push(`/dashboard/students/${user.student_profile.id}`)}
+                                                    className="text-gray-400 hover:text-primary rounded-xl"
+                                                    aria-label="Schülerprofil ansehen"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => handleOpenModal(user)}
+                                                onClick={() => {
+                                                    if (user.role === 'student') {
+                                                        if (!user.student_profile?.id) {
+                                                            toast.error('Für diesen Benutzer ist kein Schülerprofil vorhanden.')
+                                                            return
+                                                        }
+                                                        router.push(`/dashboard/students/${user.student_profile.id}/edit`)
+                                                        return
+                                                    }
+                                                    handleOpenModal(user)
+                                                }}
                                                 className="text-gray-400 hover:text-primary rounded-xl"
+                                                aria-label="Eintrag bearbeiten"
                                             >
                                                 <Edit className="w-4 h-4" />
                                             </Button>

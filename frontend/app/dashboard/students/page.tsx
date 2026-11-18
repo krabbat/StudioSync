@@ -18,7 +18,6 @@ import {
     BookOpen, ChevronLeft
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { useLocale, useTranslations } from 'next-intl'
 
 // --- Types ---
@@ -93,29 +92,11 @@ export default function StudentsPage() {
         const teacherId = new URLSearchParams(window.location.search).get('assign')
         setAssignTeacherId(teacherId || '')
     }, [])
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-    const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null)
-    const [isSubmitting, setIsSubmitting] = useState(false)
-
     // Filter state
     const [searchQuery, setSearchQuery] = useState('')
     const [filterInstrument, setFilterInstrument] = useState('all')
     const [showAllStudents, setShowAllStudents] = useState(false)
     const [page, setPage] = useState(1)
-
-    const [formData, setFormData] = useState({
-        first_name: '',
-        last_name: '',
-        email: '',
-        instrument: '',
-        instruments: [] as string[],
-        primary_teacher: '',
-        enrollment_date: '',
-        address_line1: '',
-        postal_code: '',
-        city: '',
-        is_active: true
-    })
 
     // Data Fetching
     const { students, meta, loading, refresh } = useStudents({
@@ -128,45 +109,15 @@ export default function StudentsPage() {
     })
 
     const { stats: studentStats, loading: statsLoading } = useStudentStats()
-    const { instruments: allInstruments, refresh: refreshInstruments } = useInstruments()
+    const { instruments: allInstruments } = useInstruments()
 
 
     // --- Event Handlers ---
-    const handleOpenEdit = (student: any) => {
-        setSelectedStudent(student)
-        const [firstName, ...lastNameParts] = (student.name || '').split(' ')
-        setFormData({
-            first_name: firstName || '',
-            last_name: lastNameParts.join(' ') || '',
-            email: student.email || '',
-            instrument: student.instrument || '',
-            instruments: student.instruments || (student.instrument ? [student.instrument] : []),
-            primary_teacher: student.primary_teacher && typeof student.primary_teacher === 'object'
-                ? student.primary_teacher.id
-                : (student.primary_teacher || student.teacher_id || ''),
-            enrollment_date: student.enrollment_date || '',
-            address_line1: student.address_line1 || '',
-            postal_code: student.postal_code || '',
-            city: student.city || '',
-            is_active: student.is_active ?? true
-        })
-        setIsEditModalOpen(true)
-    }
-
-    // The detail page links to ?edit=<student id>. Open the existing editor
-    // once the roster arrives, then clear the parameter to avoid reopening it.
+    // Legacy ?edit=<student-id> URLs should open the same editor as the lists.
     useEffect(() => {
-        if (!students.length) return
-        const url = new URL(window.location.href)
-        const editId = url.searchParams.get('edit')
-        if (!editId) return
-        const target = students.find((student: any) => student.id === editId)
-        if (target) {
-            handleOpenEdit(target)
-            url.searchParams.delete('edit')
-            window.history.replaceState(window.history.state, '', url.pathname + url.search)
-        }
-    }, [students])
+        const editId = new URLSearchParams(window.location.search).get('edit')
+        if (editId) router.replace(`/dashboard/students/${encodeURIComponent(editId)}/edit`)
+    }, [router])
 
     const assignmentTeacher = teachers.find((teacher: any) => teacher.id === assignTeacherId)
 
@@ -186,30 +137,6 @@ export default function StudentsPage() {
             toast.error(error.response?.data?.detail || t('assignmentFailed'))
         } finally {
             setAssigningStudentId(null)
-        }
-    }
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!selectedStudent) return
-        setIsSubmitting(true)
-        try {
-            // An older API may not send enrollment_date; do not overwrite it with an empty string.
-            const { enrollment_date, ...otherFields } = formData
-            await api.patch(`/students/${selectedStudent.id}/`, {
-                ...otherFields,
-                primary_teacher: formData.primary_teacher || null,
-                ...(enrollment_date ? { enrollment_date } : {})
-            })
-            toast.success(t('saved'))
-            setIsEditModalOpen(false)
-            if (refresh) refresh()
-            refreshInstruments() // update instrument list in case a new one was added
-        } catch (error: any) {
-            console.error('Update failed:', error)
-            toast.error(error.response?.data?.detail || t('saveFailed'))
-        } finally {
-            setIsSubmitting(false)
         }
     }
 
@@ -448,7 +375,7 @@ export default function StudentsPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => handleOpenEdit(student)}
+                                                onClick={() => router.push(`/dashboard/students/${student.id}/edit`)}
                                                 className="text-gray-400 hover:text-primary rounded-xl"
                                             >
                                                 <Edit className="w-4 h-4" />
@@ -503,189 +430,6 @@ export default function StudentsPage() {
                 </div>
             </div>
 
-            {/* Edit Modal */}
-            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                <DialogContent size="lg">
-                    <DialogHeader title={t('editStudent')} />
-                    <form id="edit-student-form" onSubmit={handleSubmit} className="space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('firstName')}</label>
-                                <input
-                                    required
-                                    value={formData.first_name}
-                                    onChange={e => setFormData({ ...formData, first_name: e.target.value })}
-                                    className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('lastName')}</label>
-                                <input
-                                    required
-                                    value={formData.last_name}
-                                    onChange={e => setFormData({ ...formData, last_name: e.target.value })}
-                                    className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all"
-                                />
-                            </div>
-                            <div className="space-y-2 md:col-span-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('email')}</label>
-                                <input
-                                    type="email"
-                                    required
-                                    value={formData.email}
-                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                    className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none transition-all"
-                                />
-                            </div>
-                            <div className="space-y-2 md:col-span-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="edit-student-enrollment-date">{t('enrollmentDate')}</label>
-                                <input
-                                    id="edit-student-enrollment-date"
-                                    type="date"
-                                    value={formData.enrollment_date}
-                                    onChange={e => setFormData({ ...formData, enrollment_date: e.target.value })}
-                                    className="w-full px-5 py-3.5 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-gray-700 outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="p-6 rounded-2xl border border-gray-200 space-y-4">
-                            <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest">{t('teachingAddress')}</h3>
-                            <div>
-                                <label htmlFor="edit-student-street" className="text-xs font-bold text-gray-500">{t('streetAddress')}</label>
-                                <input id="edit-student-street" type="text" value={formData.address_line1}
-                                    onChange={e => setFormData({ ...formData, address_line1: e.target.value })}
-                                    className="w-full px-4 py-3 border rounded-xl" autoComplete="street-address" />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="edit-student-postal" className="text-xs font-bold text-gray-500">{t('postalCode')}</label>
-                                    <input id="edit-student-postal" type="text" value={formData.postal_code}
-                                        onChange={e => setFormData({ ...formData, postal_code: e.target.value })}
-                                        className="w-full px-4 py-3 border rounded-xl" autoComplete="postal-code" />
-                                </div>
-                                <div>
-                                    <label htmlFor="edit-student-city" className="text-xs font-bold text-gray-500">{t('city')}</label>
-                                    <input id="edit-student-city" type="text" value={formData.city}
-                                        onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                        className="w-full px-4 py-3 border rounded-xl" autoComplete="address-level2" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-8 bg-primary/5 rounded-3xl border border-primary/10 space-y-6">
-                            <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-                                <Trophy className="w-4 h-4" />
-                                {t('curriculum')}
-                            </h3>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('focusColumn')}</label>
-                                    <div className="flex flex-wrap gap-2 mb-2">
-                                        {formData.instruments.map(inst => (
-                                            <div key={inst} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-primary/20 rounded-xl text-[10px] font-black text-primary uppercase tracking-widest transition-all hover:bg-red-50 hover:border-red-200 hover:text-red-500 cursor-pointer group" onClick={() => {
-                                                setFormData({ ...formData, instruments: formData.instruments.filter(i => i !== inst) })
-                                            }}>
-                                                {inst}
-                                                <Plus className="w-3 h-3 rotate-45" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="relative">
-                                        <input
-                                            list="instrument-options"
-                                            value={formData.instrument}
-                                            onChange={e => {
-                                                const val = e.target.value;
-                                                if (allInstruments.includes(val) && !formData.instruments.includes(val)) {
-                                                    setFormData({
-                                                        ...formData,
-                                                        instruments: [...formData.instruments, val],
-                                                        instrument: ''
-                                                    })
-                                                } else {
-                                                    setFormData({ ...formData, instrument: val })
-                                                }
-                                            }}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter' && formData.instrument) {
-                                                    e.preventDefault();
-                                                    if (!formData.instruments.includes(formData.instrument)) {
-                                                        setFormData({
-                                                            ...formData,
-                                                            instruments: [...formData.instruments, formData.instrument],
-                                                            instrument: ''
-                                                        })
-                                                    }
-                                                }
-                                            }}
-                                            placeholder={t('addInstrumentPlaceholder')}
-                                            className="w-full px-5 py-3.5 bg-white border-transparent focus:border-primary border-2 rounded-2xl font-bold text-gray-700 outline-none transition-all"
-                                        />
-                                        <datalist id="instrument-options">
-                                            {allInstruments.map(i => <option key={i} value={i} />)}
-                                        </datalist>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('teacherColumn')}</label>
-                                    <select
-                                        value={formData.primary_teacher}
-                                        onChange={e => setFormData({ ...formData, primary_teacher: e.target.value })}
-                                        className="w-full px-5 py-3.5 bg-white border-transparent focus:border-primary border-2 rounded-2xl font-bold text-gray-700 outline-none transition-all appearance-none"
-                                    >
-                                        <option value="">{t('unassigned')}</option>
-                                        {teachers.map((t: any) => (
-                                            <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('enrollment')}</label>
-                                    <div
-                                        onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
-                                        className={`flex items-center justify-between px-5 py-3.5 rounded-2xl border-2 transition-all cursor-pointer h-[54px] ${formData.is_active ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                                            }`}
-                                    >
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${formData.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                            {formData.is_active ? t('active') : t('inactive')}
-                                        </span>
-                                        <div className={`w-10 h-6 rounded-full p-1 transition-colors ${formData.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`}>
-                                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${formData.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                    <DialogFooter>
-                        <Button
-                            variant="ghost"
-                            onClick={() => setIsEditModalOpen(false)}
-                            className="flex-1"
-                        >
-                            {t('cancel')}
-                        </Button>
-                        <Button
-                            type="submit"
-                            form="edit-student-form"
-                            disabled={isSubmitting}
-                            className="flex-[2] gap-2 active:scale-95 transition-transform"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    {t('saving')}
-                                </>
-                            ) : (
-                                t('saveChanges')
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     )
 }

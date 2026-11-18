@@ -3,10 +3,12 @@
 import { useTranslations } from 'next-intl'
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Mail, Phone, Music, Users, Info, Trash2, Plus } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, Music, Users, Info, Trash2, Plus, Camera } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
-import { formatPhoneNumber } from '@/lib/utils'
+import { formatPhoneNumber, proxyFileUrl } from '@/lib/utils'
+import { useTeachers } from '@/hooks/useDashboardData'
+import ImageCropper from '@/components/ImageCropper'
 
 /** Returns the age in whole years given an ISO date string, or null if blank. */
 function calcAge(birthDate: string): number | null {
@@ -21,11 +23,18 @@ function calcAge(birthDate: string): number | null {
 
 export default function EditStudentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const tr = useTranslations('StudentAdd')
+    const ts = useTranslations('Students')
+    const { teachers } = useTeachers()
     const params = use(paramsPromise)
     const studentId = params.id
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [studentAccountId, setStudentAccountId] = useState('')
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+    const [cropImage, setCropImage] = useState<string | null>(null)
+    const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null)
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -39,6 +48,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
         birth_date: '',
         emergency_contact_name: '',
         emergency_contact_phone: '',
+        enrollment_date: '',
+        primary_teacher: '',
+        is_active: true,
     })
 
     const age = calcAge(formData.birth_date)
@@ -51,7 +63,8 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
             try {
                 const response = await api.get(`/students/${studentId}/`)
                 const student = response.data
-                console.log('Fetched student data:', student)
+                setStudentAccountId(typeof student.user === 'string' ? student.user : student.user?.id || '')
+                setAvatarUrl(student.avatar || null)
 
                 // Fallback logic for fields that might be either top-level or on the nested 'user' object
                 const firstName = student.first_name || student.user?.first_name || (student.name ? student.name.split(' ')[0] : '')
@@ -72,6 +85,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                     birth_date: student.birth_date || '',
                     emergency_contact_name: student.emergency_contact_name || '',
                     emergency_contact_phone: student.emergency_contact_phone || '',
+                    enrollment_date: student.enrollment_date || '',
+                    primary_teacher: typeof student.primary_teacher === 'string' ? student.primary_teacher : student.primary_teacher?.id || '',
+                    is_active: student.is_active ?? true,
                 })
             } catch (error) {
                 console.error('Failed to load student:', error)
@@ -88,9 +104,41 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
         e.preventDefault()
         setSaving(true)
         try {
-            await api.patch(`/students/${studentId}/`, formData)
-            toast.success('Ready to go! Student profile updated.')
-            router.push('/dashboard/students')
+            await api.patch(`/students/${studentId}/`, {
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                phone: formData.phone,
+                address_line1: formData.address_line1,
+                postal_code: formData.postal_code,
+                city: formData.city,
+                // "instrument" is the current primary instrument; "instruments" is the complete list.
+                instrument: formData.instruments[0] || '',
+                instruments: formData.instruments,
+                birth_date: formData.birth_date || null,
+                emergency_contact_name: formData.emergency_contact_name,
+                emergency_contact_phone: formData.emergency_contact_phone,
+                primary_teacher: formData.primary_teacher || null,
+                is_active: formData.is_active,
+                ...(formData.enrollment_date ? { enrollment_date: formData.enrollment_date } : {})
+            })
+
+            // Account photo is saved on User, not Student. A photo failure must not
+            // pretend the already saved student changes were rolled back.
+            if (avatarBlob) {
+                try {
+                    if (!studentAccountId) throw new Error('Missing linked student account ID')
+                    const upload = new FormData()
+                    upload.append('avatar', avatarBlob, 'student-avatar.jpg')
+                    await api.patch(`/core/users/${studentAccountId}/`, upload)
+                } catch (photoError) {
+                    console.error('Student details saved; avatar upload failed', photoError)
+                    toast.error('Stammdaten gespeichert, aber das Profilfoto konnte nicht hochgeladen werden.')
+                    router.push(`/dashboard/students/${studentId}`)
+                    return
+                }
+            }
+            toast.success('Schülerprofil gespeichert.')
+            router.push(`/dashboard/students/${studentId}`)
         } catch (error: any) {
             console.error('Failed to update student:', error)
             const errorMsg = error.response?.data?.email?.[0] || 'Failed to update student'
@@ -98,6 +146,31 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
         } finally {
             setSaving(false)
         }
+    }
+
+    const handlePhotoSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        event.target.value = ''
+        if (!file) return
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            toast.error(tr('invalidPhoto'))
+            return
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error(tr('photoTooLarge'))
+            return
+        }
+        const reader = new FileReader()
+        reader.onload = () => setCropImage(reader.result as string)
+        reader.readAsDataURL(file)
+    }
+
+    const handlePhotoCrop = (blob: Blob) => {
+        setCropImage(null)
+        setAvatarBlob(blob)
+        const reader = new FileReader()
+        reader.onload = () => setAvatarPreview(reader.result as string)
+        reader.readAsDataURL(blob)
     }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -159,6 +232,24 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                 </div>
 
                 <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 p-10">
+                    <div className="flex flex-wrap items-center gap-5 mb-8">
+                        <div className="h-20 w-20 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 flex items-center justify-center">
+                            {avatarPreview || avatarUrl ? (
+                                <img src={avatarPreview || proxyFileUrl(avatarUrl) || undefined} alt="Profilfoto" className="h-full w-full object-cover" />
+                            ) : <User className="h-9 w-9 text-gray-400" />}
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="edit-student-avatar" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-300 px-4 py-2 font-medium text-gray-700">
+                                <Camera className="h-4 w-4" /> Profilfoto ändern
+                            </label>
+                            <input id="edit-student-avatar" type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoSelection} className="hidden" />
+                            {avatarBlob && (
+                                <button type="button" className="block text-sm text-gray-500 underline" onClick={() => { setAvatarBlob(null); setAvatarPreview(null) }}>
+                                    Fotoänderung verwerfen
+                                </button>
+                            )}
+                        </div>
+                    </div>
                     <form onSubmit={handleSubmit} className="space-y-10">
 
                         {/* ── Personal Information ── */}
@@ -282,7 +373,48 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                             </div>
                         </section>
 
-                        {/* ── Parent / Guardian — conditional ── */}
+                        {/* Enrollment data and teacher assignment were previously editable only in the list modal. */}
+                        <section className="space-y-6">
+                            <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">{ts('enrollment')}</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label htmlFor="edit-student-enrollment-date" className="text-xs font-bold text-gray-500">{ts('enrollmentDate')}</label>
+                                    <input
+                                        id="edit-student-enrollment-date"
+                                        type="date"
+                                        name="enrollment_date"
+                                        value={formData.enrollment_date}
+                                        onChange={handleChange}
+                                        className={inputClass}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label htmlFor="edit-student-teacher" className="text-xs font-bold text-gray-500">{ts('teacherColumn')}</label>
+                                    <select
+                                        id="edit-student-teacher"
+                                        name="primary_teacher"
+                                        value={formData.primary_teacher}
+                                        onChange={handleChange}
+                                        className={inputClass}
+                                    >
+                                        <option value="">{ts('unassigned')}</option>
+                                        {teachers.map((teacher: any) => (
+                                            <option key={teacher.id} value={teacher.id}>{teacher.first_name} {teacher.last_name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <label className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.is_active}
+                                        onChange={e => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                                    />
+                                    {formData.is_active ? ts('active') : ts('inactive')}
+                                </label>
+                            </div>
+                        </section>
+
+                        {/* ── Parent / Guardian — conditional ── */
                         {showParentSection && (
                             <section className={`rounded-[2rem] border p-8 space-y-6 ${isMinor ? 'bg-amber-50/50 border-amber-200/50' : 'bg-gray-50/50 border-gray-100'}`}>
                                 <h2 className="text-xs font-black text-gray-900 flex items-center gap-3">
@@ -353,6 +485,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                     </form>
                 </div>
             </div>
+            {cropImage && (
+                <ImageCropper imageSrc={cropImage} onCropComplete={handlePhotoCrop} onCancel={() => setCropImage(null)} />
+            )}
         </div>
     )
 }

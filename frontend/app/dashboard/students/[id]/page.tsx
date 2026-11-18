@@ -140,7 +140,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                     <div className="flex items-center gap-4">
                         <Button
                             variant="outline"
-                            onClick={() => router.push(`/dashboard/students?edit=${studentId}`)}
+                            onClick={() => router.push(`/dashboard/students/${studentId}/edit`)}
                             className="h-12 rounded-2xl gap-3 font-bold px-8 border-gray-200 hover:border-primary hover:text-primary transition-all shadow-sm"
                         >
                             <Edit className="w-4 h-4" />
