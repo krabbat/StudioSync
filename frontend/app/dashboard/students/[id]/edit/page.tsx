@@ -81,7 +81,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                     postal_code: student.postal_code || '',
                     city: student.city || '',
                     instrument: '', // Used for input only
-                    instruments: student.instruments || (student.instrument ? [student.instrument] : []),
+                    instruments: Array.isArray(student.instruments) && student.instruments.length > 0
+                        ? student.instruments
+                        : (student.instrument ? [student.instrument] : []),
                     birth_date: student.birth_date || '',
                     emergency_contact_name: student.emergency_contact_name || '',
                     emergency_contact_phone: student.emergency_contact_phone || '',
