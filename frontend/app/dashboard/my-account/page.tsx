@@ -232,7 +232,7 @@ export default function MyAccountPage() {
                 <TeachingContractCard studentId={studentId} readOnly />
             ) : (
                 <StudentLessonAccountCard studentId={studentId} readOnly />
-            )
+            )}
             {cropImage && <ImageCropper imageSrc={cropImage} onCropComplete={savePhoto} onCancel={() => setCropImage(null)} />}
         </div>
     )

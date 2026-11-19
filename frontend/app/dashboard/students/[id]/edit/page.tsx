@@ -361,7 +361,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                     <TeachingContractCard studentId={studentId} readOnly={false} />
                 ) : (
                     <StudentLessonAccountCard studentId={studentId} readOnly={currentUser?.role !== 'admin'} />
-                )
+                )}
             </div>
             {cropImage && (
                 <ImageCropper imageSrc={cropImage} onCropComplete={handlePhotoCrop} onCancel={() => setCropImage(null)} />
