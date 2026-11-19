@@ -2001,6 +2001,43 @@
     "passwordSaved": "Passwort geändert.",
     "passwordFailed": "Passwort konnte nicht geändert werden.",
     "notImplemented": "Dieser Abschnitt wird in einer späteren Phase eingerichtet. Es werden noch keine Vertrags- oder Unterrichtsdaten angezeigt.",
-    "studentOnly": "Dieser Bereich ist ausschließlich für Schülerkonten."
+    "studentOnly": "Dieser Bereich ist ausschließlich für Schülerkonten.",
+    "extraSaveFailed": "Persönliche Daten gespeichert, aber Instrument/Beschreibung konnten nicht gespeichert werden."
+  },
+  "StudentPersonal": {
+    "personal": "Persönliche Daten",
+    "first_name": "Vorname",
+    "last_name": "Nachname",
+    "email": "E-Mail-Adresse",
+    "phone": "Telefonnummer",
+    "birth_date": "Geburtsdatum",
+    "birthDateHint": "TT.MM.JJJJ",
+    "invalidDate": "Bitte gültiges Datum im Format TT.MM.JJJJ eingeben.",
+    "address": "Unterrichtsanschrift",
+    "address_line1": "Straße und Hausnummer",
+    "postal_code": "Postleitzahl",
+    "city": "Ort",
+    "emergency": "Eltern- und Notfallkontakt",
+    "emergency_contact_name": "Name",
+    "emergency_contact_phone": "Telefonnummer"
+  },
+  "StudentEdit": {
+    "loadFailed": "Schülerdaten konnten nicht geladen werden.",
+    "saveFailed": "Schülerprofil konnte nicht gespeichert werden.",
+    "deleteConfirm": "Schülerprofil wirklich dauerhaft löschen?",
+    "deleted": "Schülerprofil gelöscht.",
+    "deleteFailed": "Schülerprofil konnte nicht gelöscht werden.",
+    "loading": "Schülerprofil wird geladen …",
+    "back": "Zurück",
+    "title": "Schülerprofil bearbeiten",
+    "subtitle": "Persönliche Daten und Unterrichtsangaben verwalten.",
+    "remove": "Profil löschen",
+    "curriculum": "Instrumente und Unterricht",
+    "focus": "Instrumente",
+    "addFocus": "Weiteres Instrument hinzufügen …",
+    "pressEnter": "Mit Enter hinzufügen",
+    "cancel": "Abbrechen",
+    "saving": "Wird gespeichert …",
+    "save": "Änderungen speichern"
   }
 }

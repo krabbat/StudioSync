@@ -2001,6 +2001,43 @@
     "passwordSaved": "Password changed.",
     "passwordFailed": "Could not change password.",
     "notImplemented": "This section will be added in a later phase. No contract or lesson data is shown yet.",
-    "studentOnly": "This area is intended for student accounts."
+    "studentOnly": "This area is intended for student accounts.",
+    "extraSaveFailed": "Personal details saved, but instrument/description could not be saved."
+  },
+  "StudentPersonal": {
+    "personal": "Personal Details",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "email": "Email address",
+    "phone": "Phone number",
+    "birth_date": "Date of birth",
+    "birthDateHint": "DD.MM.YYYY",
+    "invalidDate": "Enter a valid date in DD.MM.YYYY format.",
+    "address": "Lesson address",
+    "address_line1": "Street and number",
+    "postal_code": "Postal code",
+    "city": "City",
+    "emergency": "Parent and emergency contact",
+    "emergency_contact_name": "Name",
+    "emergency_contact_phone": "Phone"
+  },
+  "StudentEdit": {
+    "loadFailed": "Could not load student details.",
+    "saveFailed": "Could not save student profile.",
+    "deleteConfirm": "Delete this student profile permanently?",
+    "deleted": "Profile deleted.",
+    "deleteFailed": "Could not delete student profile.",
+    "loading": "Loading student profile …",
+    "back": "Back",
+    "title": "Edit student profile",
+    "subtitle": "Manage personal details and lessons.",
+    "remove": "Delete profile",
+    "curriculum": "Instruments and Lessons",
+    "focus": "Instruments",
+    "addFocus": "Add another instrument …",
+    "pressEnter": "Press Enter to add",
+    "cancel": "Cancel",
+    "saving": "Saving …",
+    "save": "Save changes"
   }
 }
