@@ -727,3 +727,163 @@ def test_contract_rejects_invalid_minutes_and_price(authenticated_client, studen
         format="json",
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_lesson_account_needs_contract(authenticated_client, student):
+    response = authenticated_client.get(f"/api/students/{student.pk}/lesson-account/")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["available"] is False
+
+
+def _tuition_contract(student):
+    from datetime import date
+    from apps.core.models import TeachingContract
+
+    return TeachingContract.objects.create(
+        student=student, contract_start_date=date(2020, 1, 1),
+        contract_year_start=date(2020, 1, 1),
+        lesson_minutes=45, monthly_amount="135.00",
+    )
+
+
+def _tuition_lesson(student, teacher, day, lesson_status="completed", lesson_type="private"):
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+    from apps.lessons.models import Lesson
+
+    start = timezone.make_aware(datetime(day.year, day.month, day.day, 15, 0))
+    return Lesson.objects.create(
+        studio=student.studio, teacher=teacher, student=student,
+        lesson_type=lesson_type, status=lesson_status,
+        scheduled_start=start, scheduled_end=start + timedelta(minutes=45),
+    )
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_lesson_account_counts_real_lessons_but_not_ambiguous_absences(
+    authenticated_client, student_authenticated_client, student, teacher
+):
+    from datetime import date
+
+    _tuition_contract(student)
+    _tuition_lesson(student, teacher, date(2024, 3, 1))
+    _tuition_lesson(student, teacher, date(2024, 3, 2), lesson_status="cancelled")
+    _tuition_lesson(student, teacher, date(2024, 3, 3),
+                    lesson_status="completed", lesson_type="makeup")
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    response = student_authenticated_client.get(url)
+    assert response.status_code == status.HTTP_200_OK, response.data
+    result = response.data
+    assert result["quota"] == 46
+    assert result["summary"]["delivered"] == 2
+    assert result["summary"]["credited"] == 1
+    assert result["summary"]["remaining"] == 45
+    assert result["summary"]["unclassified"] == 2
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_cannot_change_lesson_account(student_authenticated_client, student):
+    _tuition_contract(student)
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    response = student_authenticated_client.post(url, {
+        "action": "set_quota", "year_start": "2024-01-01",
+        "quota": 50, "reason": "Unberechtigter Versuch",
+    }, format="json")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_lesson_account_classifications_and_quota(
+    authenticated_client, student, teacher
+):
+    from datetime import date
+
+    _tuition_contract(student)
+    student_cancel = _tuition_lesson(
+        student, teacher, date(2024, 3, 2), lesson_status="cancelled"
+    )
+    teacher_cancel = _tuition_lesson(
+        student, teacher, date(2024, 3, 3), lesson_status="cancelled"
+    )
+    makeup = _tuition_lesson(
+        student, teacher, date(2024, 3, 4),
+        lesson_status="completed", lesson_type="makeup"
+    )
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    for lesson, kind in (
+        (student_cancel, "student_cancelled"),
+        (teacher_cancel, "teacher_cancelled"),
+        (makeup, "makeup_credited"),
+    ):
+        r = authenticated_client.post(url, {
+            "action": "classify", "year_start": "2024-01-01",
+            "lesson_id": str(lesson.pk), "kind": kind,
+            "reason": "Begründete Zuordnung",
+        }, format="json")
+        assert r.status_code == status.HTTP_200_OK, r.data
+    summary = authenticated_client.get(url).data["summary"]
+    assert summary["delivered"] == 1
+    assert summary["credited"] == 2
+    assert summary["student_cancelled"] == 1
+    assert summary["teacher_cancelled"] == 1
+    assert summary["makeups"] == 1
+    assert summary["unclassified"] == 0
+
+    quota = authenticated_client.post(url, {
+        "action": "set_quota", "year_start": "2024-01-01",
+        "quota": 48, "reason": "Individuelle Abmachung",
+    }, format="json")
+    assert quota.status_code == status.HTTP_200_OK, quota.data
+    assert quota.data["quota"] == 48
+    assert quota.data["summary"]["remaining"] == 46
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_lesson_account_adjustments_are_visible_to_students(
+    authenticated_client, student_authenticated_client, student
+):
+    _tuition_contract(student)
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    r = authenticated_client.post(url, {
+        "action": "add_adjustment", "year_start": "2024-01-01",
+        "date": "2024-01-15", "delivered_delta": 10,
+        "credited_delta": 12, "reason": "Anfangsbestand aus Papierliste",
+    }, format="json")
+    assert r.status_code == status.HTTP_200_OK, r.data
+    result = student_authenticated_client.get(url)
+    assert result.status_code == status.HTTP_200_OK, result.data
+    assert result.data["summary"]["delivered"] == 10
+    assert result.data["summary"]["credited"] == 12
+    assert result.data["summary"]["remaining"] == 34
+    assert len(result.data["adjustments"]) == 1
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_lesson_account_rejects_invalid_classification_and_year(
+    authenticated_client, student, teacher
+):
+    from datetime import date
+
+    _tuition_contract(student)
+    done = _tuition_lesson(student, teacher, date(2024, 3, 7))
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    r = authenticated_client.post(url, {
+        "action": "classify", "year_start": "2024-01-01",
+        "lesson_id": str(done.pk), "kind": "student_cancelled",
+        "reason": "Nicht erlaubt für erteilten Unterricht",
+    }, format="json")
+    assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    r = authenticated_client.post(url, {
+        "action": "add_adjustment", "year_start": "2024-01-01",
+        "date": "2025-01-10", "delivered_delta": 1,
+        "credited_delta": 1, "reason": "Falsches Vertragsjahr",
+    }, format="json")
+    assert r.status_code == status.HTTP_400_BAD_REQUEST

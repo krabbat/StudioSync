@@ -152,7 +152,10 @@ class StudentViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("Nur Administratoren dürfen Unterrichtskonten ändern.")
             apply_lesson_account_change(student, actor, request.data)
 
-        return Response(lesson_account_response(student, request.query_params.get("year_start")))
+        return Response(lesson_account_response(
+            student,
+            request.data.get("year_start") if request.method == "POST" else request.query_params.get("year_start"),
+        ))
 
     @action(detail=False, methods=["get"], url_path="instruments")
     def instruments(self, request):

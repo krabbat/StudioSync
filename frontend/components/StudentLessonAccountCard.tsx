@@ -149,6 +149,7 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
             await refresh()
             setFeedback(t('saved'))
             toast.success(t('saved'))
+            return true
         } catch (error: any) {
             const data = error?.response?.data
             const description = data && typeof data === 'object'
@@ -157,6 +158,7 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
             const message = description || t('saveFailed')
             setFeedback(message)
             toast.error(message)
+            return false
         } finally {
             setBusy(false)
         }
@@ -172,7 +174,7 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
         submit({ action: 'set_quota', quota: number, reason: quotaReason.trim() })
     }
 
-    function addAdjustment(event: FormEvent<HTMLFormElement>) {
+    async function addAdjustment(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         const iso = fromGermanDate(date)
         const delivered = Number(deliveredDelta)
@@ -182,13 +184,17 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
             toast.error(t('invalidAdjustment'))
             return
         }
-        submit({
+        const saved = await submit({
             action: 'add_adjustment', date: iso,
             delivered_delta: delivered, credited_delta: credited,
             reason: adjustmentReason.trim()
-        }).then(() => {
-            // The server remains the authority for adjustments.
         })
+        if (saved) {
+            setDate('')
+            setDeliveredDelta('0')
+            setCreditedDelta('0')
+            setAdjustmentReason('')
+        }
     }
 
     const inputClass = 'w-full min-w-0 rounded-xl border border-input bg-background px-3 py-2.5 text-foreground outline-none focus:border-primary'
