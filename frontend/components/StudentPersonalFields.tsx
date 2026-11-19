@@ -59,6 +59,15 @@ export default function StudentPersonalFields({ value, onChange }: {
     onChange: (patch: Partial<StudentPersonalData>) => void
 }) {
     const t = useTranslations('StudentPersonal')
+    const isMinor = (() => {
+        if (!value.birth_date) return false
+        const [year, month, day] = value.birth_date.split('-').map(Number)
+        const today = new Date()
+        const years = today.getFullYear() - year
+        const birthdayPassed = today.getMonth() + 1 > month ||
+            (today.getMonth() + 1 === month && today.getDate() >= day)
+        return years < 18 || (years === 18 && !birthdayPassed)
+    })()
     const field = (
         key: keyof StudentPersonalData, type: 'text' | 'email' | 'tel' = 'text',
         required = false, autoComplete?: string
@@ -95,8 +104,8 @@ export default function StudentPersonalFields({ value, onChange }: {
             <section className="space-y-4">
                 <h2 className="text-lg font-bold text-gray-900">{t('emergency')}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {field('emergency_contact_name')}
-                    {field('emergency_contact_phone', 'tel')}
+                    {field('emergency_contact_name', 'text', isMinor)}
+                    {field('emergency_contact_phone', 'tel', isMinor)}
                 </div>
             </section>
         </div>
