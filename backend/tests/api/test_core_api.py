@@ -629,3 +629,10 @@ def test_admin_can_change_student_email_and_duplicates_are_rejected(
     assert changed.status_code == status.HTTP_200_OK, changed.data
     student.user.refresh_from_db()
     assert student.user.email == "neu@example.test"
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_cannot_delete_own_profile(student_authenticated_client, student):
+    response = student_authenticated_client.delete(f"/api/students/{student.pk}/")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    student.refresh_from_db()

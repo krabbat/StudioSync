@@ -2038,6 +2038,7 @@
     "pressEnter": "Press Enter to add",
     "cancel": "Cancel",
     "saving": "Saving …",
-    "save": "Save changes"
+    "save": "Save changes",
+    "unauthorized": "Only staff members may edit student profiles."
   }
 }

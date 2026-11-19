@@ -10,12 +10,14 @@ import { proxyFileUrl } from '@/lib/utils'
 import { useTeachers } from '@/hooks/useDashboardData'
 import ImageCropper from '@/components/ImageCropper'
 import StudentPersonalFields from '@/components/StudentPersonalFields'
+import { useUser } from '@/contexts/UserContext'
 
 export default function EditStudentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const tr = useTranslations('StudentAdd')
     const ts = useTranslations('Students')
     const te = useTranslations('StudentEdit')
     const { teachers } = useTeachers()
+    const { currentUser } = useUser()
     const params = use(paramsPromise)
     const studentId = params.id
     const router = useRouter()
@@ -178,6 +180,10 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
         }
     }
 
+    if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'teacher') {
+        return <p className="p-8 text-red-600">{te('unauthorized')}</p>
+    }
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -207,13 +213,13 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                         <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">{te('title')}</h1>
                         <p className="text-gray-500 font-medium">{te('subtitle')}</p>
                     </div>
-                    <button
+                    {currentUser?.role === 'admin' && <button
                         onClick={handleDelete}
                         className="text-red-600 hover:text-red-700 p-3 hover:bg-red-50 rounded-2xl flex items-center gap-2 font-bold text-xs uppercase tracking-widest border border-transparent hover:border-red-100 transition-all"
                     >
                         <Trash2 className="w-4 h-4" />
                         {te('remove')}
-                    </button>
+                    </button>}
                 </div>
 
                 <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 p-10">

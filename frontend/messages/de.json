@@ -2038,6 +2038,7 @@
     "pressEnter": "Mit Enter hinzufügen",
     "cancel": "Abbrechen",
     "saving": "Wird gespeichert …",
-    "save": "Änderungen speichern"
+    "save": "Änderungen speichern",
+    "unauthorized": "Nur die Verwaltung darf das Schülerprofil bearbeiten."
   }
 }
