@@ -134,6 +134,26 @@ class StudentViewSet(viewsets.ModelViewSet):
             serializer.save(student=student)
         return Response({"contract": serializer.data})
 
+    @action(detail=True, methods=["get", "post"], url_path="lesson-account")
+    def lesson_account(self, request, pk=None):
+        """Current or selected contract-year overview and administrator corrections."""
+        from rest_framework.exceptions import PermissionDenied
+        from apps.students.lesson_account import lesson_account_response, apply_lesson_account_change
+
+        student = self.get_object()
+        actor = request.user
+        is_admin = actor.role == "admin"
+        is_owner = actor.role == "student" and student.user_id == actor.id
+
+        if not (is_admin or is_owner):
+            raise PermissionDenied("Keine Berechtigung für diese Unterrichtsübersicht.")
+        if request.method == "POST":
+            if not is_admin:
+                raise PermissionDenied("Nur Administratoren dürfen Unterrichtskonten ändern.")
+            apply_lesson_account_change(student, actor, request.data)
+
+        return Response(lesson_account_response(student, request.query_params.get("year_start")))
+
     @action(detail=False, methods=["get"], url_path="instruments")
     def instruments(self, request):
         """Return sorted unique instrument list: studio curated list + instruments used by existing students."""

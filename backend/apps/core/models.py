@@ -459,6 +459,75 @@ class TeachingContract(models.Model):
         return f"Unterrichtsvertrag {self.student.user.get_full_name()}"
 
 
+
+class TeachingYearAccount(models.Model):
+    """One annual lesson quota for a student and an individual contract year."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="teaching_years")
+    year_start = models.DateField()
+    quota = models.PositiveSmallIntegerField(
+        default=46, validators=[MinValueValidator(1)]
+    )
+    quota_reason = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "teaching_year_accounts"
+        constraints = [
+            models.UniqueConstraint(fields=["student", "year_start"], name="unique_teaching_year")
+        ]
+
+
+class TeachingLessonClassification(models.Model):
+    """Manual classification only when a calendar lesson cannot safely be inferred."""
+
+    KIND_CHOICES = [
+        ("student_cancelled", "Schülerabsage – angerechnet"),
+        ("teacher_cancelled", "Lehrerausfall – nicht angerechnet"),
+        ("makeup_credited", "Nachholstunde – angerechnet"),
+        ("makeup_not_credited", "Nachholstunde – bereits angerechnet"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    year_account = models.ForeignKey(
+        TeachingYearAccount, on_delete=models.CASCADE, related_name="classifications"
+    )
+    lesson = models.OneToOneField(
+        "lessons.Lesson", on_delete=models.CASCADE, related_name="tuition_classification"
+    )
+    kind = models.CharField(max_length=25, choices=KIND_CHOICES)
+    reason = models.TextField()
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "teaching_lesson_classifications"
+
+
+class TeachingLessonAdjustment(models.Model):
+    """Reasoned corrections / opening balances for lessons absent from the calendar."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    year_account = models.ForeignKey(
+        TeachingYearAccount, on_delete=models.CASCADE, related_name="adjustments"
+    )
+    date = models.DateField()
+    delivered_delta = models.SmallIntegerField(default=0)
+    credited_delta = models.SmallIntegerField(default=0)
+    reason = models.TextField()
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "teaching_lesson_adjustments"
+        ordering = ["date", "created_at"]
+
+
 class SignedDocument(models.Model):
     """
     Stores digitally signed documents (waivers, policies, etc.)
