@@ -333,8 +333,9 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
                                                     {!readOnly && classifiable && (
                                                         <ClassificationEditor key={entry.id + ':' + entry.kind}
                                                             entry={entry} disabled={busy}
-                                                            onSave={async (row, kind, reason) =>
-                                                                submit({ action: 'classify', lesson_id: row.id, kind, reason })}/>
+                                                            onSave={async (row, kind, reason) => {
+                                                                await submit({ action: 'classify', lesson_id: row.id, kind, reason })
+                                                            }}/>
                                                     )}
                                                     {readOnly && classifiable && !entry.kind &&
                                                         <p className="text-xs text-muted-foreground">{t('unclassified')}</p>}
