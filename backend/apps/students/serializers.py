@@ -266,12 +266,3 @@ class TeachingContractSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-        start = attrs.get("contract_start_date")
-        year_start = attrs.get("contract_year_start")
-        if start and year_start and year_start < start:
-            raise serializers.ValidationError({
-                "contract_year_start": "Der Beginn des Vertragsjahres darf nicht vor dem Vertragsbeginn liegen."
-            })
-        return attrs
