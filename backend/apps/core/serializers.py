@@ -169,10 +169,10 @@ class UserSerializer(serializers.ModelSerializer):
         return None
 
     def get_bio(self, obj):
-        """Return bio from teacher profile if exists, else from preferences for admin"""
+        """Return bio from teacher profile or from personal preferences."""
         if hasattr(obj, "teacher_profile"):
             return obj.teacher_profile.bio
-        if obj.role == "admin" and isinstance(obj.preferences, dict):
+        if obj.role in ("admin", "student") and isinstance(obj.preferences, dict):
             return obj.preferences.get("bio", "")
         return ""
 
@@ -315,7 +315,7 @@ class UserSerializer(serializers.ModelSerializer):
             if hasattr(instance, "teacher_profile"):
                 instance.teacher_profile.bio = bio
                 instance.teacher_profile.save()
-            elif instance.role == "admin":
+            elif instance.role in ("admin", "student"):
                 if not isinstance(instance.preferences, dict):
                     instance.preferences = {}
                 instance.preferences["bio"] = bio
