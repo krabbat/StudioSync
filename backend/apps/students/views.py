@@ -89,6 +89,12 @@ class StudentViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Keine Berechtigung zum Bearbeiten von Schülerdaten.")
         return super().update(request, *args, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != "admin":
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Nur Administratoren dürfen Schülerprofile löschen.")
+        return super().destroy(request, *args, **kwargs)
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         if request.user.role == "student" and instance.user_id != request.user.id:
