@@ -17,6 +17,12 @@ type LessonEvent = {
     credited: number
     reason: string
 }
+type ManualAbsence = {
+    id: string
+    date: string
+    kind: 'student_cancelled' | 'teacher_cancelled'
+    comment: string
+}
 type Adjustment = {
     id: string
     date: string
@@ -44,6 +50,8 @@ type Account = {
     }
     entries: LessonEvent[]
     adjustments: Adjustment[]
+    manual_absences: ManualAbsence[]
+    manual_taught_delta: number
 }
 
 function ClassificationEditor({
@@ -64,7 +72,7 @@ function ClassificationEditor({
     return (
         <form onSubmit={event => {
             event.preventDefault()
-            if (kind && reason.trim()) onSave(entry, kind, reason)
+            if (kind) onSave(entry, kind, reason)
         }} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 mt-2">
             <select className="min-w-0 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 value={kind} disabled={disabled} required
@@ -73,17 +81,76 @@ function ClassificationEditor({
                 <option value="">{t('chooseClassification')}</option>
                 {options.map(option => <option key={option} value={option}>{t(option)}</option>)}
             </select>
-            <input type="text" required maxLength={1000} value={reason}
+            <input type="text" maxLength={1000} value={reason}
                 onChange={event => setReason(event.target.value)}
                 disabled={disabled}
-                placeholder={t('classificationReason')}
+                placeholder={t('optionalComment')}
                 aria-label={t('classificationReason')}
                 className="min-w-0 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
             />
-            <button type="submit" disabled={disabled || !kind || !reason.trim()}
+            <button type="submit" disabled={disabled || !kind}
                 className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
                 {t('apply')}
             </button>
+        </form>
+    )
+}
+
+function ManualAbsenceEditor({
+    item, disabled, onSave, onDelete
+}: {
+    item: ManualAbsence
+    disabled: boolean
+    onSave: (item: ManualAbsence, date: string, kind: ManualAbsence['kind'], comment: string) => Promise<boolean>
+    onDelete: (item: ManualAbsence) => Promise<boolean>
+}) {
+    const t = useTranslations('LessonAccount')
+    const [date, setDate] = useState(toGermanDate(item.date))
+    const [kind, setKind] = useState(item.kind)
+    const [comment, setComment] = useState(item.comment)
+
+    async function save(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+        const iso = fromGermanDate(date)
+        if (!iso) {
+            toast.error(t('invalidAbsenceDate'))
+            return
+        }
+        await onSave(item, iso, kind, comment)
+    }
+
+    return (
+        <form onSubmit={save} className="grid grid-cols-1 sm:grid-cols-[minmax(0,140px)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-end">
+            <label className="block text-xs space-y-1">
+                {t('adjustmentDate')}
+                <input className="w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    type="text" inputMode="numeric" value={date} required
+                    pattern="[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}"
+                    onChange={event => setDate(event.target.value)} disabled={disabled} />
+            </label>
+            <label className="block text-xs space-y-1">
+                {t('absenceKind')}
+                <select className="w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    value={kind} disabled={disabled}
+                    onChange={event => setKind(event.target.value as ManualAbsence['kind'])}>
+                    <option value="student_cancelled">{t('student_cancelled')}</option>
+                    <option value="teacher_cancelled">{t('teacher_cancelled')}</option>
+                </select>
+            </label>
+            <label className="block text-xs space-y-1">
+                {t('optionalComment')}
+                <input className="w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    type="text" maxLength={1000} value={comment} disabled={disabled}
+                    onChange={event => setComment(event.target.value)} />
+            </label>
+            <div className="flex gap-2">
+                <button className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    type="submit" disabled={disabled}>{t('save')}</button>
+                <button className="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50"
+                    type="button" disabled={disabled} onClick={() => {
+                        if (window.confirm(t('confirmDeleteAbsence'))) void onDelete(item)
+                    }}>{t('delete')}</button>
+            </div>
         </form>
     )
 }
@@ -101,10 +168,10 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
     const [feedback, setFeedback] = useState<string | null>(null)
     const [quota, setQuota] = useState('46')
     const [quotaReason, setQuotaReason] = useState('')
-    const [date, setDate] = useState('')
-    const [deliveredDelta, setDeliveredDelta] = useState('0')
-    const [creditedDelta, setCreditedDelta] = useState('0')
-    const [adjustmentReason, setAdjustmentReason] = useState('')
+    const [taughtTotal, setTaughtTotal] = useState('0')
+    const [absenceDate, setAbsenceDate] = useState('')
+    const [absenceKind, setAbsenceKind] = useState<ManualAbsence['kind']>('student_cancelled')
+    const [absenceComment, setAbsenceComment] = useState('')
 
     const url = useCallback(() => {
         const base = '/students/' + encodeURIComponent(studentId) + '/lesson-account/'
@@ -118,6 +185,7 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
         if (loaded.available) {
             setQuota(String(loaded.quota))
             setQuotaReason(loaded.quota_reason || '')
+            setTaughtTotal(String(loaded.summary.delivered))
         }
     }, [url])
 
@@ -134,6 +202,7 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
             if (loaded.available) {
                 setQuota(String(loaded.quota))
                 setQuotaReason(loaded.quota_reason || '')
+                setTaughtTotal(String(loaded.summary.delivered))
             }
         }).catch(() => { if (active) setError(true) })
             .finally(() => { if (active) setLoading(false) })
@@ -174,28 +243,33 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
         submit({ action: 'set_quota', quota: number, reason: quotaReason.trim() })
     }
 
-    async function addAdjustment(event: FormEvent<HTMLFormElement>) {
+    async function saveTaughtTotal(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
-        const iso = fromGermanDate(date)
-        const delivered = Number(deliveredDelta)
-        const credited = Number(creditedDelta)
-        if (!iso || !Number.isInteger(delivered) || !Number.isInteger(credited) ||
-            (delivered === 0 && credited === 0) || !adjustmentReason.trim()) {
-            toast.error(t('invalidAdjustment'))
+        const value = Number(taughtTotal)
+        if (!Number.isInteger(value) || value < 0 || value > 9999) {
+            toast.error(t('invalidTaughtTotal'))
+            return
+        }
+        await submit({ action: 'set_delivered_total', delivered_total: value })
+    }
+
+    async function addAbsence(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+        const date = fromGermanDate(absenceDate)
+        if (!date) {
+            toast.error(t('invalidAbsenceDate'))
             return
         }
         const saved = await submit({
-            action: 'add_adjustment', date: iso,
-            delivered_delta: delivered, credited_delta: credited,
-            reason: adjustmentReason.trim()
+            action: 'add_absence',
+            date, kind: absenceKind, comment: absenceComment.trim(),
         })
         if (saved) {
-            setDate('')
-            setDeliveredDelta('0')
-            setCreditedDelta('0')
-            setAdjustmentReason('')
+            setAbsenceDate('')
+            setAbsenceComment('')
         }
     }
+
 
     const inputClass = 'w-full min-w-0 rounded-xl border border-input bg-background px-3 py-2.5 text-foreground outline-none focus:border-primary'
     const stats = account?.available ? [
@@ -268,48 +342,59 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
                                         {t('saveQuota')}
                                     </button>
                                 </form>
-                                <form onSubmit={addAdjustment} className="rounded-xl border border-border p-4 space-y-3">
-                                    <h3 className="font-semibold">{t('addAdjustment')}</h3>
-                                    <p className="text-xs text-muted-foreground">{t('adjustmentHint')}</p>
+                                <form onSubmit={saveTaughtTotal} className="rounded-xl border border-border p-4 space-y-3">
+                                    <h3 className="font-semibold">{t('editTaughtTotal')}</h3>
+                                    <p className="text-xs text-muted-foreground">{t('taughtTotalHint')}</p>
                                     <label className="block text-sm space-y-1">
-                                        {t('adjustmentDate')}
-                                        <input className={inputClass} type="text" placeholder="TT.MM.JJJJ"
-                                            pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}" value={date} required
-                                            onChange={event => setDate(event.target.value)}/>
-                                    </label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <label className="block text-sm space-y-1">
-                                            {t('deliveredDelta')}
-                                            <input className={inputClass} type="number" min={-999} max={999}
-                                                value={deliveredDelta} required
-                                                onChange={event => setDeliveredDelta(event.target.value)}/>
-                                        </label>
-                                        <label className="block text-sm space-y-1">
-                                            {t('creditedDelta')}
-                                            <input className={inputClass} type="number" min={-999} max={999}
-                                                value={creditedDelta} required
-                                                onChange={event => setCreditedDelta(event.target.value)}/>
-                                        </label>
-                                    </div>
-                                    <label className="block text-sm space-y-1">
-                                        {t('reason')}
-                                        <input className={inputClass} type="text" maxLength={1000}
-                                            value={adjustmentReason} required
-                                            onChange={event => setAdjustmentReason(event.target.value)}/>
+                                        {t('delivered')}
+                                        <input className={inputClass} type="number" min={0} max={9999}
+                                            value={taughtTotal} onChange={event => setTaughtTotal(event.target.value)} required />
                                     </label>
                                     <button type="submit" disabled={busy}
                                         className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-                                        {t('add')}
+                                        {t('saveTaughtTotal')}
                                     </button>
                                 </form>
                             </div>
+                        )}
+                        {!readOnly && (
+                            <form onSubmit={addAbsence} className="rounded-xl border border-border p-4 space-y-3">
+                                <h3 className="font-semibold">{t('addAbsence')}</h3>
+                                <p className="text-xs text-muted-foreground">{t('absenceHint')}</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <label className="block text-sm space-y-1">
+                                        {t('adjustmentDate')}
+                                        <input className={inputClass} type="text" inputMode="numeric"
+                                            placeholder="TT.MM.JJJJ" required
+                                            pattern="[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}"
+                                            value={absenceDate} onChange={event => setAbsenceDate(event.target.value)} />
+                                    </label>
+                                    <label className="block text-sm space-y-1">
+                                        {t('absenceKind')}
+                                        <select className={inputClass} value={absenceKind}
+                                            onChange={event => setAbsenceKind(event.target.value as ManualAbsence['kind'])}>
+                                            <option value="student_cancelled">{t('student_cancelled')}</option>
+                                            <option value="teacher_cancelled">{t('teacher_cancelled')}</option>
+                                        </select>
+                                    </label>
+                                    <label className="block text-sm space-y-1">
+                                        {t('optionalComment')}
+                                        <input className={inputClass} type="text" maxLength={1000}
+                                            value={absenceComment} onChange={event => setAbsenceComment(event.target.value)} />
+                                    </label>
+                                </div>
+                                <button type="submit" disabled={busy}
+                                    className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                                    {t('addAbsenceButton')}
+                                </button>
+                            </form>
                         )}
                         {feedback && !readOnly && (
                             <p role="status" aria-live="polite" className="text-sm font-semibold">{feedback}</p>
                         )}
                         <div className="space-y-3">
                             <h3 className="font-semibold">{t('timeline')}</h3>
-                            {account.entries.length === 0 && account.adjustments.length === 0
+                            {account.entries.length === 0 && account.adjustments.length === 0 && account.manual_absences.length === 0
                                 ? <p className="text-sm text-muted-foreground">{t('noEntries')}</p>
                                 : (
                                     <div className="space-y-3">
@@ -342,6 +427,28 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
                                                 </article>
                                             )
                                         })}
+                                        {account.manual_absences.map(item => (
+                                            <article key={item.id} className="rounded-xl border border-border p-3 space-y-2">
+                                                {readOnly ? (
+                                                    <>
+                                                        <p className="font-semibold text-sm">{toGermanDate(item.date)} · {t(item.kind)}</p>
+                                                        {item.comment && <p className="text-sm whitespace-pre-wrap">{item.comment}</p>}
+                                                    </>
+                                                ) : (
+                                                    <ManualAbsenceEditor key={item.id}
+                                                        item={item} disabled={busy}
+                                                        onSave={async (record, date, kind, comment) =>
+                                                            submit({
+                                                                action: 'update_absence', absence_id: record.id,
+                                                                date, kind, comment: comment.trim()
+                                                            })}
+                                                        onDelete={async record => submit({
+                                                            action: 'delete_absence', absence_id: record.id
+                                                        })}
+                                                    />
+                                                )}
+                                            </article>
+                                        ))}
                                         {account.adjustments.map(item => (
                                             <article key={item.id} className="rounded-xl border border-border p-3">
                                                 <p className="font-semibold text-sm">{toGermanDate(item.date)} · {t('adjustment')}</p>

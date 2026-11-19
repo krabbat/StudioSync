@@ -2112,11 +2112,24 @@
     "unclassified": "Noch nicht zugeordnet",
     "classification": "Zuordnung",
     "chooseClassification": "Ausfall zuordnen",
-    "classificationReason": "Begründung der Zuordnung",
+    "classificationReason": "Kommentar (optional)",
     "apply": "Zuordnen",
     "student_cancelled": "Schülerabsage – angerechnet",
     "teacher_cancelled": "Lehrerausfall – nicht angerechnet",
     "makeup_credited": "Nachholstunde – anrechnen",
-    "makeup_not_credited": "Nachholstunde – bereits angerechnet"
+    "makeup_not_credited": "Nachholstunde – bereits angerechnet",
+    "editTaughtTotal": "Erteilte Unterrichtseinheiten korrigieren",
+    "taughtTotalHint": "Gesamtzahl direkt korrigieren, ohne Datum oder Begründung. Bereits erfasste Kalendertermine bleiben erhalten; neue Termine werden weiterhin automatisch mitgezählt.",
+    "saveTaughtTotal": "Erteilte Stunden speichern",
+    "invalidTaughtTotal": "Bitte eine gültige ganze Zahl zwischen 0 und 9999 eingeben.",
+    "addAbsence": "Versäumte Unterrichtsstunde nachtragen",
+    "absenceHint": "Für Ausfälle ohne bereits vorhandenen Kalendereintrag. Schülerabsagen werden angerechnet, Lehrerausfälle nicht.",
+    "absenceKind": "Wer hat abgesagt?",
+    "optionalComment": "Kommentar (optional)",
+    "invalidAbsenceDate": "Bitte ein gültiges Datum im Format TT.MM.JJJJ eingeben.",
+    "addAbsenceButton": "Ausfall eintragen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "confirmDeleteAbsence": "Diesen Ausfall wirklich löschen?"
   }
 }

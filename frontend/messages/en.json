@@ -2112,11 +2112,24 @@
     "unclassified": "Not classified yet",
     "classification": "Classification",
     "chooseClassification": "Classify absence",
-    "classificationReason": "Reason for classification",
+    "classificationReason": "Comment (optional)",
     "apply": "Apply",
     "student_cancelled": "Student cancellation – credited",
     "teacher_cancelled": "Teacher cancellation – not credited",
     "makeup_credited": "Makeup – credited",
-    "makeup_not_credited": "Makeup – already credited"
+    "makeup_not_credited": "Makeup – already credited",
+    "editTaughtTotal": "Correct lessons taught",
+    "taughtTotalHint": "Set the total directly, without a lesson date or reason. Existing calendar entries remain intact; new lessons continue to count automatically.",
+    "saveTaughtTotal": "Save taught lessons",
+    "invalidTaughtTotal": "Enter a whole number between 0 and 9999.",
+    "addAbsence": "Record a missed lesson",
+    "absenceHint": "For missed lessons with no existing calendar entry. Student cancellations count against the allowance; teacher absences do not.",
+    "absenceKind": "Who cancelled?",
+    "optionalComment": "Comment (optional)",
+    "invalidAbsenceDate": "Enter a valid date in DD.MM.YYYY format.",
+    "addAbsenceButton": "Add absence",
+    "save": "Save",
+    "delete": "Delete",
+    "confirmDeleteAbsence": "Delete this absence?"
   }
 }
