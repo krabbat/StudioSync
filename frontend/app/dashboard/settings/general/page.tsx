@@ -15,7 +15,7 @@ import Link from 'next/link'
 export default function GeneralSettingsPage() {
   const t = useTranslations('GeneralSettings')
     const { currentUser, setCurrentUser } = useUser()
-    const [activeTab, setActiveTab] = useState('profile')
+    const [activeTab, setActiveTab] = useState('appearance')
     const [loading, setLoading] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
     const [isImporting, setIsImporting] = useState(false)
@@ -30,8 +30,12 @@ export default function GeneralSettingsPage() {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search)
         const tab = params.get('tab')
-        if (tab) setActiveTab(tab)
-    }, [])
+        if (currentUser?.role === 'student') {
+            setActiveTab(tab && ['appearance', 'notifications', 'communication'].includes(tab) ? tab : 'appearance')
+        } else {
+            setActiveTab(tab || 'profile')
+        }
+    }, [currentUser?.role])
 
     const handleDetectTimezone = async () => {
         setGeoDetecting(true)
@@ -230,7 +234,7 @@ export default function GeneralSettingsPage() {
         { id: 'notifications', label: t('tabNotifications'), icon: Bell },
         { id: 'technical', label: t('tabTechnical'), icon: Server, roles: ['admin'] },
         { id: 'maintenance', label: t('tabMaintenance'), icon: Database, roles: ['admin'] },
-    ]
+    ].filter(tab => currentUser?.role !== 'student' || ['appearance', 'notifications', 'communication'].includes(tab.id))
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -575,7 +579,7 @@ export default function GeneralSettingsPage() {
                 {/* Main Content */}
                 <div className="flex-1 bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 shadow-sm">
                     {/* Profile Tab */}
-                    {activeTab === 'profile' && (
+                    {activeTab === 'profile' && currentUser?.role !== 'student' && (
                         <div className="max-w-2xl">
                             <h2 className="text-2xl font-black text-gray-900 mb-6">{t('profileSettings')}</h2>
 
@@ -731,7 +735,7 @@ export default function GeneralSettingsPage() {
                     )}
 
                     {/* Security Tab */}
-                    {activeTab === 'security' && (
+                    {activeTab === 'security' && currentUser?.role !== 'student' && (
                         <div className="max-w-2xl">
                             <h2 className="text-2xl font-black text-gray-900 mb-6">{t('securitySettings')}</h2>
                             <form onSubmit={async (e) => {

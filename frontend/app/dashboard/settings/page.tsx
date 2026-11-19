@@ -28,14 +28,14 @@ const SECTIONS = [
         description: tr('sectionAccountDescription'),
         icon: User,
         href: '/dashboard/settings/general/?tab=profile',
-        roles: ['admin', 'teacher', 'student', 'parent'],
+        roles: ['admin', 'teacher', 'parent'],
     },
     {
         title: tr('sectionSecurity'),
         description: tr('sectionSecurityDescription'),
         icon: ShieldAlert,
         href: '/dashboard/settings/general/?tab=security',
-        roles: ['admin', 'teacher', 'student', 'parent'],
+        roles: ['admin', 'teacher', 'parent'],
     },
     {
         title: tr('sectionStudio'),
@@ -112,7 +112,7 @@ const SECTIONS = [
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <header className="pt-8 pb-8">
                 <h1 className="text-3xl font-black text-gray-900 tracking-tight">{tr('settings')}</h1>
-                <p className="text-gray-500 mt-1 font-medium">{tr('manageYourAccountStudioAndIntegrations')}</p>
+                <p className="text-gray-500 mt-1 font-medium">{currentUser?.role === 'student' ? tr('systemSettingsDescription') : tr('manageYourAccountStudioAndIntegrations')}</p>
             </header>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

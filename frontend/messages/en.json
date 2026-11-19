@@ -92,7 +92,8 @@
     "roleAdmin": "Admin",
     "roleStudent": "Student",
     "studioManagement": "Studio Management",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "myAccount": "My Account"
   },
   "Students": {
     "saved": "Changes saved",
@@ -148,7 +149,8 @@
     "teachingAddress": "Lesson address",
     "streetAddress": "Street and house number",
     "postalCode": "Postal code",
-    "city": "City"
+    "city": "City",
+    "viewProfile": "View student profile"
   },
   "DashboardHeader": {
     "allMarkedRead": "All notifications marked as read",
@@ -357,7 +359,8 @@
     "sectionMaintenance": "Maintenance",
     "sectionMaintenanceDescription": "Export and import your full studio data for backup or migration",
     "settings": "Settings",
-    "manageYourAccountStudioAndIntegrations": "Manage your account, studio, and integrations."
+    "manageYourAccountStudioAndIntegrations": "Manage your account, studio, and integrations.",
+    "systemSettingsDescription": "Manage system, display and notification settings."
   },
   "NotificationsPage": {
     "typeWelcome": "Welcome",
@@ -1955,5 +1958,49 @@
     "cancel": "Cancel",
     "savePhoto": "Save Avatar",
     "zoom": "Zoom"
+  },
+  "MyAccount": {
+    "title": "My Account",
+    "description": "Your personal details, contract and lessons.",
+    "personal": "Personal",
+    "contract": "Contract",
+    "lessons": "Ongoing Lessons",
+    "saved": "Profile saved.",
+    "saveFailed": "Could not save profile.",
+    "photo": "Profile photo",
+    "changePhoto": "Change profile photo",
+    "removePhoto": "Remove profile photo",
+    "invalidPhoto": "JPG, PNG or WebP up to 5 MB only.",
+    "photoSaved": "Profile photo saved.",
+    "photoFailed": "Could not update photo.",
+    "photoRemoved": "Profile photo removed.",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "email": "Email address (login)",
+    "phone": "Phone number",
+    "instrument": "Primary instrument",
+    "bio": "About me",
+    "saving": "Saving …",
+    "save": "Save changes",
+    "adminManaged": "Additional personal details",
+    "adminManagedInfo": "These student records are currently maintained by the administrator.",
+    "birthDate": "Date of birth",
+    "street": "Street",
+    "postalCode": "Postal code",
+    "city": "City",
+    "emergencyContact": "Parent / emergency contact",
+    "emergencyPhone": "Parent / emergency phone",
+    "loading": "Loading student details …",
+    "detailError": "Could not load student details.",
+    "security": "Password and access",
+    "current_password": "Current password",
+    "new_password": "New password",
+    "confirm_password": "Confirm password",
+    "changePassword": "Change password",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordSaved": "Password changed.",
+    "passwordFailed": "Could not change password.",
+    "notImplemented": "This section will be added in a later phase. No contract or lesson data is shown yet.",
+    "studentOnly": "This area is intended for student accounts."
   }
 }

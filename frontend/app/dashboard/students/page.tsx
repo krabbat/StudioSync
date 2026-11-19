@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast'
 import {
     Loader2, UserPlus, Music,
     Link as LinkIcon, Edit, UserCog,
-    Search, Filter, ChevronRight,
+    Search, Filter, ChevronRight, Eye,
     GraduationCap, User, Calendar,
     MoreHorizontal, Mail, Phone,
     CheckCircle2, XCircle, AlertCircle,
@@ -352,8 +352,10 @@ export default function StudentsPage() {
                                                 size="icon"
                                                 onClick={() => router.push(`/dashboard/students/${student.id}`)}
                                                 className="text-gray-400 hover:text-primary rounded-xl"
+                                                aria-label={t('viewProfile')}
+                                                title={t('viewProfile')}
                                             >
-                                                <ChevronRight className="w-5 h-5" />
+                                                <Eye className="w-5 h-5" />
                                             </Button>
                                             {assignmentTeacher && currentUser?.role === 'admin' && (
                                                 <Button

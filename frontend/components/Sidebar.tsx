@@ -24,6 +24,7 @@ import {
     Settings,
     Building2,
     UserCog,
+    UserRound,
     Package,
     FileText,
     Music,
@@ -109,6 +110,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             title: t('overview'),
             items: [
                 { name: t('dashboard'), href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student'] },
+                { name: t('myAccount'), href: '/dashboard/my-account', icon: UserRound, roles: ['student'] },
                 { name: t('studio'), href: '/dashboard/studios', icon: Building2, roles: ['admin', 'teacher', 'student'] },
             ],
         },

@@ -92,7 +92,8 @@
     "roleAdmin": "Admin",
     "roleStudent": "Schüler",
     "studioManagement": "Studioverwaltung",
-    "closeMenu": "Menü schließen"
+    "closeMenu": "Menü schließen",
+    "myAccount": "Mein Konto"
   },
   "Students": {
     "saved": "Änderungen gespeichert",
@@ -148,7 +149,8 @@
     "teachingAddress": "Unterrichtsanschrift",
     "streetAddress": "Straße und Hausnummer",
     "postalCode": "Postleitzahl",
-    "city": "Ort"
+    "city": "Ort",
+    "viewProfile": "Schülerprofil ansehen"
   },
   "DashboardHeader": {
     "allMarkedRead": "Alle Benachrichtigungen als gelesen markiert",
@@ -357,7 +359,8 @@
     "sectionMaintenance": "Wartung",
     "sectionMaintenanceDescription": "Studiodaten für Sicherung oder Umzug exportieren und importieren",
     "settings": "Einstellungen",
-    "manageYourAccountStudioAndIntegrations": "Verwalte dein Konto, dein Studio und die Verknüpfungen."
+    "manageYourAccountStudioAndIntegrations": "Verwalte dein Konto, dein Studio und die Verknüpfungen.",
+    "systemSettingsDescription": "System-, Anzeige- und Benachrichtigungseinstellungen verwalten."
   },
   "NotificationsPage": {
     "typeWelcome": "Willkommen",
@@ -1955,5 +1958,49 @@
     "cancel": "Abbrechen",
     "savePhoto": "Foto übernehmen",
     "zoom": "Zoom"
+  },
+  "MyAccount": {
+    "title": "Mein Konto",
+    "description": "Deine persönlichen Daten, dein Vertrag und dein Unterricht.",
+    "personal": "Persönliches",
+    "contract": "Vertrag",
+    "lessons": "Laufender Unterricht",
+    "saved": "Profil gespeichert.",
+    "saveFailed": "Profil konnte nicht gespeichert werden.",
+    "photo": "Profilfoto",
+    "changePhoto": "Profilfoto ändern",
+    "removePhoto": "Profilfoto entfernen",
+    "invalidPhoto": "Nur JPG, PNG oder WebP bis 5 MB.",
+    "photoSaved": "Profilfoto gespeichert.",
+    "photoFailed": "Profilfoto konnte nicht geändert werden.",
+    "photoRemoved": "Profilfoto entfernt.",
+    "first_name": "Vorname",
+    "last_name": "Nachname",
+    "email": "E-Mail-Adresse (Anmeldung)",
+    "phone": "Telefonnummer",
+    "instrument": "Hauptinstrument",
+    "bio": "Über mich",
+    "saving": "Wird gespeichert …",
+    "save": "Änderungen speichern",
+    "adminManaged": "Weitere persönliche Angaben",
+    "adminManagedInfo": "Diese Schülerstammdaten werden derzeit ausschließlich von der Verwaltung bearbeitet.",
+    "birthDate": "Geburtsdatum",
+    "street": "Straße und Hausnummer",
+    "postalCode": "Postleitzahl",
+    "city": "Ort",
+    "emergencyContact": "Eltern-/Notfallkontakt",
+    "emergencyPhone": "Telefon Eltern-/Notfallkontakt",
+    "loading": "Schülerdaten werden geladen …",
+    "detailError": "Schülerdaten konnten nicht geladen werden.",
+    "security": "Passwort und Zugang",
+    "current_password": "Aktuelles Passwort",
+    "new_password": "Neues Passwort",
+    "confirm_password": "Passwort bestätigen",
+    "changePassword": "Passwort ändern",
+    "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+    "passwordSaved": "Passwort geändert.",
+    "passwordFailed": "Passwort konnte nicht geändert werden.",
+    "notImplemented": "Dieser Abschnitt wird in einer späteren Phase eingerichtet. Es werden noch keine Vertrags- oder Unterrichtsdaten angezeigt.",
+    "studentOnly": "Dieser Bereich ist ausschließlich für Schülerkonten."
   }
 }
