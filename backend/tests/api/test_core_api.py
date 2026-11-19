@@ -479,7 +479,7 @@ def test_new_student_password_activates_existing_linked_account(authenticated_cl
 
 @pytest.mark.api
 @pytest.mark.django_db
-def test_new_student_without_password_has_no_login_yet(authenticated_client):
+def test_new_student_without_password_has_no_login_yet(authenticated_client, studio):
     """An enrollment may be saved without enabling access immediately."""
     response = authenticated_client.post(
         "/api/students/",
@@ -523,7 +523,7 @@ def test_student_creation_rejects_password_mismatch_without_creating_account(
 @pytest.mark.api
 @pytest.mark.django_db
 def test_failed_student_profile_creation_rolls_back_user(
-    authenticated_client, monkeypatch,
+    authenticated_client, studio, monkeypatch,
 ):
     """A server-side error during student insertion must not leave an orphan User."""
     from apps.core.models import User

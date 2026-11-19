@@ -105,24 +105,27 @@ def student(db, studio, teacher, student_user):
 
 
 @pytest.fixture
-def authenticated_client(api_client, admin_user):
-    """Return an API client authenticated as admin user."""
-    api_client.force_authenticate(user=admin_user)
-    return api_client
+def authenticated_client(admin_user):
+    """An independent admin client: authentication must not leak across roles."""
+    client = APIClient()
+    client.force_authenticate(user=admin_user)
+    return client
 
 
 @pytest.fixture
-def teacher_authenticated_client(api_client, teacher_user):
-    """Return an API client authenticated as teacher user."""
-    api_client.force_authenticate(user=teacher_user)
-    return api_client
+def teacher_authenticated_client(teacher_user):
+    """An independent teacher client."""
+    client = APIClient()
+    client.force_authenticate(user=teacher_user)
+    return client
 
 
 @pytest.fixture
-def student_authenticated_client(api_client, student_user):
-    """Return an API client authenticated as student user."""
-    api_client.force_authenticate(user=student_user)
-    return api_client
+def student_authenticated_client(student_user):
+    """An independent student client."""
+    client = APIClient()
+    client.force_authenticate(user=student_user)
+    return client
 
 
 @pytest.fixture
