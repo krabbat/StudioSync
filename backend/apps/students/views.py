@@ -6,12 +6,13 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.core.models import Family, Student, Teacher
+from apps.core.models import Family, Student, Teacher, TeachingContract
 from apps.core.tenancy import studio_for_request, studios_for_request
 from apps.students.serializers import (
     StudentCreateUpdateSerializer,
     StudentDetailSerializer,
     StudentListSerializer,
+    TeachingContractSerializer,
 )
 from apps.students.serializers_family import FamilySerializer
 
@@ -101,6 +102,37 @@ class StudentViewSet(viewsets.ModelViewSet):
             serializer = StudentListSerializer(instance, context={"request": request})
             return Response(serializer.data)
         return super().retrieve(request, *args, **kwargs)
+
+
+    @action(detail=True, methods=["get", "put"], url_path="contract")
+    def contract(self, request, pk=None):
+        """Students see only their own contract; only admins can create/edit it."""
+        from rest_framework.exceptions import PermissionDenied
+
+        student = self.get_object()
+        actor = request.user
+        is_admin = actor.role == "admin"
+        is_owner = actor.role == "student" and student.user_id == actor.id
+
+        if not (is_admin or is_owner):
+            raise PermissionDenied("Keine Berechtigung zum Zugriff auf diesen Vertrag.")
+
+        contract = TeachingContract.objects.filter(student=student).first()
+        if request.method == "GET":
+            return Response({
+                "contract": (
+                    TeachingContractSerializer(contract).data if contract else None
+                )
+            })
+
+        if not is_admin:
+            raise PermissionDenied("Vertragsdaten dürfen nur Administratoren ändern.")
+
+        serializer = TeachingContractSerializer(instance=contract, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            serializer.save(student=student)
+        return Response({"contract": serializer.data})
 
     @action(detail=False, methods=["get"], url_path="instruments")
     def instruments(self, request):

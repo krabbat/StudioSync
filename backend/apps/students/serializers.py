@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from rest_framework import serializers
 
-from apps.core.models import Student, User
+from apps.core.models import Student, TeachingContract, User
 from apps.core.tenancy import studio_for_request
 
 
@@ -252,3 +252,26 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
         user.save()
 
         return super().update(instance, validated_data)
+
+
+class TeachingContractSerializer(serializers.ModelSerializer):
+    """Tuition-specific contract fields; student association comes from the URL."""
+
+    class Meta:
+        model = TeachingContract
+        fields = [
+            "id", "contract_start_date", "contract_year_start",
+            "lesson_minutes", "monthly_amount", "price_kind",
+            "special_agreements",
+        ]
+        read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        start = attrs.get("contract_start_date")
+        year_start = attrs.get("contract_year_start")
+        if start and year_start and year_start < start:
+            raise serializers.ValidationError({
+                "contract_year_start": "Der Beginn des Vertragsjahres darf nicht vor dem Vertragsbeginn liegen."
+            })
+        return attrs

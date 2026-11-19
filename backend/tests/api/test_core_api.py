@@ -638,3 +638,92 @@ def test_student_cannot_delete_own_profile(student_authenticated_client, student
     response = student_authenticated_client.delete(f"/api/students/{student.pk}/")
     assert response.status_code == status.HTTP_403_FORBIDDEN
     student.refresh_from_db()
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_contract_not_present_until_admin_creates_it(authenticated_client, student):
+    response = authenticated_client.get(f"/api/students/{student.pk}/contract/")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data == {"contract": None}
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_admin_creates_contract_and_student_sees_own_contract(
+    authenticated_client, student_authenticated_client, student
+):
+    url = f"/api/students/{student.pk}/contract/"
+    payload = {
+        "contract_start_date": "2026-11-01",
+        "contract_year_start": "2026-11-01",
+        "lesson_minutes": 45,
+        "monthly_amount": "135.00",
+        "price_kind": "standard",
+        "special_agreements": "Vertraglich vereinbart.",
+    }
+    created = authenticated_client.put(url, payload, format="json")
+    assert created.status_code == status.HTTP_200_OK, created.data
+    assert created.data["contract"]["monthly_amount"] == "135.00"
+    viewed = student_authenticated_client.get(url)
+    assert viewed.status_code == status.HTTP_200_OK
+    assert viewed.data["contract"]["special_agreements"] == "Vertraglich vereinbart."
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_may_not_change_own_contract(student_authenticated_client, student):
+    response = student_authenticated_client.put(
+        f"/api/students/{student.pk}/contract/",
+        {
+            "contract_start_date": "2026-11-01",
+            "contract_year_start": "2026-11-01",
+            "lesson_minutes": 30,
+            "monthly_amount": "1.00",
+            "price_kind": "individual",
+            "special_agreements": "",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_cannot_read_another_contract(student_authenticated_client, student, studio):
+    from apps.core.models import TeachingContract, User
+
+    other = User.objects.create_user(
+        email="contract-other@example.test", role="student", password="testpass123"
+    )
+    other_student, _ = Student.objects.get_or_create(user=other, defaults={"studio": studio})
+    TeachingContract.objects.create(
+        student=other_student,
+        contract_start_date="2026-11-01",
+        contract_year_start="2026-11-01",
+        lesson_minutes=45,
+        monthly_amount="135.00",
+        price_kind="standard",
+    )
+    response = student_authenticated_client.get(
+        f"/api/students/{other_student.pk}/contract/"
+    )
+    assert response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND)
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_contract_rejects_invalid_minutes_and_price(authenticated_client, student):
+    url = f"/api/students/{student.pk}/contract/"
+    response = authenticated_client.put(
+        url,
+        {
+            "contract_start_date": "2026-11-01",
+            "contract_year_start": "2026-11-01",
+            "lesson_minutes": 50,
+            "monthly_amount": "-5.00",
+            "price_kind": "standard",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST

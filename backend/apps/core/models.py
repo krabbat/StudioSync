@@ -3,8 +3,10 @@ Core models -User, Studio, Teacher, Student, Family
 """
 
 import uuid
+from decimal import Decimal
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -420,6 +422,41 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.instrument}"
+
+
+class TeachingContract(models.Model):
+    """Current individual tuition contract; independent of Stripe subscriptions."""
+
+    PRICE_KIND_CHOICES = [
+        ("standard", "Regulärer Monatsbeitrag"),
+        ("individual", "Individuell vereinbarter Monatsbeitrag"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.OneToOneField(
+        Student, on_delete=models.CASCADE, related_name="teaching_contract"
+    )
+    contract_start_date = models.DateField()
+    contract_year_start = models.DateField()
+    lesson_minutes = models.PositiveSmallIntegerField(
+        choices=[(30, "30 Minuten"), (45, "45 Minuten"), (60, "60 Minuten")]
+    )
+    monthly_amount = models.DecimalField(
+        max_digits=8, decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    price_kind = models.CharField(
+        max_length=16, choices=PRICE_KIND_CHOICES, default="standard"
+    )
+    special_agreements = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "teaching_contracts"
+
+    def __str__(self):
+        return f"Unterrichtsvertrag {self.student.user.get_full_name()}"
 
 
 class SignedDocument(models.Model):
