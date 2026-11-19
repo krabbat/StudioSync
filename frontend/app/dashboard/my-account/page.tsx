@@ -11,6 +11,7 @@ import { proxyFileUrl } from '@/lib/utils'
 import StudentPersonalFields, { emptyStudentPersonal, type StudentPersonalData } from '@/components/StudentPersonalFields'
 import TeachingContractCard from '@/components/TeachingContractCard'
 import StudentAccountTabs, { type AccountSection } from '@/components/StudentAccountTabs'
+import StudentLessonAccountCard from '@/components/StudentLessonAccountCard'
 
 type Personal = StudentPersonalData & { bio: string; instrument: string }
 
@@ -230,11 +231,8 @@ export default function MyAccountPage() {
             ) : section === 'contract' ? (
                 <TeachingContractCard studentId={studentId} readOnly />
             ) : (
-                <section className="rounded-2xl border border-gray-100 bg-white p-8 space-y-3">
-                    <h2 className="text-xl font-bold">{t('lessons')}</h2>
-                    <p className="text-gray-500">{t('notImplemented')}</p>
-                </section>
-            )}
+                <StudentLessonAccountCard studentId={studentId} readOnly />
+            )
             {cropImage && <ImageCropper imageSrc={cropImage} onCropComplete={savePhoto} onCancel={() => setCropImage(null)} />}
         </div>
     )

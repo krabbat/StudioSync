@@ -12,6 +12,7 @@ import ImageCropper from '@/components/ImageCropper'
 import StudentPersonalFields from '@/components/StudentPersonalFields'
 import TeachingContractCard from '@/components/TeachingContractCard'
 import StudentAccountTabs, { type AccountSection } from '@/components/StudentAccountTabs'
+import StudentLessonAccountCard from '@/components/StudentLessonAccountCard'
 import { useUser } from '@/contexts/UserContext'
 
 export default function EditStudentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -359,11 +360,8 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                 ) : section === 'contract' && currentUser?.role === 'admin' ? (
                     <TeachingContractCard studentId={studentId} readOnly={false} />
                 ) : (
-                    <section className="rounded-2xl border border-border bg-card p-8 space-y-3">
-                        <h2 className="text-xl font-bold text-card-foreground">{te('ongoingLessons')}</h2>
-                        <p className="text-muted-foreground">{te('notImplemented')}</p>
-                    </section>
-                )}
+                    <StudentLessonAccountCard studentId={studentId} readOnly={currentUser?.role !== 'admin'} />
+                )
             </div>
             {cropImage && (
                 <ImageCropper imageSrc={cropImage} onCropComplete={handlePhotoCrop} onCancel={() => setCropImage(null)} />
