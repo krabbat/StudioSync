@@ -63,6 +63,12 @@ export default function TeachingContractCard({ studentId, readOnly }: {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+    function showError(message: string) {
+        setFeedback({ type: 'error', message })
+        toast.error(message)
+    }
 
     useEffect(() => {
         if (!studentId) {
@@ -74,6 +80,7 @@ export default function TeachingContractCard({ studentId, readOnly }: {
         let active = true
         setLoading(true)
         setError(false)
+        setFeedback(null)
         api.get('/students/' + encodeURIComponent(studentId) + '/contract/')
             .then(response => {
                 if (!active) return
@@ -95,15 +102,15 @@ export default function TeachingContractCard({ studentId, readOnly }: {
         const amount = parseEuros(form.monthly_amount)
 
         if (!start || !yearStart) {
-            toast.error(t('invalidDate'))
+            showError(t('invalidDate'))
             return
         }
         if (!form.lesson_minutes) {
-            toast.error(t('missingDuration'))
+            showError(t('missingDuration'))
             return
         }
         if (amount === null) {
-            toast.error(t('invalidAmount'))
+            showError(t('invalidAmount'))
             return
         }
 
@@ -120,122 +127,142 @@ export default function TeachingContractCard({ studentId, readOnly }: {
             const saved = response.data.contract as Contract
             setContract(saved)
             setForm(toEditor(saved))
+            setFeedback({ type: 'success', message: t('saved') })
             toast.success(t('saved'))
         } catch (error: any) {
             const data = error.response?.data
             const details = data && typeof data === 'object'
                 ? Object.values(data).flat().filter(x => typeof x === 'string').join(' ')
                 : ''
-            toast.error(details || t('saveFailed'))
+            showError(details || t('saveFailed'))
         } finally {
             setSaving(false)
         }
     }
 
-    const inputClass = 'block w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary'
-    const field = (label: string, value: string) => (
-        <div className="space-y-1">
-            <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-            <dd className="font-semibold text-card-foreground">{value || '–'}</dd>
-        </div>
-    )
+    const inputClass = 'block w-full rounded-xl border border-input px-4 py-3 text-foreground outline-none ' +
+        (readOnly
+            ? 'bg-muted/40 cursor-default'
+            : 'bg-background focus:border-primary focus:ring-1 focus:ring-primary')
+
+    const editable = !readOnly
 
     return (
         <section className="rounded-2xl border border-border bg-card text-card-foreground p-6 sm:p-8 space-y-5">
-            <div className="space-y-1">
+            <header className="space-y-1">
                 <h2 className="text-xl font-bold text-card-foreground">{t('heading')}</h2>
                 <p className="text-sm text-muted-foreground">{readOnly ? t('studentHint') : t('adminHint')}</p>
-            </div>
+            </header>
 
-            {loading ? <p className="text-sm text-muted-foreground">{t('loading')}</p> :
-                error ? <p role="alert" className="text-sm text-red-600">{t('loadFailed')}</p> :
-                readOnly ? (
-                    contract ? (
-                        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            {field(t('contractStart'), toGermanDate(contract.contract_start_date))}
-                            {field(t('contractYearStart'), toGermanDate(contract.contract_year_start))}
-                            {field(t('lessonMinutes'), t('minutes', { count: contract.lesson_minutes }))}
-                            {field(t('priceKind'), t(contract.price_kind))}
-                            {field(t('monthlyAmount'), new Intl.NumberFormat(
-                                locale === 'de' ? 'de-DE' : 'en-US',
-                                { style: 'currency', currency: 'EUR' }
-                            ).format(Number(contract.monthly_amount)))}
-                            <div className="sm:col-span-2 space-y-1">
-                                <dt className="text-sm font-medium text-muted-foreground">{t('specialAgreements')}</dt>
-                                <dd className="whitespace-pre-wrap break-words text-card-foreground">{contract.special_agreements || '–'}</dd>
-                            </div>
-                        </dl>
-                    ) : <p className="text-sm text-muted-foreground">{t('noContract')}</p>
-                ) : (
-                    <form onSubmit={save} className="space-y-5">
-                        {!contract && <p className="text-sm text-muted-foreground">{t('noContractAdmin')}</p>}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <label className="space-y-1 text-sm font-medium text-card-foreground">
-                                {t('contractStart')}
-                                <input className={inputClass} type="text" inputMode="numeric"
-                                    placeholder="TT.MM.JJJJ" required
-                                    value={form.contract_start_date}
-                                    onChange={e => setForm(prev => ({ ...prev, contract_start_date: e.target.value }))}
-                                />
-                            </label>
-                            <label className="space-y-1 text-sm font-medium text-card-foreground">
-                                {t('contractYearStart')}
-                                <input className={inputClass} type="text" inputMode="numeric"
-                                    placeholder="TT.MM.JJJJ" required
-                                    value={form.contract_year_start}
-                                    onChange={e => setForm(prev => ({ ...prev, contract_year_start: e.target.value }))}
-                                />
-                            </label>
-                            <label className="space-y-1 text-sm font-medium text-card-foreground">
-                                {t('lessonMinutes')}
-                                <select className={inputClass} required value={form.lesson_minutes}
-                                    onChange={e => setForm(prev => ({
-                                        ...prev, lesson_minutes: e.target.value as EditorState['lesson_minutes']
-                                    }))}>
-                                    <option value="">{t('selectDuration')}</option>
-                                    {([30, 45, 60] as const).map(minutes => (
-                                        <option key={minutes} value={String(minutes)}>
-                                            {t('minutes', { count: minutes })}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="space-y-1 text-sm font-medium text-card-foreground">
-                                {t('priceKind')}
-                                <select className={inputClass} value={form.price_kind}
-                                    onChange={e => setForm(prev => ({
-                                        ...prev, price_kind: e.target.value as EditorState['price_kind']
-                                    }))}>
-                                    <option value="standard">{t('standard')}</option>
-                                    <option value="individual">{t('individual')}</option>
-                                </select>
-                            </label>
-                        </div>
+            {loading ? (
+                <p className="text-sm text-muted-foreground">{t('loading')}</p>
+            ) : error ? (
+                <p role="alert" className="text-sm text-red-600">{t('loadFailed')}</p>
+            ) : readOnly && !contract ? (
+                <p className="text-sm text-muted-foreground">{t('noContract')}</p>
+            ) : (
+                <form onSubmit={save} onChangeCapture={() => setFeedback(null)} className="space-y-5">
+                    {editable && !contract &&
+                        <p className="text-sm text-muted-foreground">{t('noContractAdmin')}</p>}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <label className="block space-y-1 text-sm font-medium text-card-foreground">
-                            {t('monthlyAmount')}
-                            <div className="relative">
-                                <input className={inputClass + ' pr-14'} required type="text"
-                                    inputMode="decimal" placeholder="135,00"
-                                    value={form.monthly_amount}
-                                    onChange={e => setForm(prev => ({ ...prev, monthly_amount: e.target.value }))}
-                                />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true">EUR</span>
-                            </div>
-                            <span className="block text-xs text-gray-500">{t('manualPriceHint')}</span>
-                        </label>
-                        <label className="block space-y-1 text-sm font-medium text-card-foreground">
-                            {t('specialAgreements')}
-                            <textarea className={inputClass} rows={4} value={form.special_agreements}
-                                onChange={e => setForm(prev => ({ ...prev, special_agreements: e.target.value }))}
+                            {t('contractStart')}
+                            <input className={inputClass} type="text" inputMode="numeric"
+                                placeholder="TT.MM.JJJJ" pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}"
+                                required={editable} readOnly={readOnly}
+                                value={form.contract_start_date}
+                                onChange={event => setForm(prev => ({
+                                    ...prev, contract_start_date: event.target.value
+                                }))}
                             />
                         </label>
-                        <button type="submit" disabled={saving}
-                            className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">
-                            {saving ? t('saving') : t('save')}
-                        </button>
-                    </form>
-                )
-            }
+
+                        <label className="block space-y-1 text-sm font-medium text-card-foreground">
+                            {t('contractYearStart')}
+                            <input className={inputClass} type="text" inputMode="numeric"
+                                placeholder="TT.MM.JJJJ" pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}"
+                                required={editable} readOnly={readOnly}
+                                value={form.contract_year_start}
+                                onChange={event => setForm(prev => ({
+                                    ...prev, contract_year_start: event.target.value
+                                }))}
+                            />
+                        </label>
+
+                        <label className="block space-y-1 text-sm font-medium text-card-foreground">
+                            {t('lessonMinutes')}
+                            <select className={inputClass} required={editable} disabled={readOnly}
+                                value={form.lesson_minutes}
+                                onChange={event => setForm(prev => ({
+                                    ...prev, lesson_minutes: event.target.value as EditorState['lesson_minutes']
+                                }))}>
+                                <option value="">{t('selectDuration')}</option>
+                                {([30, 45, 60] as const).map(minutes => (
+                                    <option key={minutes} value={String(minutes)}>
+                                        {t('minutes', { count: minutes })}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="block space-y-1 text-sm font-medium text-card-foreground">
+                            {t('priceKind')}
+                            <select className={inputClass} disabled={readOnly}
+                                value={form.price_kind}
+                                onChange={event => setForm(prev => ({
+                                    ...prev, price_kind: event.target.value as EditorState['price_kind']
+                                }))}>
+                                <option value="standard">{t('standard')}</option>
+                                <option value="individual">{t('individual')}</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <label className="block space-y-1 text-sm font-medium text-card-foreground">
+                        {t('monthlyAmount')}
+                        <div className="relative">
+                            <input className={inputClass + ' pr-14'} required={editable}
+                                type="text" inputMode="decimal" placeholder="135,00"
+                                readOnly={readOnly}
+                                value={form.monthly_amount}
+                                onChange={event => setForm(prev => ({
+                                    ...prev, monthly_amount: event.target.value
+                                }))}
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+                                aria-hidden="true">EUR</span>
+                        </div>
+                        {editable && <span className="block text-xs text-muted-foreground">{t('manualPriceHint')}</span>}
+                    </label>
+
+                    <label className="block space-y-1 text-sm font-medium text-card-foreground">
+                        {t('specialAgreements')}
+                        <textarea className={inputClass} rows={4} readOnly={readOnly}
+                            value={form.special_agreements}
+                            onChange={event => setForm(prev => ({
+                                ...prev, special_agreements: event.target.value
+                            }))}
+                        />
+                    </label>
+
+                    {editable && (
+                        <div className="flex flex-col items-start gap-3">
+                            <button type="submit" disabled={saving}
+                                className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">
+                                {saving ? t('saving') : t('save')}
+                            </button>
+                            {feedback && (
+                                <p role="status" aria-live="polite" className="text-sm font-semibold"
+                                    style={{ color: feedback.type === 'success'
+                                        ? 'hsl(var(--success))' : 'hsl(var(--destructive))' }}>
+                                    {feedback.message}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </form>
+            )}
         </section>
     )
 }
