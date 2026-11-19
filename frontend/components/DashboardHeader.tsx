@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { createElement, useState, useEffect, useRef, type CSSProperties } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -320,10 +320,9 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             className="hidden md:flex p-2 rounded-lg w-9 h-9 items-center justify-center"
             style={{ color: H.muted }}
           >
-            {/* @ts-ignore */}
-            <google-cast-launcher
-              style={{ width: "20px", height: "20px", opacity: 0.5 }}
-            ></google-cast-launcher>
+            {createElement("google-cast-launcher", {
+              style: { width: "20px", height: "20px", opacity: 0.5 },
+            })}
           </div>
 
           <Button
@@ -356,7 +355,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
               {currentUser?.avatar ? (
                 <div
                   className="w-8 h-8 rounded-full overflow-hidden ring-2"
-                  style={{ ringColor: H.border }}
+                  style={{ "--tw-ring-color": H.border } as CSSProperties}
                 >
                   <img
                     src={currentUser.avatar}

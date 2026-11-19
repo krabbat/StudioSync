@@ -76,8 +76,6 @@ export const MessagingCenter = () => {
                         filters={filters}
                         sort={sort}
                         options={options}
-                        // Using custom List component to keep the container styling
-                        List={(listProps) => <div className="h-full">{listProps.children}</div>}
                     />
                 </div>
             </div>
