@@ -2040,5 +2040,32 @@
     "saving": "Wird gespeichert …",
     "save": "Änderungen speichern",
     "unauthorized": "Nur die Verwaltung darf das Schülerprofil bearbeiten."
+  },
+  "TeachingContract": {
+    "heading": "Vertrag",
+    "studentHint": "Deine vertraglich vereinbarten Unterrichtsbedingungen.",
+    "adminHint": "Vertragsdaten können ausschließlich von Administratoren bearbeitet werden.",
+    "loading": "Vertragsdaten werden geladen …",
+    "loadFailed": "Vertragsdaten konnten nicht geladen werden.",
+    "noContract": "Vertragsdaten noch nicht hinterlegt.",
+    "noContractAdmin": "Für diesen Schüler sind noch keine Vertragsdaten hinterlegt. Bitte die vereinbarten Angaben eintragen.",
+    "contractStart": "Vertragsbeginn",
+    "contractYearStart": "Beginn des Vertragsjahres",
+    "lessonMinutes": "Unterrichtsdauer",
+    "minutes": "{count} Minuten",
+    "selectDuration": "Unterrichtsdauer wählen",
+    "priceKind": "Beitragsart",
+    "standard": "Regulärer Monatsbeitrag",
+    "individual": "Individuell vereinbarter Monatsbeitrag",
+    "monthlyAmount": "Monatsbeitrag",
+    "manualPriceHint": "Betrag in Euro eingeben; es wird kein Preis automatisch vorgegeben.",
+    "specialAgreements": "Sondervereinbarungen",
+    "invalidDate": "Bitte gültige Daten im Format TT.MM.JJJJ eingeben.",
+    "missingDuration": "Bitte eine Unterrichtsdauer auswählen.",
+    "invalidAmount": "Bitte einen gültigen Monatsbeitrag größer als 0 eingeben.",
+    "save": "Vertrag speichern",
+    "saving": "Wird gespeichert …",
+    "saved": "Vertragsdaten gespeichert.",
+    "saveFailed": "Vertragsdaten konnten nicht gespeichert werden."
   }
 }

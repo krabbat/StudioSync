@@ -2040,5 +2040,32 @@
     "saving": "Saving …",
     "save": "Save changes",
     "unauthorized": "Only staff members may edit student profiles."
+  },
+  "TeachingContract": {
+    "heading": "Contract",
+    "studentHint": "Your agreed tuition contract terms.",
+    "adminHint": "Only administrators can change contract details.",
+    "loading": "Loading contract …",
+    "loadFailed": "Could not load contract details.",
+    "noContract": "Contract details have not been entered yet.",
+    "noContractAdmin": "No contract has been entered for this student. Enter the agreed terms.",
+    "contractStart": "Contract start",
+    "contractYearStart": "Contract year start",
+    "lessonMinutes": "Lesson duration",
+    "minutes": "{count} minutes",
+    "selectDuration": "Select lesson duration",
+    "priceKind": "Price type",
+    "standard": "Regular monthly fee",
+    "individual": "Individually agreed monthly fee",
+    "monthlyAmount": "Monthly fee",
+    "manualPriceHint": "Enter amount in euros. No price is assigned automatically.",
+    "specialAgreements": "Special agreements",
+    "invalidDate": "Enter valid dates in DD.MM.YYYY format.",
+    "missingDuration": "Please select a lesson duration.",
+    "invalidAmount": "Enter a valid monthly fee greater than zero.",
+    "save": "Save contract",
+    "saving": "Saving …",
+    "saved": "Contract saved.",
+    "saveFailed": "Could not save contract."
   }
 }

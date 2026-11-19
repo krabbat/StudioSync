@@ -10,6 +10,7 @@ import { proxyFileUrl } from '@/lib/utils'
 import { useTeachers } from '@/hooks/useDashboardData'
 import ImageCropper from '@/components/ImageCropper'
 import StudentPersonalFields from '@/components/StudentPersonalFields'
+import TeachingContractCard from '@/components/TeachingContractCard'
 import { useUser } from '@/contexts/UserContext'
 
 export default function EditStudentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -350,6 +351,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                         </div>
                     </form>
                 </div>
+                {currentUser?.role === 'admin' && (
+                    <TeachingContractCard studentId={studentId} readOnly={false} />
+                )}
             </div>
             {cropImage && (
                 <ImageCropper imageSrc={cropImage} onCropComplete={handlePhotoCrop} onCancel={() => setCropImage(null)} />

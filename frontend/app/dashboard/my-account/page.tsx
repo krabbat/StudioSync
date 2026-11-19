@@ -9,6 +9,7 @@ import api from '@/services/api'
 import ImageCropper from '@/components/ImageCropper'
 import { proxyFileUrl } from '@/lib/utils'
 import StudentPersonalFields, { emptyStudentPersonal, type StudentPersonalData } from '@/components/StudentPersonalFields'
+import TeachingContractCard from '@/components/TeachingContractCard'
 
 type Section = 'personal' | 'contract' | 'lessons'
 type Personal = StudentPersonalData & { bio: string; instrument: string }
@@ -242,9 +243,11 @@ export default function MyAccountPage() {
                         </form>
                     </section>
                 </div>
+            ) : section === 'contract' ? (
+                <TeachingContractCard studentId={studentId} readOnly />
             ) : (
                 <section className="rounded-2xl border border-gray-100 bg-white p-8 space-y-3">
-                    <h2 className="text-xl font-bold">{section === 'contract' ? t('contract') : t('lessons')}</h2>
+                    <h2 className="text-xl font-bold">{t('lessons')}</h2>
                     <p className="text-gray-500">{t('notImplemented')}</p>
                 </section>
             )}
