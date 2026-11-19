@@ -2,21 +2,26 @@
 
 import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
 import { useTranslations } from 'next-intl'
-import { UserRound, FileText, CalendarDays, Eye, Camera, KeyRound } from 'lucide-react'
+import { UserRound, FileText, CalendarDays, Camera, KeyRound } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useUser, type User } from '@/contexts/UserContext'
 import api from '@/services/api'
 import ImageCropper from '@/components/ImageCropper'
 import { proxyFileUrl } from '@/lib/utils'
+import StudentPersonalFields, { emptyStudentPersonal, type StudentPersonalData } from '@/components/StudentPersonalFields'
 
 type Section = 'personal' | 'contract' | 'lessons'
-type Personal = { first_name: string; last_name: string; phone: string; bio: string; instrument: string }
-type StudentDetails = { birth_date?: string; address_line1?: string; postal_code?: string; city?: string; emergency_contact_name?: string; emergency_contact_phone?: string }
+type Personal = StudentPersonalData & { bio: string; instrument: string }
 
 function userFields(user: User | null): Personal {
     return {
-        first_name: user?.first_name || '', last_name: user?.last_name || '',
-        phone: user?.phone || '', bio: user?.bio || '', instrument: user?.instrument || ''
+        ...emptyStudentPersonal,
+        first_name: user?.first_name || '',
+        last_name: user?.last_name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        bio: user?.bio || '',
+        instrument: user?.instrument || '',
     }
 }
 
@@ -25,38 +30,75 @@ export default function MyAccountPage() {
     const { currentUser, setCurrentUser } = useUser()
     const [section, setSection] = useState<Section>('personal')
     const [personal, setPersonal] = useState<Personal>(() => userFields(currentUser))
-    const [student, setStudent] = useState<StudentDetails | null>(null)
+    const [studentId, setStudentId] = useState('')
+    const [ready, setReady] = useState(false)
     const [fetchError, setFetchError] = useState(false)
     const [busy, setBusy] = useState(false)
     const [photoBusy, setPhotoBusy] = useState(false)
     const [passwordBusy, setPasswordBusy] = useState(false)
     const [cropImage, setCropImage] = useState<string | null>(null)
-    const studentId = currentUser?.student_profile?.id
-
     useEffect(() => {
-        if (currentUser) setPersonal(userFields(currentUser))
-    }, [currentUser?.id])
-
-    useEffect(() => {
-        if (currentUser?.role !== 'student') return
-        if (!studentId) { setFetchError(true); return }
-        let mounted = true
+        if (currentUser?.role !== 'student' || !currentUser.id) return
+        let alive = true
+        setReady(false)
         setFetchError(false)
-        api.get('/students/' + encodeURIComponent(studentId) + '/')
-            .then(r => { if (mounted) setStudent(r.data) })
-            .catch(() => { if (mounted) setFetchError(true) })
-        return () => { mounted = false }
-    }, [currentUser?.role, studentId])
+        // auth/me omits student_profile; fetch the complete account first.
+        api.get('/core/users/me/').then(async response => {
+            const me = response.data
+            const id = me.student_profile?.id
+            if (!id) throw new Error('Student profile missing')
+            const result = await api.get('/students/' + encodeURIComponent(id) + '/')
+            if (!alive) return
+            const student = result.data
+            setStudentId(id)
+            setCurrentUser(me)
+            setPersonal({
+                ...userFields(me),
+                birth_date: student.birth_date || '',
+                address_line1: student.address_line1 || '',
+                postal_code: student.postal_code || '',
+                city: student.city || '',
+                emergency_contact_name: student.emergency_contact_name || '',
+                emergency_contact_phone: student.emergency_contact_phone || '',
+                instrument: me.instrument || student.instrument || '',
+            })
+            setReady(true)
+        }).catch(() => { if (alive) setFetchError(true) })
+        return () => { alive = false }
+    }, [currentUser?.id, currentUser?.role, setCurrentUser])
 
     async function savePersonal(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
+        if (!studentId) return
         setBusy(true)
         try {
-            const r = await api.patch('/core/users/me/', personal)
-            setCurrentUser(r.data)
+            await api.patch('/students/' + encodeURIComponent(studentId) + '/', {
+                first_name: personal.first_name,
+                last_name: personal.last_name,
+                email: personal.email,
+                phone: personal.phone,
+                birth_date: personal.birth_date || null,
+                address_line1: personal.address_line1,
+                postal_code: personal.postal_code,
+                city: personal.city,
+                emergency_contact_name: personal.emergency_contact_name,
+                emergency_contact_phone: personal.emergency_contact_phone,
+            })
+            try {
+                await api.patch('/core/users/me/', { bio: personal.bio, instrument: personal.instrument })
+            } catch {
+                toast.error(t('extraSaveFailed'))
+                return
+            }
+            const response = await api.get('/core/users/me/')
+            setCurrentUser(response.data)
             toast.success(t('saved'))
-        } catch { toast.error(t('saveFailed')) }
-        finally { setBusy(false) }
+        } catch (error: any) {
+            const message = error.response?.data?.email?.[0] || error.response?.data?.detail || t('saveFailed')
+            toast.error(String(message))
+        } finally {
+            setBusy(false)
+        }
     }
 
     function choosePhoto(e: ChangeEvent<HTMLInputElement>) {
@@ -123,15 +165,6 @@ export default function MyAccountPage() {
         { id: 'lessons' as const, label: t('lessons'), icon: CalendarDays }
     ]
     const photo = proxyFileUrl(currentUser.avatar || null)
-    const fields = [
-        { label: t('birthDate'), value: student?.birth_date },
-        { label: t('street'), value: student?.address_line1 },
-        { label: t('postalCode'), value: student?.postal_code },
-        { label: t('city'), value: student?.city },
-        { label: t('emergencyContact'), value: student?.emergency_contact_name },
-        { label: t('emergencyPhone'), value: student?.emergency_contact_phone }
-    ]
-
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-12">
             <header>
@@ -169,46 +202,29 @@ export default function MyAccountPage() {
                                     className="block text-sm text-gray-500 underline">{t('removePhoto')}</button>}
                             </div>
                         </div>
-                        <form onSubmit={savePersonal} className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {(['first_name', 'last_name'] as const).map(key =>
-                                    <label key={key} className="block space-y-1 text-sm font-medium">{t(key)}
-                                        <input required value={personal[key]} onChange={e => setPersonal(prev => ({ ...prev, [key]: e.target.value }))}
-                                            className="block w-full rounded-xl border border-gray-200 px-4 py-3" />
-                                    </label>
-                                )}
-                            </div>
-                            <label className="block space-y-1 text-sm font-medium">{t('email')}
-                                <input type="email" disabled value={currentUser.email} className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-500" />
-                            </label>
-                            <label className="block space-y-1 text-sm font-medium">{t('phone')}
-                                <input type="tel" value={personal.phone} onChange={e => setPersonal(prev => ({ ...prev, phone: e.target.value }))}
-                                    className="block w-full rounded-xl border border-gray-200 px-4 py-3" />
-                            </label>
-                            <label className="block space-y-1 text-sm font-medium">{t('instrument')}
-                                <input value={personal.instrument} onChange={e => setPersonal(prev => ({ ...prev, instrument: e.target.value }))}
-                                    className="block w-full rounded-xl border border-gray-200 px-4 py-3" />
-                            </label>
-                            <label className="block space-y-1 text-sm font-medium">{t('bio')}
-                                <textarea rows={3} value={personal.bio} onChange={e => setPersonal(prev => ({ ...prev, bio: e.target.value }))}
-                                    className="block w-full rounded-xl border border-gray-200 px-4 py-3" />
-                            </label>
-                            <button type="submit" disabled={busy} className="rounded-xl bg-primary px-5 py-3 font-bold text-white disabled:opacity-50">
-                                {busy ? t('saving') : t('save')}
-                            </button>
-                        </form>
-                    </section>
-                    <section className="rounded-2xl border border-gray-100 bg-white p-6 sm:p-8 space-y-4">
-                        <h2 className="text-lg font-bold flex items-center gap-2"><Eye className="w-5 h-5" />{t('adminManaged')}</h2>
-                        <p className="text-sm text-gray-500">{t('adminManagedInfo')}</p>
-                        {fetchError ? <p role="alert" className="text-red-600">{t('detailError')}</p> :
-                            !student ? <p className="text-gray-500">{t('loading')}</p> :
-                            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {fields.map(f => <div key={f.label}>
-                                    <dt className="text-xs text-gray-500">{f.label}</dt>
-                                    <dd className="text-sm font-medium text-gray-900">{f.value || '–'}</dd>
-                                </div>)}
-                            </dl>}
+                        {fetchError ? (
+                            <p role="alert" className="text-red-600">{t('detailError')}</p>
+                        ) : !ready ? (
+                            <p className="text-gray-500">{t('loading')}</p>
+                        ) : (
+                            <form onSubmit={savePersonal} className="space-y-6">
+                                <StudentPersonalFields value={personal} onChange={patch => setPersonal(prev => ({ ...prev, ...patch }))} />
+                                <label className="block space-y-1 text-sm font-medium">{t('instrument')}
+                                    <input value={personal.instrument}
+                                        onChange={event => setPersonal(prev => ({ ...prev, instrument: event.target.value }))}
+                                        className="block w-full rounded-xl border border-gray-200 px-4 py-3" />
+                                </label>
+                                <label className="block space-y-1 text-sm font-medium">{t('bio')}
+                                    <textarea rows={3} value={personal.bio}
+                                        onChange={event => setPersonal(prev => ({ ...prev, bio: event.target.value }))}
+                                        className="block w-full rounded-xl border border-gray-200 px-4 py-3" />
+                                </label>
+                                <button type="submit" disabled={busy}
+                                    className="rounded-xl bg-primary px-5 py-3 font-bold text-white disabled:opacity-50">
+                                    {busy ? t('saving') : t('save')}
+                                </button>
+                            </form>
+                        )}
                     </section>
                     <section className="rounded-2xl border border-gray-100 bg-white p-6 sm:p-8 space-y-4">
                         <h2 className="text-lg font-bold flex items-center gap-2"><KeyRound className="w-5 h-5" />{t('security')}</h2>
