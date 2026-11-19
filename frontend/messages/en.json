@@ -2039,7 +2039,9 @@
     "cancel": "Cancel",
     "saving": "Saving …",
     "save": "Save changes",
-    "unauthorized": "Only staff members may edit student profiles."
+    "unauthorized": "Only staff members may edit student profiles.",
+    "notImplemented": "This section will be available in a later step.",
+    "ongoingLessons": "Ongoing lessons"
   },
   "TeachingContract": {
     "heading": "Contract",

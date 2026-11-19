@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react'
 import { useTranslations } from 'next-intl'
-import { UserRound, FileText, CalendarDays, Camera, KeyRound } from 'lucide-react'
+import { UserRound, Camera, KeyRound } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useUser, type User } from '@/contexts/UserContext'
 import api from '@/services/api'
@@ -10,8 +10,8 @@ import ImageCropper from '@/components/ImageCropper'
 import { proxyFileUrl } from '@/lib/utils'
 import StudentPersonalFields, { emptyStudentPersonal, type StudentPersonalData } from '@/components/StudentPersonalFields'
 import TeachingContractCard from '@/components/TeachingContractCard'
+import StudentAccountTabs, { type AccountSection } from '@/components/StudentAccountTabs'
 
-type Section = 'personal' | 'contract' | 'lessons'
 type Personal = StudentPersonalData & { bio: string; instrument: string }
 
 function userFields(user: User | null): Personal {
@@ -29,7 +29,7 @@ function userFields(user: User | null): Personal {
 export default function MyAccountPage() {
     const t = useTranslations('MyAccount')
     const { currentUser, setCurrentUser } = useUser()
-    const [section, setSection] = useState<Section>('personal')
+    const [section, setSection] = useState<AccountSection>('personal')
     const [personal, setPersonal] = useState<Personal>(() => userFields(currentUser))
     const [studentId, setStudentId] = useState('')
     const [ready, setReady] = useState(false)
@@ -160,11 +160,6 @@ export default function MyAccountPage() {
         return <p className="max-w-3xl mx-auto py-12">{t('studentOnly')}</p>
     }
 
-    const sections = [
-        { id: 'personal' as const, label: t('personal'), icon: UserRound },
-        { id: 'contract' as const, label: t('contract'), icon: FileText },
-        { id: 'lessons' as const, label: t('lessons'), icon: CalendarDays }
-    ]
     const photo = proxyFileUrl(currentUser.avatar || null)
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-12">
@@ -172,18 +167,7 @@ export default function MyAccountPage() {
                 <h1 className="text-3xl font-black text-gray-900">{t('title')}</h1>
                 <p className="mt-2 text-gray-500">{t('description')}</p>
             </header>
-            <nav aria-label={t('title')} className="flex flex-wrap gap-2">
-                {sections.map(item => {
-                    const Icon = item.icon
-                    return <button type="button" key={item.id} aria-pressed={section === item.id}
-                        onClick={() => setSection(item.id)}
-                        className={section === item.id
-                            ? 'inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-white'
-                            : 'inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 font-bold text-gray-700'}>
-                        <Icon className="w-4 h-4" />{item.label}
-                    </button>
-                })}
-            </nav>
+            <StudentAccountTabs section={section} onChange={setSection} />
             {section === 'personal' ? (
                 <div className="space-y-6">
                     <section className="rounded-2xl border border-gray-100 bg-white p-6 sm:p-8 space-y-6">

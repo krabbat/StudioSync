@@ -11,6 +11,7 @@ import { useTeachers } from '@/hooks/useDashboardData'
 import ImageCropper from '@/components/ImageCropper'
 import StudentPersonalFields from '@/components/StudentPersonalFields'
 import TeachingContractCard from '@/components/TeachingContractCard'
+import StudentAccountTabs, { type AccountSection } from '@/components/StudentAccountTabs'
 import { useUser } from '@/contexts/UserContext'
 
 export default function EditStudentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -24,6 +25,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [section, setSection] = useState<AccountSection>('personal')
     const [studentAccountId, setStudentAccountId] = useState('')
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
     const [cropImage, setCropImage] = useState<string | null>(null)
@@ -198,7 +200,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
 
     return (
         <div className="min-h-screen bg-gray-50/50 p-6 md:p-12">
-            <div className="max-w-3xl mx-auto space-y-8">
+            <div className="max-w-5xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                     <div className="space-y-2">
@@ -223,7 +225,10 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                     </button>}
                 </div>
 
-                <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 p-10">
+                <StudentAccountTabs section={section} onChange={setSection}
+                    allowed={currentUser?.role === 'admin' ? undefined : ['personal']} />
+                {section === 'personal' ? (
+                <div className="bg-card text-card-foreground rounded-[2.5rem] shadow-xl border border-border p-6 sm:p-10">
                     <div className="flex flex-wrap items-center gap-5 mb-8">
                         <div className="h-20 w-20 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 flex items-center justify-center">
                             {avatarPreview || avatarUrl ? (
@@ -351,8 +356,13 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                         </div>
                     </form>
                 </div>
-                {currentUser?.role === 'admin' && (
+                ) : section === 'contract' && currentUser?.role === 'admin' ? (
                     <TeachingContractCard studentId={studentId} readOnly={false} />
+                ) : (
+                    <section className="rounded-2xl border border-border bg-card p-8 space-y-3">
+                        <h2 className="text-xl font-bold text-card-foreground">{te('ongoingLessons')}</h2>
+                        <p className="text-muted-foreground">{te('notImplemented')}</p>
+                    </section>
                 )}
             </div>
             {cropImage && (

@@ -2039,7 +2039,9 @@
     "cancel": "Abbrechen",
     "saving": "Wird gespeichert …",
     "save": "Änderungen speichern",
-    "unauthorized": "Nur die Verwaltung darf das Schülerprofil bearbeiten."
+    "unauthorized": "Nur die Verwaltung darf das Schülerprofil bearbeiten.",
+    "notImplemented": "Dieser Bereich wird in einem späteren Schritt eingerichtet.",
+    "ongoingLessons": "Laufender Unterricht"
   },
   "TeachingContract": {
     "heading": "Vertrag",
