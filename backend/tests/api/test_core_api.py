@@ -777,10 +777,10 @@ def test_lesson_account_counts_real_lessons_but_not_ambiguous_absences(
     response = student_authenticated_client.get(url)
     assert response.status_code == status.HTTP_200_OK, response.data
     result = response.data
-    assert result["quota"] == 46
+    assert result["quota"] == 44
     assert result["summary"]["delivered"] == 2
     assert result["summary"]["credited"] == 1
-    assert result["summary"]["remaining"] == 45
+    assert result["summary"]["remaining"] == 43
     assert result["summary"]["unclassified"] == 2
 
 
@@ -860,7 +860,7 @@ def test_lesson_account_adjustments_are_visible_to_students(
     assert result.status_code == status.HTTP_200_OK, result.data
     assert result.data["summary"]["delivered"] == 10
     assert result.data["summary"]["credited"] == 12
-    assert result.data["summary"]["remaining"] == 34
+    assert result.data["summary"]["remaining"] == 32
     assert len(result.data["adjustments"]) == 1
 
 
@@ -907,7 +907,7 @@ def test_admin_changes_taught_total_without_date_or_reason(
     assert updated.status_code == status.HTTP_200_OK, updated.data
     assert updated.data["summary"]["delivered"] == 12
     assert updated.data["summary"]["credited"] == 12
-    assert updated.data["summary"]["remaining"] == 34
+    assert updated.data["summary"]["remaining"] == 32
 
     # Saving the same total twice does not double-count manual history.
     updated_again = authenticated_client.post(url, {
@@ -1022,3 +1022,78 @@ def test_manual_absences_reject_wrong_contract_year_and_wrong_student(
         "absence_id": absence_id,
     }, format="json")
     assert stolen.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_new_contract_year_uses_44_units_unless_admin_overrides(
+    authenticated_client, student
+):
+    _tuition_contract(student)
+    from datetime import date
+    from apps.core.models import TeachingYearAccount
+
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    initial = authenticated_client.get(url)
+    assert initial.status_code == status.HTTP_200_OK
+    assert initial.data["quota"] == 44
+    assert initial.data["summary"]["remaining"] == 44
+
+    # Also verify newly created year accounts use the model default.
+    account = TeachingYearAccount.objects.create(
+        student=student, year_start=date(2024, 1, 1)
+    )
+    assert account.quota == 44
+
+    custom = authenticated_client.post(url, {
+        "action": "set_quota", "year_start": "2024-01-01",
+        "quota": 48, "reason": "Individuelle Vereinbarung",
+    }, format="json")
+    assert custom.status_code == status.HTTP_200_OK, custom.data
+    assert custom.data["quota"] == 48
+
+
+@pytest.mark.django_db
+def test_migration_updates_existing_standard_46_but_keeps_custom_quotas(
+    student, studio, teacher
+):
+    from datetime import date
+    import importlib
+    from django.apps import apps as django_apps
+    from apps.core.models import TeachingYearAccount, User, Student
+
+    # Existing 46-unit default with no individual agreement.
+    standard = TeachingYearAccount.objects.create(
+        student=student, year_start=date(2024, 1, 1), quota=46, quota_reason=""
+    )
+    # Individually agreed 46 stays unchanged.
+    other_user = User.objects.create_user(
+        email="quota-custom-46@example.test", role="student", password="testpass123"
+    )
+    other_student, _ = Student.objects.get_or_create(
+        user=other_user, defaults={"studio": studio, "primary_teacher": teacher}
+    )
+    custom = TeachingYearAccount.objects.create(
+        student=other_student, year_start=date(2024, 1, 1),
+        quota=46, quota_reason="Individuell zugesagt",
+    )
+    third = TeachingYearAccount.objects.create(
+        student=student, year_start=date(2025, 1, 1),
+        quota=48, quota_reason="Individuell vereinbart",
+    )
+
+    migration = importlib.import_module(
+        "apps.core.migrations.0024_annual_quota_44"
+    )
+    migration.update_existing_standard_quotas(django_apps, None)
+    standard.refresh_from_db()
+    custom.refresh_from_db()
+    third.refresh_from_db()
+    assert standard.quota == 44
+    assert custom.quota == 46
+    assert third.quota == 48
+
+    # Re-running cannot change already migrated rows.
+    migration.update_existing_standard_quotas(django_apps, None)
+    standard.refresh_from_db()
+    assert standard.quota == 44

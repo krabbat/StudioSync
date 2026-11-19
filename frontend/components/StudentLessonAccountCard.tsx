@@ -166,7 +166,7 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
     const [error, setError] = useState(false)
     const [busy, setBusy] = useState(false)
     const [feedback, setFeedback] = useState<string | null>(null)
-    const [quota, setQuota] = useState('46')
+    const [quota, setQuota] = useState('44')
     const [quotaReason, setQuotaReason] = useState('')
     const [taughtTotal, setTaughtTotal] = useState('0')
     const [absenceDate, setAbsenceDate] = useState('')

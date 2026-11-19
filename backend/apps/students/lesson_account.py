@@ -67,7 +67,7 @@ def lesson_account_response(student, requested_year=None):
     account = TeachingYearAccount.objects.filter(
         student=student, year_start=year_start
     ).first()
-    quota = account.quota if account is not None else 46
+    quota = account.quota if account is not None else 44
 
     delivered = credited = student_cancelled = teacher_cancelled = makeups = unknown = 0
     entries = []
@@ -294,7 +294,7 @@ def apply_lesson_account_change(student, actor, data):
             })
 
     account, _ = TeachingYearAccount.objects.get_or_create(
-        student=student, year_start=year_start, defaults={"quota": 46}
+        student=student, year_start=year_start, defaults={"quota": 44}
     )
     if action == "set_quota":
         account.quota = content["quota"]

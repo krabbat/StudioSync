@@ -467,7 +467,7 @@ class TeachingYearAccount(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="teaching_years")
     year_start = models.DateField()
     quota = models.PositiveSmallIntegerField(
-        default=46, validators=[MinValueValidator(1)]
+        default=44, validators=[MinValueValidator(1)]
     )
     quota_reason = models.TextField(blank=True)
     # Manual historical lesson correction, separate from calendar events.
