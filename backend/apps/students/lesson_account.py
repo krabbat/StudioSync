@@ -9,7 +9,7 @@ from rest_framework import serializers
 
 from apps.core.models import (
     TeachingContract, TeachingYearAccount, TeachingLessonAdjustment,
-    TeachingLessonClassification,
+    TeachingLessonClassification, TeachingManualAbsence,
 )
 from apps.lessons.models import Lesson
 
@@ -121,6 +121,24 @@ def lesson_account_response(student, requested_year=None):
                 "reason": adj.reason,
             })
 
+    manual_absences = []
+    manual_taught_delta = account.manual_taught_delta if account is not None else 0
+    delivered += manual_taught_delta
+    credited += manual_taught_delta
+
+    if account is not None:
+        for absence in account.manual_absences.all():
+            is_student = absence.kind == "student_cancelled"
+            student_cancelled += int(is_student)
+            teacher_cancelled += int(not is_student)
+            credited += int(is_student)
+            manual_absences.append({
+                "id": str(absence.id),
+                "date": absence.date.isoformat(),
+                "kind": absence.kind,
+                "comment": absence.comment,
+            })
+
     available_years = []
     if current_start >= contract.contract_year_start:
         for year in range(contract.contract_year_start.year, current_start.year + 1):
@@ -136,6 +154,8 @@ def lesson_account_response(student, requested_year=None):
         "quota": quota,
         "quota_reason": account.quota_reason if account else "",
         "lesson_minutes": contract.lesson_minutes,
+        "manual_taught_delta": manual_taught_delta,
+        "manual_absences": manual_absences,
         "summary": {
             "delivered": delivered, "credited": credited, "remaining": quota - credited,
             "student_cancelled": student_cancelled,
@@ -167,6 +187,33 @@ class AdjustmentSerializer(serializers.Serializer):
         return data
 
 
+class DeliveredTotalSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=["set_delivered_total"])
+    delivered_total = serializers.IntegerField(min_value=0, max_value=9999)
+
+
+class ManualAbsenceSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=["add_absence", "update_absence"])
+    absence_id = serializers.UUIDField(required=False)
+    date = serializers.DateField()
+    kind = serializers.ChoiceField(choices=["student_cancelled", "teacher_cancelled"])
+    comment = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=1000, trim_whitespace=True
+    )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        action = attrs["action"]
+        if action == "update_absence" and not attrs.get("absence_id"):
+            raise serializers.ValidationError({"absence_id": "Eintrag-ID fehlt."})
+        return attrs
+
+
+class DeleteManualAbsenceSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=["delete_absence"])
+    absence_id = serializers.UUIDField()
+
+
 class ClassificationSerializer(serializers.Serializer):
     action = serializers.ChoiceField(choices=["classify"])
     lesson_id = serializers.UUIDField()
@@ -174,7 +221,9 @@ class ClassificationSerializer(serializers.Serializer):
         "student_cancelled", "teacher_cancelled",
         "makeup_credited", "makeup_not_credited",
     ])
-    reason = serializers.CharField(max_length=1000, trim_whitespace=True)
+    reason = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=1000, trim_whitespace=True
+    )
 
 
 @transaction.atomic
@@ -190,13 +239,20 @@ def apply_lesson_account_change(student, actor, data):
         validated = AdjustmentSerializer(data=data)
     elif action == "classify":
         validated = ClassificationSerializer(data=data)
+    elif action == "set_delivered_total":
+        validated = DeliveredTotalSerializer(data=data)
+    elif action in ("add_absence", "update_absence"):
+        validated = ManualAbsenceSerializer(data=data)
+    elif action == "delete_absence":
+        validated = DeleteManualAbsenceSerializer(data=data)
     else:
         raise serializers.ValidationError({"action": "Unbekannte Aktion."})
     validated.is_valid(raise_exception=True)
     content = validated.validated_data
 
-    if action == "add_adjustment" and not year_start <= content["date"] < end:
-        raise serializers.ValidationError({"date": "Datum liegt außerhalb des Vertragsjahres."})
+    if action in ("add_adjustment", "add_absence", "update_absence"):
+        if not year_start <= content["date"] < end:
+            raise serializers.ValidationError({"date": "Datum liegt außerhalb des Vertragsjahres."})
 
     if action == "classify":
         lesson = Lesson.objects.filter(
@@ -215,6 +271,28 @@ def apply_lesson_account_change(student, actor, data):
         if not valid:
             raise serializers.ValidationError({"kind": "Diese Zuordnung passt nicht zum Termin."})
 
+    # Validate all references before creating an account or modifying a row.
+    absence = None
+    if action in ("update_absence", "delete_absence"):
+        absence = TeachingManualAbsence.objects.filter(
+            pk=content["absence_id"], year_account__student=student,
+            year_account__year_start=year_start,
+        ).first()
+        if absence is None:
+            raise serializers.ValidationError({"absence_id": "Eintrag nicht gefunden."})
+
+    current_delivered = None
+    current_credited = None
+    if action == "set_delivered_total":
+        summary = lesson_account_response(student, year_start)["summary"]
+        current_delivered = summary["delivered"]
+        current_credited = summary["credited"]
+        correction = content["delivered_total"] - current_delivered
+        if current_credited + correction < 0:
+            raise serializers.ValidationError({
+                "delivered_total": "Der Gesamtwert würde negative angerechnete Einheiten erzeugen."
+            })
+
     account, _ = TeachingYearAccount.objects.get_or_create(
         student=student, year_start=year_start, defaults={"quota": 46}
     )
@@ -222,6 +300,21 @@ def apply_lesson_account_change(student, actor, data):
         account.quota = content["quota"]
         account.quota_reason = content["reason"]
         account.save(update_fields=["quota", "quota_reason", "updated_at"])
+    elif action == "set_delivered_total":
+        account.manual_taught_delta += content["delivered_total"] - current_delivered
+        account.save(update_fields=["manual_taught_delta", "updated_at"])
+    elif action == "add_absence":
+        TeachingManualAbsence.objects.create(
+            year_account=account, date=content["date"], kind=content["kind"],
+            comment=content["comment"], created_by=actor,
+        )
+    elif action == "update_absence":
+        absence.date = content["date"]
+        absence.kind = content["kind"]
+        absence.comment = content["comment"]
+        absence.save(update_fields=["date", "kind", "comment", "updated_at"])
+    elif action == "delete_absence":
+        absence.delete()
     elif action == "add_adjustment":
         TeachingLessonAdjustment.objects.create(
             year_account=account, date=content["date"],

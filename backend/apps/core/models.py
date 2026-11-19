@@ -470,6 +470,9 @@ class TeachingYearAccount(models.Model):
         default=46, validators=[MinValueValidator(1)]
     )
     quota_reason = models.TextField(blank=True)
+    # Manual historical lesson correction, separate from calendar events.
+    # Also affects credited units by the same amount.
+    manual_taught_delta = models.IntegerField(default=0)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -525,6 +528,33 @@ class TeachingLessonAdjustment(models.Model):
 
     class Meta:
         db_table = "teaching_lesson_adjustments"
+        ordering = ["date", "created_at"]
+
+
+
+class TeachingManualAbsence(models.Model):
+    """A dated missed lesson not already represented by a calendar lesson."""
+
+    KIND_CHOICES = [
+        ("student_cancelled", "Schülerabsage – angerechnet"),
+        ("teacher_cancelled", "Lehrerausfall – nicht angerechnet"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    year_account = models.ForeignKey(
+        TeachingYearAccount, on_delete=models.CASCADE, related_name="manual_absences"
+    )
+    date = models.DateField()
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    comment = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "teaching_manual_absences"
         ordering = ["date", "created_at"]
 
 
