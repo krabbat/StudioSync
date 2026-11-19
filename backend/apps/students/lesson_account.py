@@ -284,7 +284,7 @@ def apply_lesson_account_change(student, actor, data):
     current_delivered = None
     current_credited = None
     if action == "set_delivered_total":
-        summary = lesson_account_response(student, year_start)["summary"]
+        summary = lesson_account_response(student, year_start.isoformat())["summary"]
         current_delivered = summary["delivered"]
         current_credited = summary["credited"]
         correction = content["delivered_total"] - current_delivered
