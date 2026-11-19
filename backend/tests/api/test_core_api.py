@@ -600,7 +600,9 @@ def test_student_cannot_update_another_student(student_authenticated_client, stu
     other = User.objects.create_user(
         email="not-mine@example.test", password="testpass123", role="student"
     )
-    other_student = Student.objects.create(user=other, studio=studio, instrument="Flöte")
+    other_student, _ = Student.objects.get_or_create(
+        user=other, defaults={"studio": studio, "instrument": "Flöte"}
+    )
     response = student_authenticated_client.patch(
         f"/api/students/{other_student.pk}/",
         {"email": "stolen@example.test"}, format="json",
