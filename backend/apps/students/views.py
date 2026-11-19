@@ -68,6 +68,27 @@ class StudentViewSet(viewsets.ModelViewSet):
 
         return queryset.none()
 
+    def update(self, request, *args, **kwargs):
+        # Students may edit only their own personal fields. They must never
+        # change teacher assignment, enrollment data, activity or contract data.
+        if request.user.role == "student":
+            student = self.get_object()
+            if student.user_id != request.user.id:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Nur das eigene Profil darf bearbeitet werden.")
+            personal_fields = {
+                "first_name", "last_name", "email", "phone", "birth_date",
+                "address_line1", "postal_code", "city",
+                "emergency_contact_name", "emergency_contact_phone",
+            }
+            if set(request.data.keys()) - personal_fields:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Dieses Feld kann nicht selbst bearbeitet werden.")
+        elif request.user.role not in ("admin", "teacher"):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Keine Berechtigung zum Bearbeiten von Schülerdaten.")
+        return super().update(request, *args, **kwargs)
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         if request.user.role == "student" and instance.user_id != request.user.id:

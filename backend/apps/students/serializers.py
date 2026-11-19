@@ -149,6 +149,15 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["studio"]
 
+    def validate_email(self, email):
+        email = User.objects.normalize_email(email.strip())
+        accounts = User.objects.filter(email__iexact=email)
+        if self.instance is not None:
+            accounts = accounts.exclude(pk=self.instance.user_id)
+        if accounts.exists():
+            raise serializers.ValidationError("Diese E-Mail-Adresse ist bereits vergeben.")
+        return email
+
     def validate_primary_teacher(self, teacher):
         if teacher is None:
             return None
@@ -228,6 +237,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
 
         return student
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         # Handle user updates if provided
         user = instance.user
@@ -238,9 +248,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
         if "phone" in validated_data:
             user.phone = validated_data.pop("phone")
         if "email" in validated_data:
-            # Email update logic is sensitive, maybe skip for now or require re-verification
-            # user.email = validated_data.pop('email')
-            validated_data.pop("email", None)
+            user.email = validated_data.pop("email")
         user.save()
 
         return super().update(instance, validated_data)

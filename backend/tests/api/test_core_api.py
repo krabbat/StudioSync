@@ -548,3 +548,84 @@ def test_failed_student_profile_creation_rolls_back_user(
             format="json",
         )
     assert User.objects.count() == before
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_can_update_own_personal_data(student_authenticated_client, student):
+    response = student_authenticated_client.patch(
+        f"/api/students/{student.pk}/",
+        {
+            "first_name": "Neuer",
+            "email": "neu-schueler@example.test",
+            "birth_date": "2014-02-28",
+            "address_line1": "Hauptstraße 12",
+            "postal_code": "15738",
+            "city": "Zeuthen",
+            "emergency_contact_name": "Elternteil",
+            "emergency_contact_phone": "+49 30 123456",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_200_OK, response.data
+    student.refresh_from_db()
+    student.user.refresh_from_db()
+    assert student.user.first_name == "Neuer"
+    assert student.user.email == "neu-schueler@example.test"
+    assert student.birth_date.isoformat() == "2014-02-28"
+    assert student.city == "Zeuthen"
+    assert student.emergency_contact_name == "Elternteil"
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_cannot_change_admin_fields(student_authenticated_client, student):
+    old_teacher_id = student.primary_teacher_id
+    response = student_authenticated_client.patch(
+        f"/api/students/{student.pk}/",
+        {"is_active": False, "primary_teacher": None, "enrollment_date": "2020-01-01"},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    student.refresh_from_db()
+    assert student.is_active is True
+    assert student.primary_teacher_id == old_teacher_id
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_cannot_update_another_student(student_authenticated_client, student, studio):
+    from apps.core.models import User
+
+    other = User.objects.create_user(
+        email="not-mine@example.test", password="testpass123", role="student"
+    )
+    other_student = Student.objects.create(user=other, studio=studio, instrument="Flöte")
+    response = student_authenticated_client.patch(
+        f"/api/students/{other_student.pk}/",
+        {"email": "stolen@example.test"}, format="json",
+    )
+    assert response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND)
+    other.refresh_from_db()
+    assert other.email == "not-mine@example.test"
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_admin_can_change_student_email_and_duplicates_are_rejected(
+    authenticated_client, student, admin_user
+):
+    url = f"/api/students/{student.pk}/"
+    duplicate = authenticated_client.patch(
+        url, {"email": admin_user.email}, format="json"
+    )
+    assert duplicate.status_code == status.HTTP_400_BAD_REQUEST
+    student.user.refresh_from_db()
+    assert student.user.email == "student@test.com"
+
+    changed = authenticated_client.patch(
+        url, {"email": "neu@example.test"}, format="json"
+    )
+    assert changed.status_code == status.HTTP_200_OK, changed.data
+    student.user.refresh_from_db()
+    assert student.user.email == "neu@example.test"
