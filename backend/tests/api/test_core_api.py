@@ -887,3 +887,138 @@ def test_lesson_account_rejects_invalid_classification_and_year(
         "credited_delta": 1, "reason": "Falsches Vertragsjahr",
     }, format="json")
     assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_admin_changes_taught_total_without_date_or_reason(
+    authenticated_client, student_authenticated_client, student, teacher
+):
+    from datetime import date
+
+    _tuition_contract(student)
+    _tuition_lesson(student, teacher, date(2024, 3, 10))
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    updated = authenticated_client.post(url, {
+        "action": "set_delivered_total",
+        "year_start": "2024-01-01",
+        "delivered_total": 12,
+    }, format="json")
+    assert updated.status_code == status.HTTP_200_OK, updated.data
+    assert updated.data["summary"]["delivered"] == 12
+    assert updated.data["summary"]["credited"] == 12
+    assert updated.data["summary"]["remaining"] == 34
+
+    # Saving the same total twice does not double-count manual history.
+    updated_again = authenticated_client.post(url, {
+        "action": "set_delivered_total",
+        "year_start": "2024-01-01",
+        "delivered_total": 12,
+    }, format="json")
+    assert updated_again.status_code == status.HTTP_200_OK, updated_again.data
+    assert updated_again.data["summary"]["delivered"] == 12
+
+    # New calendar lessons are still counted in addition to the manual correction.
+    _tuition_lesson(student, teacher, date(2024, 3, 11))
+    overview = student_authenticated_client.get(url)
+    assert overview.status_code == status.HTTP_200_OK, overview.data
+    assert overview.data["summary"]["delivered"] == 13
+    assert overview.data["summary"]["credited"] == 13
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_manual_absences_can_be_added_edited_and_deleted_with_optional_comment(
+    authenticated_client, student_authenticated_client, student
+):
+    _tuition_contract(student)
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    first = authenticated_client.post(url, {
+        "action": "add_absence", "year_start": "2024-01-01",
+        "date": "2024-04-03", "kind": "student_cancelled",
+    }, format="json")
+    assert first.status_code == status.HTTP_200_OK, first.data
+    assert first.data["summary"]["student_cancelled"] == 1
+    assert first.data["summary"]["credited"] == 1
+    assert first.data["summary"]["delivered"] == 0
+    absence = first.data["manual_absences"][0]
+    assert absence["date"] == "2024-04-03"
+    assert absence["comment"] == ""
+
+    edited = authenticated_client.post(url, {
+        "action": "update_absence", "year_start": "2024-01-01",
+        "absence_id": absence["id"],
+        "date": "2024-04-05", "kind": "teacher_cancelled",
+        "comment": "Lehrkraft erkrankt",
+    }, format="json")
+    assert edited.status_code == status.HTTP_200_OK, edited.data
+    assert edited.data["summary"]["student_cancelled"] == 0
+    assert edited.data["summary"]["teacher_cancelled"] == 1
+    assert edited.data["summary"]["credited"] == 0
+
+    # Student view shows the dated absence and the optional comment.
+    viewed = student_authenticated_client.get(url)
+    assert viewed.status_code == status.HTTP_200_OK, viewed.data
+    assert viewed.data["manual_absences"][0]["date"] == "2024-04-05"
+    assert viewed.data["manual_absences"][0]["comment"] == "Lehrkraft erkrankt"
+
+    deleted = authenticated_client.post(url, {
+        "action": "delete_absence", "year_start": "2024-01-01",
+        "absence_id": absence["id"],
+    }, format="json")
+    assert deleted.status_code == status.HTTP_200_OK, deleted.data
+    assert deleted.data["manual_absences"] == []
+    assert deleted.data["summary"]["teacher_cancelled"] == 0
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_student_cannot_create_or_edit_absences(
+    authenticated_client, student_authenticated_client, student
+):
+    _tuition_contract(student)
+    url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    response = student_authenticated_client.post(url, {
+        "action": "add_absence", "year_start": "2024-01-01",
+        "date": "2024-04-03", "kind": "student_cancelled",
+    }, format="json")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.api
+@pytest.mark.django_db
+def test_manual_absences_reject_wrong_contract_year_and_wrong_student(
+    authenticated_client, student, teacher, studio
+):
+    from apps.core.models import Student, User
+
+    _tuition_contract(student)
+    other_user = User.objects.create_user(
+        email="manual-absence-other@example.test",
+        password="testpass123", role="student",
+    )
+    other_student, _ = Student.objects.get_or_create(
+        user=other_user, defaults={"studio": studio, "primary_teacher": teacher},
+    )
+    _tuition_contract(other_student)
+    this_url = f"/api/students/{student.pk}/lesson-account/?year_start=2024-01-01"
+    other_url = f"/api/students/{other_student.pk}/lesson-account/?year_start=2024-01-01"
+
+    response = authenticated_client.post(this_url, {
+        "action": "add_absence", "year_start": "2024-01-01",
+        "date": "2025-04-03", "kind": "teacher_cancelled",
+    }, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    created = authenticated_client.post(this_url, {
+        "action": "add_absence", "year_start": "2024-01-01",
+        "date": "2024-04-03", "kind": "teacher_cancelled",
+    }, format="json")
+    assert created.status_code == status.HTTP_200_OK, created.data
+    absence_id = created.data["manual_absences"][0]["id"]
+
+    stolen = authenticated_client.post(other_url, {
+        "action": "delete_absence", "year_start": "2024-01-01",
+        "absence_id": absence_id,
+    }, format="json")
+    assert stolen.status_code == status.HTTP_400_BAD_REQUEST

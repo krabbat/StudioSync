@@ -125,7 +125,7 @@ function ManualAbsenceEditor({
                 {t('adjustmentDate')}
                 <input className="w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm"
                     type="text" inputMode="numeric" value={date} required
-                    pattern="[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}"
+                    pattern="[0-9]{2}[.][0-9]{2}[.][0-9]{4}"
                     onChange={event => setDate(event.target.value)} disabled={disabled} />
             </label>
             <label className="block text-xs space-y-1">
@@ -210,7 +210,7 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
     }, [studentId, url])
 
     async function submit(action: Record<string, unknown>) {
-        if (readOnly || !account?.available) return
+        if (readOnly || !account?.available) return false
         setBusy(true)
         setFeedback(null)
         try {
@@ -366,7 +366,7 @@ export default function StudentLessonAccountCard({ studentId, readOnly }: {
                                         {t('adjustmentDate')}
                                         <input className={inputClass} type="text" inputMode="numeric"
                                             placeholder="TT.MM.JJJJ" required
-                                            pattern="[0-9]{2}\\.[0-9]{2}\\.[0-9]{4}"
+                                            pattern="[0-9]{2}[.][0-9]{2}[.][0-9]{4}"
                                             value={absenceDate} onChange={event => setAbsenceDate(event.target.value)} />
                                     </label>
                                     <label className="block text-sm space-y-1">
