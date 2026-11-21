@@ -60,7 +60,7 @@ export default function StudentBillingDetailsCard({
 }) {
     const [profile, setProfile] = useState<BillingProfile>(initialProfile)
     const [invoices, setInvoices] = useState<StudentInvoice[]>([])
-    const [nextPage, setNextPage] = useState<string | null>(null)
+    const [nextPage, setNextPage] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [loadingMore, setLoadingMore] = useState(false)
@@ -79,7 +79,7 @@ export default function StudentBillingDetailsCard({
                 setProfile({ ...initialProfile, ...settingsResponse.data })
                 const data = invoiceResponse.data
                 setInvoices(Array.isArray(data) ? data : (data.results || []))
-                setNextPage(Array.isArray(data) ? null : (data.next || null))
+                setNextPage(!Array.isArray(data) && data.next ? 2 : null)
             })
             .catch(() => {
                 if (!active) return
@@ -116,10 +116,12 @@ export default function StudentBillingDetailsCard({
         if (!nextPage || loadingMore) return
         setLoadingMore(true)
         try {
-            const response = await api.get(nextPage)
+            const response = await api.get('/billing/invoices/', {
+                params: { student: studentId, page: nextPage },
+            })
             const data = response.data
             setInvoices(previous => [...previous, ...(data.results || [])])
-            setNextPage(data.next || null)
+            setNextPage(data.next ? nextPage + 1 : null)
         } catch {
             toast.error('Weitere Rechnungen konnten nicht geladen werden.')
         } finally {
