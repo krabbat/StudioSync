@@ -29,6 +29,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
     const [saving, setSaving] = useState(false)
     const [section, setSection] = useState<AccountSection>('personal')
     const [studentAccountId, setStudentAccountId] = useState('')
+    const [savedStudentAddress, setSavedStudentAddress] = useState({
+        address_line1: '', postal_code: '', city: '',
+    })
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
     const [cropImage, setCropImage] = useState<string | null>(null)
     const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null)
@@ -58,6 +61,11 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                 const student = response.data
                 setStudentAccountId(typeof student.user === 'string' ? student.user : student.user?.id || '')
                 setAvatarUrl(student.avatar || null)
+                setSavedStudentAddress({
+                    address_line1: student.address_line1 || '',
+                    postal_code: student.postal_code || '',
+                    city: student.city || '',
+                })
 
                 // Fallback logic for fields that might be either top-level or on the nested 'user' object
                 const firstName = student.first_name || student.user?.first_name || (student.name ? student.name.split(' ')[0] : '')
@@ -368,6 +376,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                     <StudentBillingDetailsCard
                         studentId={studentId}
                         studentEmail={formData.email}
+                        studentAddress={savedStudentAddress}
                     />
                 ) : null}
             </div>

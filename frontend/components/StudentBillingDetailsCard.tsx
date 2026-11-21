@@ -14,6 +14,12 @@ type BillingProfile = {
     recipient_city: string
 }
 
+type StudentAddress = {
+    address_line1: string
+    postal_code: string
+    city: string
+}
+
 type StudentInvoice = {
     id: string
     invoice_number: string
@@ -54,11 +60,15 @@ function invoiceState(invoice: StudentInvoice) {
 export default function StudentBillingDetailsCard({
     studentId,
     studentEmail,
+    studentAddress,
 }: {
     studentId: string
     studentEmail: string
+    studentAddress: StudentAddress
 }) {
     const [profile, setProfile] = useState<BillingProfile>(initialProfile)
+    // Empty stored address fields mean: dynamically use the student's current address.
+    const [useStudentAddress, setUseStudentAddress] = useState(true)
     const [invoices, setInvoices] = useState<StudentInvoice[]>([])
     const [nextPage, setNextPage] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
@@ -76,7 +86,13 @@ export default function StudentBillingDetailsCard({
         ])
             .then(([settingsResponse, invoiceResponse]) => {
                 if (!active) return
-                setProfile({ ...initialProfile, ...settingsResponse.data })
+                const settings = { ...initialProfile, ...settingsResponse.data }
+                setProfile(settings)
+                setUseStudentAddress(
+                    !settings.recipient_address_line1 &&
+                    !settings.recipient_postal_code &&
+                    !settings.recipient_city
+                )
                 const data = invoiceResponse.data
                 setInvoices(Array.isArray(data) ? data : (data.results || []))
                 setNextPage(!Array.isArray(data) && data.next ? 2 : null)
@@ -94,11 +110,38 @@ export default function StudentBillingDetailsCard({
         setProfile(previous => ({ ...previous, [key]: value }))
     }
 
+    function changeAddressMode(useStudent: boolean) {
+        setUseStudentAddress(useStudent)
+        if (useStudent) {
+            // Clearing custom address means inheritance; the email remains untouched.
+            setProfile(previous => ({
+                ...previous,
+                recipient_address_line1: '',
+                recipient_postal_code: '',
+                recipient_city: '',
+            }))
+        } else {
+            setProfile(previous => ({
+                ...previous,
+                recipient_address_line1: studentAddress.address_line1,
+                recipient_postal_code: studentAddress.postal_code,
+                recipient_city: studentAddress.city,
+            }))
+        }
+    }
+
     async function save(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         setSaving(true)
         try {
-            const response = await api.put(`/students/${studentId}/billing-profile/`, profile)
+            // Inherited addresses are never snapshotted in the billing profile.
+            const payload = useStudentAddress ? {
+                ...profile,
+                recipient_address_line1: '',
+                recipient_postal_code: '',
+                recipient_city: '',
+            } : profile
+            const response = await api.put(`/students/${studentId}/billing-profile/`, payload)
             setProfile({ ...initialProfile, ...response.data })
             toast.success('Rechnungsdaten gespeichert.')
         } catch (error: any) {
@@ -209,35 +252,54 @@ export default function StudentBillingDetailsCard({
 
                         <div className={groupClass}>
                             <h3 className="text-base font-semibold">Rechnungsanschrift</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                                <label className={`${labelClass} sm:col-span-3`}>
-                                    Straße und Hausnummer
-                                    <input
-                                        type="text" maxLength={255}
-                                        value={profile.recipient_address_line1}
-                                        onChange={event => setField('recipient_address_line1', event.target.value)}
-                                        className={inputClass}
-                                    />
-                                </label>
-                                <label className={labelClass}>
-                                    Postleitzahl
-                                    <input
-                                        type="text" maxLength={20}
-                                        value={profile.recipient_postal_code}
-                                        onChange={event => setField('recipient_postal_code', event.target.value)}
-                                        className={inputClass}
-                                    />
-                                </label>
-                                <label className={`${labelClass} sm:col-span-2`}>
-                                    Ort
-                                    <input
-                                        type="text" maxLength={100}
-                                        value={profile.recipient_city}
-                                        onChange={event => setField('recipient_city', event.target.value)}
-                                        className={inputClass}
-                                    />
-                                </label>
-                            </div>
+                            <label className="flex items-center gap-3 text-sm font-medium text-foreground cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={useStudentAddress}
+                                    onChange={event => changeAddressMode(event.target.checked)}
+                                    className="h-4 w-4 accent-primary"
+                                />
+                                Schüleranschrift verwenden
+                            </label>
+                            {useStudentAddress ? (
+                                <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground space-y-1">
+                                    <p>{studentAddress.address_line1 || 'Straße und Hausnummer fehlen im Schülerprofil'}</p>
+                                    <p>{[studentAddress.postal_code, studentAddress.city].filter(Boolean).join(' ') || 'PLZ und Ort fehlen im Schülerprofil'}</p>
+                                    <p className="pt-1 text-xs text-muted-foreground">
+                                        Die Anschrift wird direkt aus den Schülerdaten übernommen und bei Änderungen dort aktualisiert.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                                    <label className={`${labelClass} sm:col-span-3`}>
+                                        Straße und Hausnummer
+                                        <input
+                                            type="text" maxLength={255} required
+                                            value={profile.recipient_address_line1}
+                                            onChange={event => setField('recipient_address_line1', event.target.value)}
+                                            className={inputClass}
+                                        />
+                                    </label>
+                                    <label className={labelClass}>
+                                        Postleitzahl
+                                        <input
+                                            type="text" maxLength={20} required
+                                            value={profile.recipient_postal_code}
+                                            onChange={event => setField('recipient_postal_code', event.target.value)}
+                                            className={inputClass}
+                                        />
+                                    </label>
+                                    <label className={`${labelClass} sm:col-span-2`}>
+                                        Ort
+                                        <input
+                                            type="text" maxLength={100} required
+                                            value={profile.recipient_city}
+                                            onChange={event => setField('recipient_city', event.target.value)}
+                                            className={inputClass}
+                                        />
+                                    </label>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-t border-border pt-5">
