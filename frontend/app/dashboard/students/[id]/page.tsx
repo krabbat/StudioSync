@@ -13,6 +13,7 @@ import api from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { formatPhoneNumber, proxyFileUrl } from '@/lib/utils'
 import { useUser } from '@/contexts/UserContext'
+import StudentBillingDetailsCard from '@/components/StudentBillingDetailsCard'
 
 export default function StudentProfilePage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const tr = useTranslations('StudentProfile')
@@ -271,6 +272,13 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                             </p>
                             <p className="text-gray-600">{[student.postal_code, student.city].filter(Boolean).join(' ') || tr('notProvided')}</p>
                         </section>
+
+                        {currentUser?.role === 'admin' && (
+                            <StudentBillingDetailsCard
+                                studentId={studentId}
+                                studentEmail={student.email || student.user?.email || ''}
+                            />
+                        )}
 
                         {currentUser?.role === 'admin' && (
                             <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
