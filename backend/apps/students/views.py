@@ -3,6 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import models, transaction
 
 from rest_framework import filters, permissions, status, viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -15,6 +16,8 @@ from apps.students.serializers import (
     TeachingContractSerializer,
 )
 from apps.students.serializers_family import FamilySerializer
+from apps.billing.models import StudentBillingProfile
+from apps.billing.serializers import StudentBillingProfileSerializer
 
 
 class StudentViewSet(viewsets.ModelViewSet):
@@ -103,6 +106,26 @@ class StudentViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return super().retrieve(request, *args, **kwargs)
 
+
+    @action(detail=True, methods=["get", "put"], url_path="billing-profile")
+    def billing_profile(self, request, pk=None):
+        """Admin-only invoice recipient and payment preference, independent of student login."""
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen Rechnungsdaten einsehen oder ändern.")
+
+        student = self.get_object()
+        profile = StudentBillingProfile.objects.filter(student=student).first()
+        if request.method == "GET":
+            # No implicit copying of the student's email into billing data.
+            return Response(StudentBillingProfileSerializer(
+                profile or StudentBillingProfile(student=student)
+            ).data)
+
+        serializer = StudentBillingProfileSerializer(instance=profile, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            serializer.save(student=student)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["get", "put"], url_path="contract")
     def contract(self, request, pk=None):

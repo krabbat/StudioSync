@@ -1,4 +1,5 @@
 from django.db.models import Q
+from uuid import UUID
 
 from rest_framework import permissions, status, viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -45,7 +46,15 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return visible_invoices(self.request.user)
+        queryset = visible_invoices(self.request.user)
+        student_id = self.request.query_params.get("student")
+        if student_id:
+            try:
+                UUID(student_id)
+            except (TypeError, ValueError):
+                raise ValidationError({"student": "Ungültige Schüler-ID."})
+            queryset = queryset.filter(student_id=student_id)
+        return queryset
 
     def perform_create(self, serializer):
         user = self.request.user

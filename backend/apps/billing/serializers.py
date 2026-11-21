@@ -1,6 +1,17 @@
 from rest_framework import serializers
 
-from .models import Invoice, InvoiceLineItem, Payment, PaymentMethod, SubscriptionPlan, Subscription
+from .models import Invoice, InvoiceLineItem, Payment, PaymentMethod, SubscriptionPlan, Subscription, StudentBillingProfile
+
+
+class StudentBillingProfileSerializer(serializers.ModelSerializer):
+    """Only explicit recipient details, never automatically copies student email."""
+
+    class Meta:
+        model = StudentBillingProfile
+        fields = [
+            "payment_method", "recipient_name", "recipient_email",
+            "recipient_address_line1", "recipient_postal_code", "recipient_city",
+        ]
 
 
 class InvoiceLineItemSerializer(serializers.ModelSerializer):

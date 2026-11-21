@@ -2,6 +2,7 @@
 Billing models - Invoice, Payment, InvoiceLineItem
 """
 
+import secrets
 import uuid
 from decimal import Decimal
 
@@ -9,6 +10,32 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import Band, Studio, User
+
+
+class StudentBillingProfile(models.Model):
+    """Independent invoice recipient settings; never infer email from student login."""
+
+    PAYMENT_METHOD_CHOICES = [
+        ("bank_transfer", "Banküberweisung"),
+        ("paypal", "PayPal"),
+        ("cash", "Barzahlung"),
+    ]
+
+    student = models.OneToOneField(
+        "core.Student", on_delete=models.CASCADE, related_name="billing_profile"
+    )
+    payment_method = models.CharField(
+        max_length=20, choices=PAYMENT_METHOD_CHOICES, default="bank_transfer"
+    )
+    recipient_name = models.CharField(max_length=200, blank=True)
+    recipient_email = models.EmailField(blank=True)
+    recipient_address_line1 = models.CharField(max_length=255, blank=True)
+    recipient_postal_code = models.CharField(max_length=20, blank=True)
+    recipient_city = models.CharField(max_length=100, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "student_billing_profiles"
 
 
 class Invoice(models.Model):
@@ -106,10 +133,15 @@ class Invoice(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:
-            # Generate simple invoice number
-            self.invoice_number = (
-                f"INV-{timezone.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
-            )
+            # Non-sequential: date of creation + cryptographically random decimal digits.
+            # Do not expose the number of issued invoices or students.
+            for _ in range(10):
+                candidate = f"{timezone.localdate():%Y%m%d}-{secrets.randbelow(10**10):010d}"
+                if not type(self).objects.filter(invoice_number=candidate).exists():
+                    self.invoice_number = candidate
+                    break
+            else:
+                raise RuntimeError("Could not allocate a unique invoice number.")
         super().save(*args, **kwargs)
 
     def calculate_totals(self):
