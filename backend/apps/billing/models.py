@@ -4,6 +4,7 @@ Billing models - Invoice, Payment, InvoiceLineItem
 
 import secrets
 import uuid
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 
 from django.db import models
@@ -136,7 +137,7 @@ class Invoice(models.Model):
             # Non-sequential: date of creation + cryptographically random decimal digits.
             # Do not expose the number of issued invoices or students.
             for _ in range(10):
-                candidate = f"{timezone.localdate():%Y%m%d}-{secrets.randbelow(10**10):010d}"
+                candidate = f"{timezone.localdate(timezone=ZoneInfo('Europe/Berlin')):%Y%m%d}-{secrets.randbelow(10**10):010d}"
                 if not type(self).objects.filter(invoice_number=candidate).exists():
                     self.invoice_number = candidate
                     break

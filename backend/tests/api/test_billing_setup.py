@@ -5,6 +5,8 @@ from datetime import date
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
+from zoneinfo import ZoneInfo
 
 from apps.billing.models import Invoice, StudentBillingProfile
 
@@ -65,6 +67,6 @@ def test_invoice_number_uses_date_and_random_digits(studio, student):
     ]
     for invoice in invoices:
         assert re.fullmatch(r"\d{8}-\d{10}", invoice.invoice_number)
-        assert invoice.invoice_number.startswith(date.today().strftime("%Y%m%d") + "-")
+        assert invoice.invoice_number.startswith(timezone.localdate(timezone=ZoneInfo("Europe/Berlin")).strftime("%Y%m%d") + "-")
     assert len({invoice.invoice_number for invoice in invoices}) == 3
     assert all(not item.invoice_number.startswith("INV-") for item in invoices)
