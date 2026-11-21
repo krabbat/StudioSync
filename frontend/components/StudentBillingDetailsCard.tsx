@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { toast } from 'react-hot-toast'
-import { FileText, Mail, Save } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import api from '@/services/api'
-import { Button } from '@/components/ui/button'
 
 type BillingProfile = {
     payment_method: 'bank_transfer' | 'paypal' | 'cash'
@@ -27,7 +26,7 @@ type StudentInvoice = {
     is_overdue: boolean
 }
 
-const emptyProfile: BillingProfile = {
+const initialProfile: BillingProfile = {
     payment_method: 'bank_transfer',
     recipient_name: '',
     recipient_email: '',
@@ -39,20 +38,17 @@ const emptyProfile: BillingProfile = {
 const euro = (amount: number | string) =>
     new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(Number(amount))
 
-const germanDate = (value: string) =>
-    value ? new Date(`${value}T12:00:00`).toLocaleDateString('de-DE') : '–'
+const germanDate = (date: string) =>
+    date ? new Date(`${date}T12:00:00`).toLocaleDateString('de-DE') : '–'
 
 function invoiceState(invoice: StudentInvoice) {
-    if (invoice.status === 'cancelled') return { label: 'Storniert', className: 'text-gray-500' }
+    if (invoice.status === 'cancelled') return { label: 'Storniert', color: 'text-muted-foreground' }
     if (invoice.status === 'paid' || Number(invoice.balance_due) <= 0)
-        return { label: 'Bezahlt', className: 'text-emerald-700' }
-    if (invoice.is_overdue)
-        return { label: 'Überfällig', className: 'text-red-600' }
-    if (invoice.status === 'partial')
-        return { label: 'Teilbezahlt', className: 'text-amber-700' }
-    if (invoice.status === 'draft')
-        return { label: 'Entwurf', className: 'text-gray-500' }
-    return { label: 'Offen', className: 'text-gray-700' }
+        return { label: 'Bezahlt', color: 'text-emerald-700' }
+    if (invoice.is_overdue) return { label: 'Überfällig', color: 'text-red-600' }
+    if (invoice.status === 'partial') return { label: 'Teilbezahlt', color: 'text-amber-700' }
+    if (invoice.status === 'draft') return { label: 'Entwurf', color: 'text-muted-foreground' }
+    return { label: 'Offen', color: 'text-foreground' }
 }
 
 export default function StudentBillingDetailsCard({
@@ -62,10 +58,12 @@ export default function StudentBillingDetailsCard({
     studentId: string
     studentEmail: string
 }) {
-    const [profile, setProfile] = useState<BillingProfile>(emptyProfile)
+    const [profile, setProfile] = useState<BillingProfile>(initialProfile)
     const [invoices, setInvoices] = useState<StudentInvoice[]>([])
+    const [nextPage, setNextPage] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [loadingMore, setLoadingMore] = useState(false)
     const [loadError, setLoadError] = useState(false)
 
     useEffect(() => {
@@ -76,11 +74,12 @@ export default function StudentBillingDetailsCard({
             api.get(`/students/${studentId}/billing-profile/`),
             api.get('/billing/invoices/', { params: { student: studentId } }),
         ])
-            .then(([settings, invoiceResponse]) => {
+            .then(([settingsResponse, invoiceResponse]) => {
                 if (!active) return
-                setProfile({ ...emptyProfile, ...settings.data })
+                setProfile({ ...initialProfile, ...settingsResponse.data })
                 const data = invoiceResponse.data
                 setInvoices(Array.isArray(data) ? data : (data.results || []))
+                setNextPage(Array.isArray(data) ? null : (data.next || null))
             })
             .catch(() => {
                 if (!active) return
@@ -91,176 +90,216 @@ export default function StudentBillingDetailsCard({
         return () => { active = false }
     }, [studentId])
 
-    const setField = (key: keyof BillingProfile, value: string) =>
+    const setField = (key: keyof BillingProfile, value: string) => {
         setProfile(previous => ({ ...previous, [key]: value }))
+    }
 
-    const save = async (event: React.FormEvent<HTMLFormElement>) => {
+    async function save(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         setSaving(true)
         try {
-            const result = await api.put(`/students/${studentId}/billing-profile/`, profile)
-            setProfile({ ...emptyProfile, ...result.data })
+            const response = await api.put(`/students/${studentId}/billing-profile/`, profile)
+            setProfile({ ...initialProfile, ...response.data })
             toast.success('Rechnungsdaten gespeichert.')
         } catch (error: any) {
             const fields = error?.response?.data
-            const firstError = fields && typeof fields === 'object'
-                ? Object.values(fields).flat().find(message => typeof message === 'string')
+            const message = fields && typeof fields === 'object'
+                ? Object.values(fields).flat().find(value => typeof value === 'string')
                 : null
-            toast.error(typeof firstError === 'string' ? firstError : 'Rechnungsdaten konnten nicht gespeichert werden.')
+            toast.error(typeof message === 'string' ? message : 'Rechnungsdaten konnten nicht gespeichert werden.')
         } finally {
             setSaving(false)
         }
     }
 
-    const inputClass = 'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:border-primary focus:outline-none'
-    const labelClass = 'block text-xs font-bold text-gray-600 mb-1.5'
+    async function loadMore() {
+        if (!nextPage || loadingMore) return
+        setLoadingMore(true)
+        try {
+            const response = await api.get(nextPage)
+            const data = response.data
+            setInvoices(previous => [...previous, ...(data.results || [])])
+            setNextPage(data.next || null)
+        } catch {
+            toast.error('Weitere Rechnungen konnten nicht geladen werden.')
+        } finally {
+            setLoadingMore(false)
+        }
+    }
+
+    const inputClass = 'block w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary'
+    const labelClass = 'block space-y-1.5 text-sm font-medium text-foreground'
+    const groupClass = 'rounded-xl border border-border bg-muted/20 p-4 sm:p-6 space-y-4'
 
     return (
-        <section className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-5">
-            <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5 text-primary" />
-                <h2 className="text-sm font-black text-gray-800">Rechnungsdaten</h2>
-            </div>
+        <section className="rounded-2xl border border-border bg-card text-card-foreground p-6 sm:p-8 space-y-6">
+            <header className="space-y-1">
+                <h2 className="text-xl font-bold text-card-foreground">Rechnungsdaten</h2>
+                <p className="text-sm text-muted-foreground">
+                    Zahlungsweg, Rechnungsempfänger und Rechnungsanschrift für diesen Schüler.
+                </p>
+            </header>
+
             {loading ? (
-                <p className="text-sm text-gray-500">Rechnungsdaten werden geladen …</p>
+                <p className="text-sm text-muted-foreground">Rechnungsdaten werden geladen …</p>
             ) : loadError ? (
-                <p className="text-sm text-red-600">Laden fehlgeschlagen. Bitte die Seite erneut öffnen.</p>
+                <p role="alert" className="text-sm text-red-600">
+                    Rechnungsdaten konnten nicht geladen werden. Bitte die Seite erneut öffnen.
+                </p>
             ) : (
                 <>
-                    <form onSubmit={save} className="space-y-4">
-                        <div>
-                            <label htmlFor="student-billing-method" className={labelClass}>Zahlungsart</label>
-                            <select
-                                id="student-billing-method"
-                                value={profile.payment_method}
-                                onChange={e => setField('payment_method', e.target.value)}
-                                className={inputClass}
-                            >
-                                <option value="bank_transfer">Banküberweisung</option>
-                                <option value="paypal">PayPal</option>
-                                <option value="cash">Barzahlung</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="student-billing-name" className={labelClass}>Rechnungsempfänger</label>
-                            <input
-                                id="student-billing-name"
-                                type="text"
-                                maxLength={200}
-                                value={profile.recipient_name}
-                                onChange={e => setField('recipient_name', e.target.value)}
-                                placeholder="Name der zahlungspflichtigen Person"
-                                className={inputClass}
-                            />
-                        </div>
-                        <div>
-                            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                                <label htmlFor="student-billing-email" className="text-xs font-bold text-gray-600">
-                                    E-Mail für den Rechnungsversand
+                    <form onSubmit={save} className="space-y-6">
+                        <div className={groupClass}>
+                            <h3 className="text-base font-semibold">Zahlungsweg und Rechnungsempfänger</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                <label className={labelClass}>
+                                    Zahlungsart
+                                    <select
+                                        value={profile.payment_method}
+                                        onChange={event => setField('payment_method', event.target.value)}
+                                        className={inputClass}
+                                    >
+                                        <option value="bank_transfer">Banküberweisung</option>
+                                        <option value="paypal">PayPal</option>
+                                        <option value="cash">Barzahlung</option>
+                                    </select>
                                 </label>
-                                <button
-                                    type="button"
-                                    disabled={!studentEmail}
-                                    onClick={() => setField('recipient_email', studentEmail)}
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    <Mail className="w-3.5 h-3.5" />
-                                    Schüler-E-Mail übernehmen
-                                </button>
+                                <label className={labelClass}>
+                                    Rechnungsempfänger
+                                    <input
+                                        type="text" maxLength={200}
+                                        value={profile.recipient_name}
+                                        onChange={event => setField('recipient_name', event.target.value)}
+                                        placeholder="Name der zahlungspflichtigen Person"
+                                        className={inputClass}
+                                    />
+                                </label>
+                                <div className="md:col-span-2 space-y-2">
+                                    <div className="flex flex-wrap justify-between items-center gap-2">
+                                        <label htmlFor="billing-recipient-email" className="text-sm font-medium text-foreground">
+                                            E-Mail für den Rechnungsversand
+                                        </label>
+                                        <button
+                                            type="button"
+                                            disabled={!studentEmail}
+                                            onClick={() => setField('recipient_email', studentEmail)}
+                                            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <Mail className="w-4 h-4" />
+                                            Schüler-E-Mail übernehmen
+                                        </button>
+                                    </div>
+                                    <input
+                                        id="billing-recipient-email"
+                                        type="email" maxLength={254}
+                                        value={profile.recipient_email}
+                                        onChange={event => setField('recipient_email', event.target.value)}
+                                        placeholder="rechnung@beispiel.de"
+                                        className={inputClass}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Die Rechnungs-E-Mail ist von der Schüler-E-Mail unabhängig.
+                                        Eine Übernahme erfolgt nur über die Schaltfläche.
+                                    </p>
+                                </div>
                             </div>
-                            <input
-                                id="student-billing-email"
-                                type="email"
-                                maxLength={254}
-                                value={profile.recipient_email}
-                                onChange={e => setField('recipient_email', e.target.value)}
-                                placeholder="rechnung@beispiel.de"
-                                className={inputClass}
-                            />
-                            <p className="text-xs text-gray-500 mt-1.5">
-                                Unabhängig von der Schüler-E-Mail. Eine Übernahme erfolgt ausschließlich über die Schaltfläche.
+                        </div>
+
+                        <div className={groupClass}>
+                            <h3 className="text-base font-semibold">Rechnungsanschrift</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                                <label className={`${labelClass} sm:col-span-3`}>
+                                    Straße und Hausnummer
+                                    <input
+                                        type="text" maxLength={255}
+                                        value={profile.recipient_address_line1}
+                                        onChange={event => setField('recipient_address_line1', event.target.value)}
+                                        className={inputClass}
+                                    />
+                                </label>
+                                <label className={labelClass}>
+                                    Postleitzahl
+                                    <input
+                                        type="text" maxLength={20}
+                                        value={profile.recipient_postal_code}
+                                        onChange={event => setField('recipient_postal_code', event.target.value)}
+                                        className={inputClass}
+                                    />
+                                </label>
+                                <label className={`${labelClass} sm:col-span-2`}>
+                                    Ort
+                                    <input
+                                        type="text" maxLength={100}
+                                        value={profile.recipient_city}
+                                        onChange={event => setField('recipient_city', event.target.value)}
+                                        className={inputClass}
+                                    />
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-t border-border pt-5">
+                            <p className="text-xs text-muted-foreground">
+                                Rechnungsnummern werden beim Erstellen vergeben: Datum und zufällige Ziffernfolge.
                             </p>
-                        </div>
-                        <div>
-                            <label htmlFor="student-billing-street" className={labelClass}>Rechnungsanschrift – Straße und Hausnummer</label>
-                            <input
-                                id="student-billing-street"
-                                type="text"
-                                maxLength={255}
-                                value={profile.recipient_address_line1}
-                                onChange={e => setField('recipient_address_line1', e.target.value)}
-                                className={inputClass}
-                            />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                                <label htmlFor="student-billing-postal" className={labelClass}>Postleitzahl</label>
-                                <input
-                                    id="student-billing-postal"
-                                    type="text"
-                                    maxLength={20}
-                                    value={profile.recipient_postal_code}
-                                    onChange={e => setField('recipient_postal_code', e.target.value)}
-                                    className={inputClass}
-                                />
-                            </div>
-                            <div className="sm:col-span-2">
-                                <label htmlFor="student-billing-city" className={labelClass}>Ort</label>
-                                <input
-                                    id="student-billing-city"
-                                    type="text"
-                                    maxLength={100}
-                                    value={profile.recipient_city}
-                                    onChange={e => setField('recipient_city', e.target.value)}
-                                    className={inputClass}
-                                />
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-gray-500">
-                                Rechnungsnummern werden beim Erstellen automatisch vergeben: Datum + zufällige Ziffern.
-                            </p>
-                            <Button type="submit" disabled={saving} className="shrink-0 gap-2">
-                                <Save className="w-4 h-4" />
-                                {saving ? 'Speichert …' : 'Speichern'}
-                            </Button>
+                            <button
+                                type="submit" disabled={saving}
+                                className="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+                            >
+                                {saving ? 'Speichert …' : 'Rechnungsdaten speichern'}
+                            </button>
                         </div>
                     </form>
 
-                    <div className="border-t border-gray-100 pt-5 space-y-3">
-                        <h3 className="text-sm font-bold text-gray-800">Rechnungen und Beiträge</h3>
+                    <div className="border-t border-border pt-6 space-y-4">
+                        <div className="space-y-1">
+                            <h3 className="text-lg font-bold">Rechnungen und Beiträge</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Bereits gestellte Rechnungen mit Fälligkeit, Betrag und Zahlungsstatus.
+                            </p>
+                        </div>
                         {invoices.length === 0 ? (
-                            <p className="text-sm text-gray-500">
+                            <p className="rounded-xl border border-border p-5 text-sm text-muted-foreground">
                                 Noch keine Rechnungen vorhanden. Automatische Monatsrechnungen sind ab Januar 2027 vorgesehen.
                             </p>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="text-xs text-gray-500 border-b border-gray-200">
-                                        <tr>
-                                            <th className="py-2 pr-3 font-semibold">Rechnung</th>
-                                            <th className="py-2 pr-3 font-semibold">Fällig</th>
-                                            <th className="py-2 pr-3 font-semibold text-right">Betrag</th>
-                                            <th className="py-2 pr-3 font-semibold text-right">Rest</th>
-                                            <th className="py-2 font-semibold">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {invoices.map(invoice => {
-                                            const state = invoiceState(invoice)
-                                            return (
-                                                <tr key={invoice.id} className="border-b border-gray-100">
-                                                    <td className="py-3 pr-3 whitespace-nowrap font-medium">{invoice.invoice_number}</td>
-                                                    <td className="py-3 pr-3 whitespace-nowrap">{germanDate(invoice.due_date)}</td>
-                                                    <td className="py-3 pr-3 text-right whitespace-nowrap">{euro(invoice.total_amount)}</td>
-                                                    <td className="py-3 pr-3 text-right whitespace-nowrap">{euro(invoice.balance_due)}</td>
-                                                    <td className={`py-3 whitespace-nowrap font-semibold ${state.className}`}>{state.label}</td>
-                                                </tr>
-                                            )
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <>
+                                <div className="overflow-x-auto rounded-xl border border-border">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-muted/40 text-xs text-muted-foreground">
+                                            <tr>
+                                                <th className="p-3 font-semibold">Rechnungsnummer</th>
+                                                <th className="p-3 font-semibold">Fälligkeit</th>
+                                                <th className="p-3 font-semibold text-right">Betrag</th>
+                                                <th className="p-3 font-semibold text-right">Offen</th>
+                                                <th className="p-3 font-semibold">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {invoices.map(invoice => {
+                                                const state = invoiceState(invoice)
+                                                return (
+                                                    <tr key={invoice.id} className="border-t border-border">
+                                                        <td className="p-3 whitespace-nowrap font-medium">{invoice.invoice_number}</td>
+                                                        <td className="p-3 whitespace-nowrap">{germanDate(invoice.due_date)}</td>
+                                                        <td className="p-3 whitespace-nowrap text-right">{euro(invoice.total_amount)}</td>
+                                                        <td className="p-3 whitespace-nowrap text-right">{euro(invoice.balance_due)}</td>
+                                                        <td className={`p-3 whitespace-nowrap font-semibold ${state.color}`}>{state.label}</td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {nextPage && (
+                                    <button
+                                        type="button" onClick={loadMore} disabled={loadingMore}
+                                        className="rounded-xl border border-border px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                                    >
+                                        {loadingMore ? 'Lädt …' : 'Weitere Rechnungen anzeigen'}
+                                    </button>
+                                )}
+                            </>
                         )}
                     </div>
                 </>

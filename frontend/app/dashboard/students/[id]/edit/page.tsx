@@ -13,6 +13,7 @@ import StudentPersonalFields from '@/components/StudentPersonalFields'
 import TeachingContractCard from '@/components/TeachingContractCard'
 import StudentAccountTabs, { type AccountSection } from '@/components/StudentAccountTabs'
 import StudentLessonAccountCard from '@/components/StudentLessonAccountCard'
+import StudentBillingDetailsCard from '@/components/StudentBillingDetailsCard'
 import { useUser } from '@/contexts/UserContext'
 
 export default function EditStudentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -227,7 +228,9 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                 </div>
 
                 <StudentAccountTabs section={section} onChange={setSection}
-                    allowed={currentUser?.role === 'admin' ? undefined : ['personal']} />
+                    allowed={currentUser?.role === 'admin'
+                        ? ['personal', 'contract', 'lessons', 'billing']
+                        : ['personal']} />
                 {section === 'personal' ? (
                 <div className="bg-card text-card-foreground rounded-[2.5rem] shadow-xl border border-border p-6 sm:p-10">
                     <div className="flex flex-wrap items-center gap-5 mb-8">
@@ -359,9 +362,14 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                 </div>
                 ) : section === 'contract' && currentUser?.role === 'admin' ? (
                     <TeachingContractCard studentId={studentId} readOnly={false} />
-                ) : (
-                    <StudentLessonAccountCard studentId={studentId} readOnly={currentUser?.role !== 'admin'} />
-                )}
+                ) : section === 'lessons' && currentUser?.role === 'admin' ? (
+                    <StudentLessonAccountCard studentId={studentId} readOnly={false} />
+                ) : section === 'billing' && currentUser?.role === 'admin' ? (
+                    <StudentBillingDetailsCard
+                        studentId={studentId}
+                        studentEmail={formData.email}
+                    />
+                ) : null}
             </div>
             {cropImage && (
                 <ImageCropper imageSrc={cropImage} onCropComplete={handlePhotoCrop} onCancel={() => setCropImage(null)} />
