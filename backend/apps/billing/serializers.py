@@ -28,6 +28,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
     pdf_available = serializers.SerializerMethodField()
     email_sent = serializers.SerializerMethodField()
     recipient = serializers.SerializerMethodField()
+    lesson_subject = serializers.SerializerMethodField()
+
+    def get_lesson_subject(self, obj):
+        from .invoice_pdf import lesson_subject
+        if obj.document_snapshot and obj.document_snapshot.get("lesson_subject"):
+            return obj.document_snapshot["lesson_subject"]
+        return lesson_subject(obj.student)
 
     def get_recipient(self, obj):
         """Public invoice addressee, frozen after sending, never student login email."""
@@ -97,6 +104,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "pdf_available",
             "email_sent",
             "recipient",
+            "lesson_subject",
             "sent_at",
             "line_items",
             "created_at",
