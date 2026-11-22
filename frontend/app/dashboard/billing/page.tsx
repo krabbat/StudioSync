@@ -49,6 +49,7 @@ interface Invoice {
         total_price: number | string
     }>
     student_name?: string
+    lesson_subject?: string
     band_name?: string
     created_at?: string
     issue_date: string
@@ -889,6 +890,11 @@ export default function BillingPage() {
                                     </div>
                                 </div>
 
+                                {viewingInvoice.student_name && (
+                                    <p className="text-sm font-bold text-gray-800">
+                                        {viewingInvoice.lesson_subject || 'Musikunterricht'} für {viewingInvoice.student_name}
+                                    </p>
+                                )}
                                 <div className="border border-gray-100 rounded-[2rem] overflow-hidden shadow-sm">
                                     {/* Desktop Table */}
                                     <table className="hidden sm:table w-full text-left border-separate border-spacing-0">
