@@ -37,6 +37,8 @@ interface Invoice {
     id: string
     invoice_number: string
     total_amount: number | string
+    balance_due: number | string
+    recipient?: { name: string; street: string; postal_code: string; city: string }
     due_date: string
     status: 'paid' | 'pending' | 'overdue' | 'draft' | 'sent' | 'partial' | 'cancelled'
     line_items: Array<{
@@ -475,6 +477,7 @@ export default function BillingPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleSendInvoice(invoice.id)}
+                                                            title="Rechnung per E-Mail senden"
                                                             className="hover:scale-110 active:scale-95"
                                                         >
                                                             <Mail className="w-4 h-4 text-gray-400" />
@@ -855,8 +858,16 @@ export default function BillingPage() {
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('billedTo')}</p>
                                         <p className="text-lg font-black text-gray-900 leading-tight">
-                                            {viewingInvoice.student_name || viewingInvoice.band_name || tr('genericClient')}
+                                            {viewingInvoice.recipient?.name || viewingInvoice.student_name || viewingInvoice.band_name || tr('genericClient')}
                                         </p>
+                                        {viewingInvoice.recipient?.street && (
+                                            <p className="text-xs text-gray-500">{viewingInvoice.recipient.street}</p>
+                                        )}
+                                        {(viewingInvoice.recipient?.postal_code || viewingInvoice.recipient?.city) && (
+                                            <p className="text-xs text-gray-500">
+                                                {[viewingInvoice.recipient?.postal_code, viewingInvoice.recipient?.city].filter(Boolean).join(' ')}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="text-right space-y-1">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('dated')}</p>
@@ -910,7 +921,7 @@ export default function BillingPage() {
                                         <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">{tr('totalBalanceDue')}</p>
                                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/10 border border-white/20`}>
                                             <span className={viewingInvoice.status === 'paid' ? 'text-green-400' : 'text-yellow-400'}>
-                                                {statusLabels[viewingInvoice.status] || viewingInvoice.status}
+                                                {viewingInvoice.status === 'sent' && !viewingInvoice.email_sent ? 'Nicht versendet' : statusLabels[viewingInvoice.status] || viewingInvoice.status}
                                             </span>
                                         </div>
                                         {viewingInvoice.stripe_transaction_id && (
@@ -920,7 +931,7 @@ export default function BillingPage() {
                                         )}
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-4xl font-black tracking-tight">{money(viewingInvoice.total_amount)}</span>
+                                        <span className="text-4xl font-black tracking-tight">{money(viewingInvoice.balance_due)}</span>
                                         
                                     </div>
                                 </div>
