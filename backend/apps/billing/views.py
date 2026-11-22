@@ -60,7 +60,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 raise ValidationError({"student": "Ungültige Schüler-ID."})
             queryset = queryset.filter(student_id=student_id)
-        return queryset
+        return queryset.defer("pdf_document")
 
     def create(self, request, *args, **kwargs):
         """Issue a draft; send only through the real mailer and report the outcome."""
