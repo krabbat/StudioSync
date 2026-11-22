@@ -94,22 +94,22 @@ def send_invoice(invoice_id):
             f"{intro}\n\n"
             f"Mit freundlichen Grüßen\n{sender_name}\n"
         )
-        email = EmailMultiAlternatives(
-            subject=subject,
-            body=body,
-            from_email=formataddr((sender_name, sender_email)),
-            to=[snapshot["recipient_email"]],
-            connection=get_connection(
-                backend="django.core.mail.backends.smtp.EmailBackend",
-                **connection_args,
-            ),
-        )
-        email.attach(
-            f"MUSart-Rechnung-{invoice.invoice_number}.pdf",
-            pdf,
-            "application/pdf",
-        )
         try:
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=body,
+                from_email=formataddr((sender_name, sender_email)),
+                to=[snapshot["recipient_email"]],
+                connection=get_connection(
+                    backend="django.core.mail.backends.smtp.EmailBackend",
+                    **connection_args,
+                ),
+            )
+            email.attach(
+                f"MUSart-Rechnung-{invoice.invoice_number}.pdf",
+                pdf,
+                "application/pdf",
+            )
             if email.send(fail_silently=False) != 1:
                 raise InvoiceDeliveryError("Der SMTP-Server hat den Versand nicht bestätigt.")
         except InvoiceDeliveryError:
