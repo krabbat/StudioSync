@@ -1,13 +1,19 @@
 from django.db.models import Q
+from django.db import transaction
+from django.http import HttpResponse
+from django.utils import timezone
+from zoneinfo import ZoneInfo
 from uuid import UUID
 
 from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from apps.core.tenancy import studio_for_request, studios_for_request
 
 from .models import Invoice, Subscription, SubscriptionPlan
+from .invoice_delivery import InvoiceDeliveryError, send_invoice, invoice_pdf_bytes
 from .serializers import InvoiceSerializer, SubscriptionPlanSerializer, SubscriptionSerializer
 
 
@@ -56,15 +62,73 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student_id=student_id)
         return queryset
 
-    def perform_create(self, serializer):
-        user = self.request.user
-        if user.role != "admin":
-            raise PermissionDenied("Only admins can create invoices.")
-
-        studio = studio_for_request(self.request)
+    def create(self, request, *args, **kwargs):
+        """Issue a draft; send only through the real mailer and report the outcome."""
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen Rechnungen erstellen.")
+        studio = studio_for_request(request)
         if studio is None:
-            raise ValidationError("No studio found to associate with this invoice.")
-        serializer.save(studio=studio)
+            raise ValidationError("Kein zugeordnetes Studio vorhanden.")
+        from apps.core.models import Student
+        student_id = request.data.get("student")
+        if not Student.objects.filter(pk=student_id, studio=studio).exists():
+            raise ValidationError({"student": "Schüler gehört nicht zu diesem Studio."})
+        if request.data.get("band"):
+            raise ValidationError({"band": "MUSart-Rechnungen werden einzelnen Schülern zugeordnet."})
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            invoice = serializer.save(
+                studio=studio,
+                status="draft",
+                issue_date=timezone.localdate(timezone=ZoneInfo("Europe/Berlin")),
+            )
+
+        error_message = ""
+        if request.data.get("send_now") is True:
+            try:
+                send_invoice(invoice.pk)
+            except InvoiceDeliveryError as exc:
+                error_message = str(exc)
+
+        invoice.refresh_from_db()
+        data = self.get_serializer(invoice).data
+        data["email_error"] = error_message
+        return Response(data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"], url_path="pdf")
+    def pdf(self, request, pk=None):
+        """Serve archive/preview via authorized API, never via public media files."""
+        invoice = self.get_object()
+        if not invoice.student:
+            raise ValidationError({"detail": "Für diese Rechnung ist keine Schüler-PDF-Vorlage vorhanden."})
+        pdf_data = invoice_pdf_bytes(invoice)
+        response = HttpResponse(pdf_data, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="MUSart-Rechnung-{invoice.invoice_number}.pdf"'
+        )
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+    @action(detail=True, methods=["post"], url_path="send")
+    def send(self, request, pk=None):
+        """Manual, idempotent retry for a still-unsent invoice."""
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen Rechnungen versenden.")
+        invoice = self.get_object()
+        try:
+            delivered = send_invoice(invoice.pk)
+        except InvoiceDeliveryError as exc:
+            return Response(
+                {"detail": str(exc), "email_sent": False},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({
+            "detail": "Rechnung per E-Mail verschickt." if delivered else "Rechnung wurde bereits verschickt.",
+            "email_sent": True,
+            "already_sent": not delivered,
+        })
 
     def update(self, request, *args, **kwargs):
         if request.user.role != "admin":
@@ -85,6 +149,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": "Only admins can delete invoices."}, status=status.HTTP_403_FORBIDDEN
             )
+        invoice = self.get_object()
+        if invoice.sent_at:
+            raise ValidationError({"detail": "Versendete Rechnungen können nicht gelöscht werden."})
         return super().destroy(request, *args, **kwargs)
 
 class SubscriptionPlanViewSet(viewsets.ModelViewSet):
