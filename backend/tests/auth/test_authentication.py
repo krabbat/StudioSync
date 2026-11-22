@@ -3,6 +3,8 @@ Tests for authentication endpoints (registration, login, token refresh).
 """
 
 from django.contrib.auth import get_user_model
+from email.utils import formataddr
+from unittest.mock import patch
 from django.urls import reverse
 
 import pytest
@@ -94,3 +96,26 @@ class TestTokenRefresh:
         response = api_client.post(refresh_url, refresh_data, format="json")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.auth
+@pytest.mark.django_db
+def test_password_reset_sender_uses_studio_name_not_legacy_smtp_name(api_client, admin_user, studio):
+    studio.name = "MUSart - Musikunterricht"
+    studio.save(update_fields=["name"])
+    admin_user.preferences = {"technical": {
+        "smtp_from_email": "musikunterricht@example.org",
+        "smtp_from_name": "Muikunterricht (veraltet)",
+    }}
+    admin_user.save(update_fields=["preferences"])
+
+    with patch("apps.auth.views.send_mail") as send_mail:
+        response = api_client.post(
+            reverse("password_reset"), {"email": admin_user.email}, format="json",
+        )
+
+    assert response.status_code == 200, response.data
+    send_mail.assert_called_once()
+    assert send_mail.call_args.args[2] == formataddr(
+        ("MUSart - Musikunterricht", "musikunterricht@example.org")
+    )
