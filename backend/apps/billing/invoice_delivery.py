@@ -100,6 +100,12 @@ def send_invoice(invoice_id):
                 body=body,
                 from_email=formataddr((sender_name, sender_email)),
                 to=[snapshot["recipient_email"]],
+                reply_to=(
+                    [snapshot["sender_email"]]
+                    if snapshot.get("sender_email")
+                    and snapshot["sender_email"] != sender_email
+                    else []
+                ),
                 connection=get_connection(
                     backend="django.core.mail.backends.smtp.EmailBackend",
                     **connection_args,
