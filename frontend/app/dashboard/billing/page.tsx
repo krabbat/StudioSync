@@ -38,6 +38,9 @@ interface Invoice {
     invoice_number: string
     total_amount: number | string
     balance_due: number | string
+    payment_status: 'pending' | 'paid' | 'overdue' | 'cancelled'
+    payment_remaining: number | string
+    payment_received: number | string
     recipient?: { name: string; street: string; postal_code: string; city: string }
     due_date: string
     status: 'paid' | 'pending' | 'overdue' | 'draft' | 'sent' | 'partial' | 'cancelled'
@@ -290,6 +293,30 @@ export default function BillingPage() {
         }
     }
 
+    const handleMarkPaid = async (invoice: Invoice) => {
+        if (!confirm(`Rechnung ${invoice.invoice_number} als vollständig bezahlt markieren?`)) return
+        try {
+            const response = await api.post(`/billing/invoices/${invoice.id}/mark-paid/`)
+            setViewingInvoice(current => current?.id === invoice.id ? response.data : current)
+            toast.success('Zahlung verbucht – Rechnung bezahlt.')
+            refetchInvoices()
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || 'Zahlung konnte nicht verbucht werden.')
+        }
+    }
+
+    const handleMarkPending = async (invoice: Invoice) => {
+        if (!confirm(`Manuelle Zahlung für Rechnung ${invoice.invoice_number} zurücknehmen?`)) return
+        try {
+            const response = await api.post(`/billing/invoices/${invoice.id}/mark-pending/`)
+            setViewingInvoice(current => current?.id === invoice.id ? response.data : current)
+            toast.success('Manuelle Zahlung zurückgenommen.')
+            refetchInvoices()
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || 'Manuelle Zahlung konnte nicht zurückgenommen werden.')
+        }
+    }
+
     const handleDownloadInvoice = async (invoice: Invoice) => {
         try {
             const response = await api.get(`/billing/invoices/${invoice.id}/pdf/`, {
@@ -332,31 +359,30 @@ export default function BillingPage() {
     const typedInvoices = invoices as Invoice[]
 
     // Calculate totals
-    const totalRevenue = typedInvoices
-        .filter(i => i.status === 'paid')
-        .reduce((sum, i) => sum + Number(i.total_amount), 0)
+    const paidAmount = typedInvoices
+        .filter(i => i.payment_status !== 'cancelled')
+        .reduce((sum, i) => sum + Number(i.payment_received || 0), 0)
 
     const pendingAmount = typedInvoices
-        .filter(i => ['pending', 'sent'].includes(i.status))
-        .reduce((sum, i) => sum + Number(i.total_amount), 0)
+        .filter(i => i.payment_status === 'pending')
+        .reduce((sum, i) => sum + Number(i.payment_remaining || 0), 0)
 
     const overdueAmount = typedInvoices
-        .filter(i => i.status === 'overdue')
-        .reduce((sum, i) => sum + Number(i.total_amount), 0)
+        .filter(i => i.payment_status === 'overdue')
+        .reduce((sum, i) => sum + Number(i.payment_remaining || 0), 0)
 
     // Filter invoices
     const filteredInvoices = typedInvoices.filter(invoice => {
         const matchesSearch = invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
             invoice.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             invoice.band_name?.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesStatus = filterStatus === 'all' || invoice.status === filterStatus
+        const matchesStatus = filterStatus === 'all' || invoice.payment_status === filterStatus
         return matchesSearch && matchesStatus
     })
 
     const statusFilters = [
         { value: 'all', label: tr('all') },
-        { value: 'sent', label: tr('sent') },
-        { value: 'pending', label: tr('pending') },
+        { value: 'pending', label: 'Ausstehend' },
         { value: 'paid', label: tr('paid') },
         { value: 'overdue', label: tr('overdue') }
     ]
@@ -430,9 +456,9 @@ export default function BillingPage() {
                                 </div>
                                 <span className="hidden sm:inline-block text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-2 py-0.5 rounded-full">{tr('paid')}</span>
                             </div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('totalRevenue')}</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bezahlt</p>
                             <div className="flex items-baseline gap-1">
-                                <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">{money(totalRevenue)}</h3>
+                                <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">{money(paidAmount)}</h3>
                                 
                             </div>
                         </div>
@@ -444,7 +470,7 @@ export default function BillingPage() {
                                 </div>
                                 <span className="hidden sm:inline-block text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-50 px-2 py-0.5 rounded-full">{tr('pending')}</span>
                             </div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('expectedSoon')}</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ausstehend</p>
                             <div className="flex items-baseline gap-1">
                                 <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">{money(pendingAmount)}</h3>
                                 
@@ -458,7 +484,7 @@ export default function BillingPage() {
                                 </div>
                                 <span className="hidden sm:inline-block text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded-full">{tr('overdue')}</span>
                             </div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{tr('pastDue')}</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Überfällig</p>
                             <div className="flex items-baseline gap-1">
                                 <h3 className="text-xl sm:text-3xl font-black text-red-600 tracking-tight">{money(overdueAmount)}</h3>
                                 
@@ -538,12 +564,19 @@ export default function BillingPage() {
                                                 {invoice.student_name || invoice.band_name || 'Generic Client'}
                                             </td>
                                             <td className="px-6 py-6 font-black text-gray-900 text-sm">
-                                                {money(invoice.total_amount)}
+                                                <span className={invoice.payment_status === 'paid' ? 'text-green-700' : invoice.payment_status === 'overdue' ? 'text-red-600' : 'text-amber-700'}>
+                                                    {money(invoice.total_amount)}
+                                                </span>
+                                                {Number(invoice.payment_remaining) > 0 && Number(invoice.payment_remaining) !== Number(invoice.total_amount) && (
+                                                    <div className="text-xs text-gray-400 mt-1">
+                                                        Noch offen: {money(invoice.payment_remaining)}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-6">
-                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(invoice.status)}`}>
-                                                    {getStatusIcon(invoice.status)}
-                                                    {invoice.status === 'sent' && !invoice.email_sent ? 'Nicht versendet' : statusLabels[invoice.status] || invoice.status}
+                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(invoice.payment_status)}`}>
+                                                    {getStatusIcon(invoice.payment_status)}
+                                                    {invoice.payment_status === 'pending' ? 'Ausstehend' : invoice.payment_status === 'paid' ? 'Bezahlt' : invoice.payment_status === 'overdue' ? 'Überfällig' : 'Storniert'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-6 font-bold text-gray-500 text-xs">
@@ -613,9 +646,9 @@ export default function BillingPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(invoice.status)}`}>
-                                            {getStatusIcon(invoice.status)}
-                                            {invoice.status === 'sent' && !invoice.email_sent ? 'Nicht versendet' : statusLabels[invoice.status] || invoice.status}
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(invoice.payment_status)}`}>
+                                            {getStatusIcon(invoice.payment_status)}
+                                            {invoice.payment_status === 'pending' ? 'Ausstehend' : invoice.payment_status === 'paid' ? 'Bezahlt' : invoice.payment_status === 'overdue' ? 'Überfällig' : 'Storniert'}
                                         </span>
                                     </div>
 
@@ -1042,8 +1075,8 @@ export default function BillingPage() {
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">{tr('totalBalanceDue')}</p>
                                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/10 border border-white/20`}>
-                                            <span className={viewingInvoice.status === 'paid' ? 'text-green-400' : 'text-yellow-400'}>
-                                                {viewingInvoice.status === 'sent' && !viewingInvoice.email_sent ? 'Nicht versendet' : statusLabels[viewingInvoice.status] || viewingInvoice.status}
+                                            <span className={viewingInvoice.payment_status === 'paid' ? 'text-green-400' : viewingInvoice.payment_status === 'overdue' ? 'text-red-400' : 'text-yellow-400'}>
+                                                {viewingInvoice.payment_status === 'pending' ? 'Ausstehend' : viewingInvoice.payment_status === 'paid' ? 'Bezahlt' : viewingInvoice.payment_status === 'overdue' ? 'Überfällig' : 'Storniert'}
                                             </span>
                                         </div>
                                         {viewingInvoice.stripe_transaction_id && (
@@ -1053,7 +1086,7 @@ export default function BillingPage() {
                                         )}
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-4xl font-black tracking-tight">{money(viewingInvoice.balance_due)}</span>
+                                        <span className="text-4xl font-black tracking-tight">{money(viewingInvoice.payment_remaining)}</span>
                                         
                                     </div>
                                 </div>
