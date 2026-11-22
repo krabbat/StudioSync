@@ -316,6 +316,27 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["post"])
+    def test_imap_connection(self, request):
+        """Check admin IMAP settings without retrieving or changing emails."""
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen IMAP-Einstellungen testen.")
+
+        from apps.core.imap_service import ImapSetupError, check_imap_connection
+
+        prefs = request.user.preferences if isinstance(request.user.preferences, dict) else {}
+        saved = prefs.get("technical") if isinstance(prefs.get("technical"), dict) else {}
+        payload = request.data if isinstance(request.data, dict) else {}
+        config = {
+            key: payload.get(key) or saved.get(key)
+            for key in ("imap_host", "imap_port", "imap_username", "imap_security", "imap_password")
+        }
+        try:
+            check_imap_connection(config)
+        except ImapSetupError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "IMAP-Verbindung erfolgreich. Postfach-Anmeldung bestätigt."})
+
+    @action(detail=False, methods=["post"])
     def send_test_email(self, request):
         """Send a test email using provided SMTP settings"""
         if request.user.role != "admin":

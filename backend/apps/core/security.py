@@ -5,7 +5,7 @@ import socket
 from copy import deepcopy
 from urllib.parse import urlparse
 
-SECRET_PREFERENCE_KEYS = ("smtp_password", "sms_auth_token")
+SECRET_PREFERENCE_KEYS = ("smtp_password", "imap_password", "sms_auth_token")
 
 
 def assert_public_host(host: str, port: int = 80) -> str:
