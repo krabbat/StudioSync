@@ -37,6 +37,58 @@ def prepare_billing(studio, admin_user, student, *, email="eltern@example.org"):
     admin_user.save(update_fields=["preferences"])
 
 
+@pytest.mark.django_db
+def test_invoice_uses_musart_sender_payment_options_and_instrument(studio, student, admin_user):
+    """Explicit studio settings and the database instrument appear in the snapshot."""
+    from apps.billing.invoice_pdf import (
+        invoice_snapshot, lesson_subject, render_invoice_pdf,
+    )
+    from apps.billing.models import InvoiceLineItem
+
+    prepare_billing(studio, admin_user, student)
+    studio.settings = {
+        **(studio.settings or {}),
+        "billing_sender_name": "Peter Müller",
+        "billing_sender_street": "Lindenring 68",
+        "billing_sender_postal_code": "15738",
+        "billing_sender_city": "Zeuthen",
+        "billing_sender_email": "musikunterricht@musart.de",
+        "bank_account_holder": "Peter Müller",
+        "bank_name": "Mittelbrandenburgische Sparkasse",
+        "bank_iban": "DE36160500001102555645",
+        "paypal_email": "xasteryia@googlemail.com",
+    }
+    studio.save(update_fields=["settings"])
+    student.instrument = "Saxophon"
+    student.instruments = ["Saxophon"]
+    student.save(update_fields=["instrument", "instruments"])
+
+    invoice = Invoice.objects.create(studio=studio, student=student, due_date=date(2027, 1, 7))
+    InvoiceLineItem.objects.create(
+        invoice=invoice, description="Monatsbeitrag Januar 2027",
+        quantity=1, unit_price=135,
+    )
+    invoice.calculate_totals()
+    snapshot = invoice_snapshot(invoice)
+    assert snapshot["sender_name"] == "Peter Müller"
+    assert snapshot["sender_street"] == "Lindenring 68"
+    assert snapshot["sender_postal_code"] == "15738"
+    assert snapshot["sender_city"] == "Zeuthen"
+    assert snapshot["sender_email"] == "musikunterricht@musart.de"
+    assert snapshot["bank_holder"] == "Peter Müller"
+    assert snapshot["bank_name"] == "Mittelbrandenburgische Sparkasse"
+    assert snapshot["bank_iban"] == "DE36160500001102555645"
+    assert snapshot["paypal_email"] == "xasteryia@googlemail.com"
+    assert snapshot["lesson_subject"] == "Saxophonunterricht"
+    assert render_invoice_pdf(snapshot).startswith(b"%PDF")
+
+    student.instrument = ""
+    student.save(update_fields=["instrument"])
+    assert lesson_subject(student) == "Saxophonunterricht"
+    student.instruments = []
+    assert lesson_subject(student) == "Musikunterricht"
+
+
 def payload(student, **extras):
     return {
         "student": str(student.pk),
