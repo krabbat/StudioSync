@@ -133,10 +133,9 @@ class Invoice(models.Model):
 
     @property
     def is_overdue(self):
-        """Check if invoice is overdue"""
-        if self.status == "paid":
-            return False
-        return timezone.now().date() > self.due_date
+        """Use the payment state; email delivery is independent."""
+        from .payment_status import payment_state
+        return payment_state(self) == "overdue"
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:

@@ -27,6 +27,21 @@ class InvoiceSerializer(serializers.ModelSerializer):
     is_overdue = serializers.BooleanField(read_only=True)
     pdf_available = serializers.SerializerMethodField()
     email_sent = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+    payment_remaining = serializers.SerializerMethodField()
+    payment_received = serializers.SerializerMethodField()
+
+    def get_payment_status(self, obj):
+        from .payment_status import payment_state
+        return payment_state(obj)
+
+    def get_payment_remaining(self, obj):
+        from .payment_status import open_amount
+        return str(open_amount(obj))
+
+    def get_payment_received(self, obj):
+        from .payment_status import paid_amount
+        return str(paid_amount(obj))
     recipient = serializers.SerializerMethodField()
     lesson_subject = serializers.SerializerMethodField()
 
@@ -104,6 +119,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "is_overdue",
             "pdf_available",
             "email_sent",
+            "payment_status",
+            "payment_remaining",
+            "payment_received",
             "recipient",
             "lesson_subject",
             "sent_at",

@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.billing.models import Invoice
+from apps.billing.payment_status import payment_totals
 from apps.core.models import Student, Teacher
 from apps.core.tenancy import studio_for_request
 from apps.lessons.models import Lesson
@@ -41,6 +42,7 @@ class DashboardStatsView(APIView):
                 revenue_month = 0.0
                 active_teachers = 0
                 unpaid_invoices = 0.0
+                payment_summary = {"pending": 0, "paid": 0, "overdue": 0}
                 avg_attendance = "100%"
             else:
                 # 1. Total Students — all active students for admins in their studio
@@ -69,12 +71,12 @@ class DashboardStatsView(APIView):
                 # 4. Active Teachers
                 active_teachers = Teacher.objects.filter(studio=studio, is_active=True).count()
 
-                # 5. Unpaid Invoices
-                unpaid_qs = Invoice.objects.filter(
-                    studio=studio, status__in=["sent", "overdue", "partial"]
+                # 5. Invoice payment amounts independent of email state
+                payment_summary = payment_totals(
+                    Invoice.objects.filter(studio=studio)
+                    .only("status", "amount_paid", "total_amount", "due_date", "issue_date")
                 )
-                unpaid_val = sum(inv.balance_due for inv in unpaid_qs)
-                unpaid_invoices = float(unpaid_val)
+                unpaid_invoices = float(payment_summary["pending"] + payment_summary["overdue"])
 
                 # 6. Average Attendance
                 completed_c = Lesson.objects.filter(studio=studio, status="completed").count()
@@ -106,9 +108,12 @@ class DashboardStatsView(APIView):
                 "active_teachers": {"value": active_teachers, "trend": "Active", "positive": True},
                 "unpaid_invoices": {
                     "value": unpaid_invoices,
-                    "trend": "Overdue",
+                    "trend": "Open invoices",
                     "positive": False,
                 },
+                "invoice_pending": {"value": float(payment_summary["pending"])},
+                "invoice_paid": {"value": float(payment_summary["paid"])},
+                "invoice_overdue": {"value": float(payment_summary["overdue"])},
                 "avg_attendance": {
                     "value": avg_attendance,
                     "trend": "Last 30 days",

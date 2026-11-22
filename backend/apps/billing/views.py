@@ -1,5 +1,7 @@
 from django.db.models import Q
 from django.db import transaction
+from decimal import Decimal
+from django.db.models import Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from zoneinfo import ZoneInfo
@@ -12,7 +14,8 @@ from rest_framework.response import Response
 
 from apps.core.tenancy import studio_for_request, studios_for_request
 
-from .models import Invoice, Subscription, SubscriptionPlan
+from .models import Invoice, Payment, Subscription, SubscriptionPlan
+from .payment_status import MANUAL_PAYMENT_NOTE, berlin_today, open_amount
 from .invoice_delivery import InvoiceDeliveryError, send_invoice, invoice_pdf_bytes
 from .serializers import InvoiceSerializer, SubscriptionPlanSerializer, SubscriptionSerializer
 
@@ -129,6 +132,56 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             "email_sent": True,
             "already_sent": bool(invoice.sent_at),
         })
+
+    @action(detail=True, methods=["post"], url_path="mark-paid")
+    def mark_paid(self, request, pk=None):
+        """Manually book payment for the remaining invoice amount."""
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen Zahlungen verbuchen.")
+        invoice = self.get_object()
+        with transaction.atomic():
+            invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+            if invoice.status == "cancelled":
+                raise ValidationError({"detail": "Stornierte Rechnungen können nicht bezahlt werden."})
+            remaining = open_amount(invoice)
+            if remaining > 0:
+                profile = getattr(invoice.student, "billing_profile", None) if invoice.student else None
+                method = profile.payment_method if profile else "bank_transfer"
+                Payment.objects.create(
+                    invoice=invoice,
+                    amount=remaining,
+                    payment_method=method,
+                    status="completed",
+                    notes=MANUAL_PAYMENT_NOTE,
+                    processed_by=request.user,
+                )
+            invoice.amount_paid = invoice.total_amount
+            invoice.paid_date = berlin_today()
+            invoice.status = "paid"
+            invoice.save(update_fields=["amount_paid", "paid_date", "status", "updated_at"])
+        return Response(self.get_serializer(invoice).data)
+
+    @action(detail=True, methods=["post"], url_path="mark-pending")
+    def mark_pending(self, request, pk=None):
+        """Reverse manually booked payments, preserving independent transactions."""
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen Zahlungen zurücknehmen.")
+        invoice = self.get_object()
+        with transaction.atomic():
+            invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+            manual = invoice.payments.filter(status="completed", notes=MANUAL_PAYMENT_NOTE)
+            manually_paid = manual.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+            if not manually_paid:
+                raise ValidationError({
+                    "detail": "Keine manuell verbuchte Zahlung zum Zurücknehmen vorhanden."
+                })
+            manual.delete()
+            invoice.amount_paid = max(Decimal("0"), invoice.amount_paid - manually_paid)
+            invoice.paid_date = None
+            invoice.status = ("partial" if invoice.amount_paid > 0 else
+                              "sent" if invoice.sent_at else "draft")
+            invoice.save(update_fields=["amount_paid", "paid_date", "status", "updated_at"])
+        return Response(self.get_serializer(invoice).data)
 
     def update(self, request, *args, **kwargs):
         if request.user.role != "admin":
