@@ -22,6 +22,8 @@ export default function GeneralSettingsPage() {
     const [justSaved, setJustSaved] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [showSmtpPassword, setShowSmtpPassword] = useState(false)
+    const [showImapPassword, setShowImapPassword] = useState(false)
+    const [testingImap, setTestingImap] = useState(false)
     const [showSmsApiKey, setShowSmsApiKey] = useState(false)
     const [cropImage, setCropImage] = useState<string | null>(null)
     const [geoDetecting, setGeoDetecting] = useState(false)
@@ -210,7 +212,7 @@ export default function GeneralSettingsPage() {
         }
     }
 
-    // Technical settings (SMTP/SMS) - Admin only
+    // Technical settings (SMTP/IMAP/SMS) - Admin only
     const [technicalSettings, setTechnicalSettings] = useState({
         smtp_host: currentUser?.preferences?.technical?.smtp_host ?? '',
         smtp_port: currentUser?.preferences?.technical?.smtp_port ?? '587',
@@ -219,11 +221,31 @@ export default function GeneralSettingsPage() {
         smtp_from_email: currentUser?.preferences?.technical?.smtp_from_email ?? '',
         smtp_from_name: currentUser?.preferences?.technical?.smtp_from_name ?? 'StudioSync',
         smtp_use_tls: currentUser?.preferences?.technical?.smtp_use_tls ?? true,
+        imap_host: currentUser?.preferences?.technical?.imap_host ?? 'mail.manitu.de',
+        imap_port: currentUser?.preferences?.technical?.imap_port ?? '993',
+        imap_security: currentUser?.preferences?.technical?.imap_security ?? 'ssl',
+        imap_username: currentUser?.preferences?.technical?.imap_username ?? 'musikunterricht@musart.de',
+        imap_password: '',
         sms_provider: currentUser?.preferences?.technical?.sms_provider ?? 'twilio',
         sms_account_sid: currentUser?.preferences?.technical?.sms_account_sid ?? '',
         sms_auth_token: currentUser?.preferences?.technical?.sms_auth_token ?? '',
         sms_from_number: currentUser?.preferences?.technical?.sms_from_number ?? ''
     })
+
+    // The admin profile may be fetched after the first render.
+    // Refresh only the IMAP fields when fresh saved settings arrive.
+    useEffect(() => {
+        const t = currentUser?.preferences?.technical
+        if (currentUser?.role !== 'admin' || !t) return
+        setTechnicalSettings(prev => ({
+            ...prev,
+            imap_host: t.imap_host ?? 'mail.manitu.de',
+            imap_port: String(t.imap_port ?? '993'),
+            imap_security: t.imap_security ?? 'ssl',
+            imap_username: t.imap_username ?? 'musikunterricht@musart.de',
+            imap_password: '',
+        }))
+    }, [currentUser?.role, currentUser?.preferences?.technical])
 
     const tabs = [
         { id: 'profile', label: t('tabProfile'), icon: User },
@@ -340,6 +362,24 @@ export default function GeneralSettingsPage() {
             toast.error(error.response?.data?.detail || t('testEmailFailed'))
         } finally {
             setTestingEmail(false)
+        }
+    }
+
+    const handleTestImap = async () => {
+        setTestingImap(true)
+        try {
+            const response = await api.post('/core/users/test_imap_connection/', {
+                imap_host: technicalSettings.imap_host,
+                imap_port: technicalSettings.imap_port,
+                imap_security: technicalSettings.imap_security,
+                imap_username: technicalSettings.imap_username,
+                imap_password: technicalSettings.imap_password,
+            })
+            toast.success(response.data.detail || 'IMAP-Verbindung erfolgreich.')
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || 'IMAP-Verbindung konnte nicht hergestellt werden.')
+        } finally {
+            setTestingImap(false)
         }
     }
 
@@ -1184,6 +1224,70 @@ export default function GeneralSettingsPage() {
                                         <div className="pt-2">
                                             <button type="button" onClick={handleTestEmail} disabled={testingEmail} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-semibold disabled:opacity-50">
                                                 {testingEmail ? <><Loader2 className="w-4 h-4 animate-spin" />{t('detailSendingTestEmail')}</> : <><Mail className="w-4 h-4" />{t('detailTestConnection')}</>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-gray-200">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Mail className="w-5 h-5 text-gray-600" />
+                                        <h3 className="font-semibold text-gray-900">IMAP – E-Mail-Empfang</h3>
+                                    </div>
+                                    <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-xs text-gray-500">
+                                            Postfach für den späteren Nachrichten-Client. Der Verbindungstest meldet sich nur an; keine E-Mail wird geöffnet oder verändert.
+                                        </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label htmlFor="imap-host" className="block text-xs font-medium text-gray-700 mb-1">IMAP-Server</label>
+                                                <input id="imap-host" type="text" autoComplete="off" value={technicalSettings.imap_host}
+                                                    onChange={e => setTechnicalSettings({ ...technicalSettings, imap_host: e.target.value })}
+                                                    placeholder="mail.manitu.de"
+                                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-primary" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="imap-port" className="block text-xs font-medium text-gray-700 mb-1">Port</label>
+                                                <select id="imap-port" value={String(technicalSettings.imap_port)}
+                                                    onChange={e => setTechnicalSettings({
+                                                        ...technicalSettings, imap_port: e.target.value,
+                                                        imap_security: e.target.value === '143' ? 'starttls' : 'ssl',
+                                                    })}
+                                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-primary">
+                                                    <option value="993">993 – SSL/TLS</option>
+                                                    <option value="143">143 – STARTTLS</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="imap-username" className="block text-xs font-medium text-gray-700 mb-1">Benutzername (E-Mail-Adresse)</label>
+                                            <input id="imap-username" type="email" autoComplete="username" value={technicalSettings.imap_username}
+                                                onChange={e => setTechnicalSettings({ ...technicalSettings, imap_username: e.target.value })}
+                                                placeholder="musikunterricht@musart.de"
+                                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-primary" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="imap-password" className="block text-xs font-medium text-gray-700 mb-1">Postfach-Passwort</label>
+                                            <div className="relative">
+                                                <input id="imap-password" type={showImapPassword ? 'text' : 'password'} autoComplete="new-password"
+                                                    value={technicalSettings.imap_password}
+                                                    onChange={e => setTechnicalSettings({ ...technicalSettings, imap_password: e.target.value })}
+                                                    placeholder={currentUser?.preferences?.technical?.imap_password_set ? 'Passwort ist gespeichert' : 'Postfach-Passwort eingeben'}
+                                                    className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-primary" />
+                                                <button type="button" onClick={() => setShowImapPassword(!showImapPassword)}
+                                                    aria-label={showImapPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                                                    className="absolute right-3 top-2.5 text-gray-500">
+                                                    {showImapPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Leer lassen, um das bereits gespeicherte Passwort beizubehalten. Es wird nicht an den Browser zurückgegeben.</p>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                                            <span className="text-xs text-gray-500">Verschlüsselung: {technicalSettings.imap_security === 'starttls' ? 'STARTTLS' : 'SSL/TLS'} (verpflichtend)</span>
+                                            <button type="button" onClick={handleTestImap} disabled={testingImap || loading}
+                                                className="flex justify-center items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-semibold text-sm disabled:opacity-50">
+                                                {testingImap ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
+                                                {testingImap ? 'IMAP-Verbindung wird geprüft …' : 'IMAP-Verbindung testen'}
                                             </button>
                                         </div>
                                     </div>
