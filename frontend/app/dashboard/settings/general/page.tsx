@@ -220,7 +220,6 @@ export default function GeneralSettingsPage() {
         smtp_username: currentUser?.preferences?.technical?.smtp_username ?? '',
         smtp_password: '',
         smtp_from_email: currentUser?.preferences?.technical?.smtp_from_email ?? '',
-        smtp_from_name: currentUser?.preferences?.technical?.smtp_from_name ?? 'StudioSync',
         smtp_use_tls: currentUser?.preferences?.technical?.smtp_use_tls ?? true,
         imap_host: currentUser?.preferences?.technical?.imap_host ?? 'mail.manitu.de',
         imap_port: currentUser?.preferences?.technical?.imap_port ?? '993',
@@ -251,7 +250,6 @@ export default function GeneralSettingsPage() {
             smtp_username: t.smtp_username || (restoreManitu ? t.imap_username : ''),
             smtp_password: '',
             smtp_from_email: t.smtp_from_email || (restoreManitu ? t.imap_username : ''),
-            smtp_from_name: restoreManitu ? (currentUser?.studio?.name || t.smtp_from_name || 'StudioSync') : (t.smtp_from_name ?? 'StudioSync'),
             smtp_use_tls: restoreManitu ? false : (t.smtp_use_tls ?? true),
             imap_host: t.imap_host ?? 'mail.manitu.de',
             imap_port: String(t.imap_port ?? '993'),
@@ -367,7 +365,6 @@ export default function GeneralSettingsPage() {
                 smtp_port: technicalSettings.smtp_port,
                 smtp_username: technicalSettings.smtp_username.trim(),
                 smtp_from_email: technicalSettings.smtp_from_email.trim(),
-                smtp_from_name: technicalSettings.smtp_from_name.trim(),
                 smtp_use_tls: technicalSettings.smtp_port === '465' ? false : technicalSettings.smtp_use_tls,
                 ...(technicalSettings.smtp_password ? { smtp_password: technicalSettings.smtp_password } : {}),
             } : {
@@ -402,7 +399,6 @@ export default function GeneralSettingsPage() {
                 smtp_username: technicalSettings.smtp_username,
                 smtp_password: technicalSettings.smtp_password,
                 smtp_from_email: technicalSettings.smtp_from_email,
-                smtp_from_name: technicalSettings.smtp_from_name,
                 smtp_use_tls: technicalSettings.smtp_use_tls,
             }
             const res = await api.post('/core/users/send_test_email/', payload)
@@ -1275,7 +1271,7 @@ export default function GeneralSettingsPage() {
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromName')}</label>
-                                                <input type="text" value={technicalSettings.smtp_from_name} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_from_name: e.target.value })} placeholder="My Studio" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                                <input type="text" value={currentUser?.studio?.name ?? ''} readOnly title="Wird unter Einstellungen → Studio festgelegt" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-100 text-gray-700" />
                                             </div>
                                         </div>
                                         <label className="flex items-center justify-between p-3 bg-white rounded-lg">
