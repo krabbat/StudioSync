@@ -17,14 +17,15 @@ def get_email_settings():
     """
     try:
         admin = User.objects.filter(role="admin").first()
-        from_name = getattr(settings, "SITE_NAME", "StudioSync")
+        # The display name is owned by the Studio record, not by SMTP settings.
+        studio = admin.owned_studios.order_by("created_at").first() if admin else None
+        from_name = studio.name if studio else getattr(settings, "SITE_NAME", "StudioSync")
         from_email_address = settings.DEFAULT_FROM_EMAIL
 
         smtp_config = {}
 
         if admin and admin.preferences and "technical" in admin.preferences:
             tech_settings = admin.preferences["technical"]
-            from_name = tech_settings.get("smtp_from_name", from_name)
             custom_from = tech_settings.get("smtp_from_email")
             if custom_from:
                 from_email_address = custom_from
