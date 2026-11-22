@@ -87,3 +87,50 @@ def test_imap_connection_only_authenticates_over_tls_without_reading():
 def test_imap_rejects_unsupported_or_unencrypted_protocol(config):
     with pytest.raises(ImapSetupError):
         check_imap_connection(config)
+
+
+@pytest.mark.django_db
+def test_imap_settings_save_via_user_profile_without_password_disclosure(
+    authenticated_client, admin_user,
+):
+    url = reverse("user-me-manual")
+    first = authenticated_client.patch(url, {
+        "preferences": {"technical": {
+            "imap_host": "mail.manitu.de",
+            "imap_port": "993",
+            "imap_security": "ssl",
+            "imap_username": "musikunterricht@musart.de",
+            "imap_password": "temporary-test-password",
+        }}
+    }, format="json")
+    assert first.status_code == 200, first.data
+    assert first.data["preferences"]["technical"]["imap_password_set"] is True
+    assert "imap_password" not in first.data["preferences"]["technical"]
+    assert "temporary-test-password" not in str(first.data)
+
+    second = authenticated_client.patch(url, {
+        "preferences": {"technical": {"imap_password": "", "imap_port": "993"}}
+    }, format="json")
+    assert second.status_code == 200, second.data
+    admin_user.refresh_from_db()
+    assert admin_user.preferences["technical"]["imap_password"] == "temporary-test-password"
+
+
+def test_imap_starttls_upgrade_precedes_password_login():
+    config = {
+        "imap_host": "mail.manitu.de",
+        "imap_port": "143",
+        "imap_security": "starttls",
+        "imap_username": "test@example.org",
+        "imap_password": "secret",
+    }
+    client = MagicMock()
+    client.noop.return_value = ("OK", [])
+    with (
+        patch("apps.core.imap_service.assert_public_host"),
+        patch("apps.core.imap_service.imaplib.IMAP4", return_value=client),
+    ):
+        assert check_imap_connection(config)
+    assert client.method_calls[0][0] == "starttls"
+    assert client.method_calls[1][0] == "login"
+    client.logout.assert_called_once()
