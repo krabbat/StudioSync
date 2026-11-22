@@ -119,6 +119,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return invoice
 
     def update(self, instance, validated_data):
+        if validated_data.get("status") == "sent":
+            raise serializers.ValidationError(
+                "Status 'versendet' darf nur durch erfolgreichen E-Mail-Versand entstehen."
+            )
         if instance.sent_at and set(validated_data) - {"status"}:
             raise serializers.ValidationError(
                 "Eine versendete Rechnung darf inhaltlich nicht verändert werden."
