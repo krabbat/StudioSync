@@ -1,4 +1,5 @@
 from django.conf import settings
+from email.utils import formataddr
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
@@ -62,17 +63,21 @@ class PasswordResetRequestView(APIView):
 
         user = User.objects.filter(email=email).first()
         if user:
-            from apps.core.email_utils import get_frontend_url
+            from apps.core.email_utils import get_email_settings, get_frontend_url
+            from apps.core.tenancy import studios_for_user
 
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             base_url = get_frontend_url(request)
             reset_link = f"{base_url}/reset-password?uid={uid}&token={token}"
 
+            email_settings = get_email_settings()
+            studio = studios_for_user(user).order_by("created_at").first()
+            sender_name = studio.name if studio else email_settings["from_name"]
             send_mail(
                 "Password Reset Request",
                 f"Click the link to reset your password: {reset_link}",
-                settings.DEFAULT_FROM_EMAIL,
+                formataddr((sender_name, email_settings["from_email"])),
                 [email],
                 fail_silently=False,
             )
