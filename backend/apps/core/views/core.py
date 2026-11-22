@@ -358,7 +358,10 @@ class UserViewSet(viewsets.ModelViewSet):
         smtp_password = request.data.get("smtp_password") or saved.get("smtp_password")
         smtp_use_tls = request.data.get("smtp_use_tls", saved.get("smtp_use_tls", True))
         smtp_from_email = request.data.get("smtp_from_email") or saved.get("smtp_from_email")
-        smtp_from_name = request.data.get("smtp_from_name") or saved.get("smtp_from_name", "StudioSync")
+        studio = studio_for_request(request)
+        if studio is None:
+            return Response({"detail": "Kein Studio für diesen Zugang hinterlegt."}, status=status.HTTP_400_BAD_REQUEST)
+        smtp_from_name = studio.name
 
         print(f"SMTP Host: {smtp_host}")
         print(f"SMTP Port: {smtp_port}")
