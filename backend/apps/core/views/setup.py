@@ -9,6 +9,7 @@ Handles initial system setup including:
 """
 
 from django.conf import settings
+from email.utils import formataddr
 from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
@@ -236,7 +237,7 @@ the StudioSync Team
                 send_mail(
                     subject,
                     message,
-                    data.get("smtp_from_email") or settings.DEFAULT_FROM_EMAIL,
+                    formataddr((studio.name, data.get("smtp_from_email") or settings.DEFAULT_FROM_EMAIL)),
                     [admin_user.email],
                     fail_silently=True,
                 )
