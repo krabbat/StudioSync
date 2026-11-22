@@ -49,6 +49,9 @@ interface Invoice {
     student_name?: string
     band_name?: string
     created_at?: string
+    issue_date: string
+    email_sent?: boolean
+    sent_at?: string | null
     stripe_transaction_id?: string
 }
 
@@ -105,10 +108,10 @@ export default function BillingPage() {
         setCreating(true)
 
         try {
-            await api.post('/billing/invoices/', {
+            const result = await api.post('/billing/invoices/', {
                 student: newInvoice.student,
                 due_date: newInvoice.dueDate,
-                status: 'sent',
+                send_now: true,
                 line_items: newInvoice.line_items.map(item => ({
                     ...item,
                     unit_price: Number(item.unit_price)
@@ -120,11 +123,20 @@ export default function BillingPage() {
                 dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 line_items: [{ description: '', quantity: 1, unit_price: '' }]
             })
-            toast.success(tr('messageInvoiceCreatedSuccessfully'))
+            if (result.data.email_sent) {
+                toast.success('Rechnung erstellt und per E-Mail versendet.')
+            } else {
+                toast.error('Rechnung als Entwurf angelegt, aber nicht versendet: ' +
+                    (result.data.email_error || 'Versand nicht bestätigt.'), { duration: 7500 })
+            }
             refetchInvoices()
-        } catch (error) {
+        } catch (error: any) {
             console.error('Create invoice failed', error)
-            toast.error(tr('messageFailedToCreateInvoice'))
+            const data = error.response?.data
+            const detail = data && typeof data === 'object'
+                ? Object.values(data).flat().filter(v => typeof v === 'string').join(' ')
+                : ''
+            toast.error(detail || tr('messageFailedToCreateInvoice'))
         } finally {
             setCreating(false)
         }
@@ -161,29 +173,16 @@ export default function BillingPage() {
         return sum + (Number(item.quantity) * Number(item.unit_price) || 0)
     }, 0)
 
-    const handlePayInvoice = async (invoiceId: string) => {
-        const toastId = toast.loading(tr('messageStartingCheckout'))
+    const handleSendInvoice = async (invoiceId: string) => {
         try {
-            const res = await api.post(`/billing/create-checkout-session/${invoiceId}/`)
-            if (res.data.url) {
-                toast.dismiss(toastId)
-                window.location.href = res.data.url
-            } else {
-                toast.error(tr('messageFailedToStartPayment'), { id: toastId })
-            }
+            const result = await api.post(`/billing/invoices/${invoiceId}/send/`)
+            toast.success(result.data.detail || 'Rechnung versendet.')
+            setViewingInvoice(previous => previous?.id === invoiceId
+                ? { ...previous, email_sent: true, status: previous.status === 'draft' ? 'sent' : previous.status }
+                : previous)
+            refetchInvoices()
         } catch (error: any) {
-            console.error(error)
-            const detail = error?.response?.data?.error || 'Payment initialization failed'
-            toast.error(detail, { id: toastId })
-        }
-    }
-
-    const handleSendReminder = async (invoiceId: string) => {
-        try {
-            await api.post(`/billing/invoices/${invoiceId}/send_reminder/`)
-            toast.success(tr('messageReminderSentSuccessfully'))
-        } catch (error) {
-            toast.error(tr('messageFailedToSendReminder'))
+            toast.error(error.response?.data?.detail || 'Der Rechnungsversand ist fehlgeschlagen.')
         }
     }
 
@@ -202,9 +201,22 @@ export default function BillingPage() {
         }
     }
 
-    const handleDownloadInvoice = (invoice: Invoice) => {
-        setViewingInvoice(invoice)
-        setTimeout(() => window.print(), 500)
+    const handleDownloadInvoice = async (invoice: Invoice) => {
+        try {
+            const response = await api.get(`/billing/invoices/${invoice.id}/pdf/`, {
+                responseType: 'blob',
+            })
+            const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+            const link = document.createElement('a')
+            link.href = blobUrl
+            link.download = `MUSart-Rechnung-${invoice.invoice_number}.pdf`
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+            window.setTimeout(() => URL.revokeObjectURL(blobUrl), 2000)
+        } catch {
+            toast.error('PDF-Rechnung konnte nicht geladen werden.')
+        }
     }
 
     const getStatusColor = (status: string) => {
@@ -442,7 +454,7 @@ export default function BillingPage() {
                                             <td className="px-6 py-6">
                                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(invoice.status)}`}>
                                                     {getStatusIcon(invoice.status)}
-                                                    {statusLabels[invoice.status] || invoice.status}
+                                                    {invoice.status === 'sent' && !invoice.email_sent ? 'Nicht versendet' : statusLabels[invoice.status] || invoice.status}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-6 font-bold text-gray-500 text-xs">
@@ -458,17 +470,17 @@ export default function BillingPage() {
                                                     >
                                                         <Eye className="w-4 h-4 text-gray-400" />
                                                     </Button>
-                                                    {isAdmin && invoice.status !== 'paid' && (
+                                                    {isAdmin && !invoice.email_sent && invoice.status !== 'cancelled' && (
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => handleSendReminder(invoice.id)}
+                                                            onClick={() => handleSendInvoice(invoice.id)}
                                                             className="hover:scale-110 active:scale-95"
                                                         >
                                                             <Mail className="w-4 h-4 text-gray-400" />
                                                         </Button>
                                                     )}
-                                                    {isAdmin && (
+                                                    {isAdmin && !invoice.email_sent && (
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -478,24 +490,15 @@ export default function BillingPage() {
                                                             <Trash2 className="w-4 h-4" />
                                                         </Button>
                                                     )}
-                                                    {invoice.status !== 'paid' && invoice.status !== 'cancelled' ? (
-                                                        <Button
-                                                            onClick={() => handlePayInvoice(invoice.id)}
-                                                            className="gap-2 bg-blue-600 hover:bg-blue-700 h-9 px-4 active:scale-95"
-                                                        >
-                                                            <CreditCard className="w-3.5 h-3.5" />
-                                                            <span className="text-[10px] font-black uppercase tracking-widest">{tr('pay')}</span>
-                                                        </Button>
-                                                    ) : (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="icon"
-                                                            onClick={() => handleDownloadInvoice(invoice)}
-                                                            className="hover:scale-110 active:scale-95"
-                                                        >
-                                                            <Download className="w-4 h-4 text-gray-400" />
-                                                        </Button>
-                                                    )}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => handleDownloadInvoice(invoice)}
+                                                        title="PDF-Rechnung herunterladen"
+                                                        className="hover:scale-110 active:scale-95"
+                                                    >
+                                                        <Download className="w-4 h-4 text-gray-400" />
+                                                    </Button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -522,7 +525,7 @@ export default function BillingPage() {
                                         </div>
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(invoice.status)}`}>
                                             {getStatusIcon(invoice.status)}
-                                            {statusLabels[invoice.status] || invoice.status}
+                                            {invoice.status === 'sent' && !invoice.email_sent ? 'Nicht versendet' : statusLabels[invoice.status] || invoice.status}
                                         </span>
                                     </div>
 
@@ -536,24 +539,14 @@ export default function BillingPage() {
                                     </div>
 
                                     <div className="flex items-center gap-2 pt-2">
-                                        {invoice.status !== 'paid' && invoice.status !== 'cancelled' ? (
-                                            <Button
-                                                onClick={() => handlePayInvoice(invoice.id)}
-                                                className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 py-5 rounded-2xl active:scale-95 font-black uppercase tracking-widest text-[10px]"
-                                            >
-                                                <CreditCard className="w-3.5 h-3.5" />
-                                                {tr('payNow')}
-                                            </Button>
-                                        ) : (
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleDownloadInvoice(invoice)}
-                                                className="flex-1 gap-2 py-5 rounded-2xl active:scale-95 font-black uppercase tracking-widest text-[10px]"
-                                            >
-                                                <Download className="w-4 h-4" />
-                                                {tr('invoice')}
-                                            </Button>
-                                        )}
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleDownloadInvoice(invoice)}
+                                            className="flex-1 gap-2 py-5 rounded-2xl active:scale-95 font-black uppercase tracking-widest text-[10px]"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            PDF-Rechnung
+                                        </Button>
                                         <div className="flex gap-1">
                                             <Button
                                                 variant="ghost"
@@ -563,7 +556,18 @@ export default function BillingPage() {
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Button>
-                                            {isAdmin && (
+                                            {isAdmin && !invoice.email_sent && invoice.status !== 'cancelled' && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleSendInvoice(invoice.id)}
+                                                    title="Rechnung per E-Mail versenden"
+                                                    className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-500 active:scale-90"
+                                                >
+                                                    <Mail className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            {isAdmin && !invoice.email_sent && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -857,7 +861,7 @@ export default function BillingPage() {
                                     <div className="text-right space-y-1">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('dated')}</p>
                                         <p className="text-sm font-bold text-gray-900">
-                                            {new Date(viewingInvoice.due_date).toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' })}
+                                            {new Date(viewingInvoice.issue_date).toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' })}
                                         </p>
                                     </div>
                                 </div>
@@ -911,7 +915,7 @@ export default function BillingPage() {
                                         </div>
                                         {viewingInvoice.stripe_transaction_id && (
                                             <p className="text-[9px] font-black text-white/50 uppercase tracking-widest mt-1">
-                                                Stripe Ref: {viewingInvoice.stripe_transaction_id.slice(0, 16)}...
+                                                Buchungsreferenz: {viewingInvoice.stripe_transaction_id.slice(0, 16)}...
                                             </p>
                                         )}
                                     </div>
@@ -925,19 +929,19 @@ export default function BillingPage() {
                         <DialogFooter className="print:hidden">
                             <Button
                                 variant="outline"
-                                onClick={() => window.print()}
+                                onClick={() => handleDownloadInvoice(viewingInvoice)}
                                 className="flex-1 gap-2"
                             >
                                 <Download className="w-4 h-4" />
                                 {tr('downloadPDF')}
                             </Button>
-                            {viewingInvoice.status !== 'paid' && viewingInvoice.status !== 'cancelled' && (
+                            {isAdmin && !viewingInvoice.email_sent && viewingInvoice.status !== 'cancelled' && (
                                 <Button
-                                    onClick={() => handlePayInvoice(viewingInvoice.id)}
-                                    className="flex-1 gap-2 bg-green-600 hover:bg-green-700 active:scale-95 transition-transform"
+                                    onClick={() => handleSendInvoice(viewingInvoice.id)}
+                                    className="flex-1 gap-2"
                                 >
-                                    <CreditCard className="w-4 h-4" />
-                                    {tr('securePay')}
+                                    <Mail className="w-4 h-4" />
+                                    Rechnung senden
                                 </Button>
                             )}
                         </DialogFooter>
