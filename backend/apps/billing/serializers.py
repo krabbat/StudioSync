@@ -86,6 +86,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "status",
             "issue_date",
             "due_date",
+            "service_month",
             "subtotal",
             "tax_amount",
             "discount_amount",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from calendar import monthrange
 from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -60,6 +61,11 @@ def invoice_snapshot(invoice):
         "invoice_number": invoice.invoice_number,
         "issue_date": date_de(invoice.issue_date),
         "due_date": date_de(invoice.due_date),
+        "service_period": (
+            f"01.{invoice.service_month.month:02d}.{invoice.service_month.year} - "
+            f"{monthrange(invoice.service_month.year, invoice.service_month.month)[1]:02d}."
+            f"{invoice.service_month.month:02d}.{invoice.service_month.year}"
+        ) if invoice.service_month else "",
         "sender_name": studio.owner.get_full_name().strip() or studio.name,
         "studio_name": studio.name,
         "sender_street": studio.address_line1,
@@ -191,7 +197,10 @@ def render_invoice_pdf(data):
     ]))
     story += [block, Spacer(1, 12 * mm)]
     if data["student_name"]:
-        story += [paragraph("Unterricht für: " + data["student_name"]), Spacer(1, 7 * mm)]
+        story += [paragraph("Unterricht für: " + data["student_name"])]
+    if data.get("service_period"):
+        story += [paragraph("Leistungszeitraum: " + data["service_period"], small)]
+    story += [Spacer(1, 7 * mm)]
 
     rows = [[paragraph("LEISTUNG", tablehead), paragraph("MENGE", tablehead),
              paragraph("EINZELPREIS", tablehead), paragraph("BETRAG", tablehead)]]

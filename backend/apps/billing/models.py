@@ -87,6 +87,7 @@ class Invoice(models.Model):
     # Dates
     issue_date = models.DateField(default=timezone.localdate)
     due_date = models.DateField()
+    service_month = models.DateField(null=True, blank=True)  # First day of tuition month
     paid_date = models.DateField(null=True, blank=True)
 
     # Notes
