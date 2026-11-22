@@ -229,28 +229,37 @@ export default function GeneralSettingsPage() {
         imap_password: ''
     })
 
-    // The admin profile may be fetched after the first render.
-    // Populate all saved SMTP and IMAP values once the admin profile arrives.
-    // Passwords are deliberately never returned by the API.
+    // A previous combined IMAP save could overwrite the non-secret SMTP fields
+    // with empty defaults while preserving its password. Restore missing values
+    // from the same Manitu mailbox without ever guessing or revealing a secret.
+    const mailPreferences = currentUser?.preferences?.technical
+    const smtpCanBeRestored = currentUser?.role === 'admin' &&
+        !String(mailPreferences?.smtp_host || '').trim() &&
+        String(mailPreferences?.imap_host || '').trim().toLowerCase() === 'mail.manitu.de' &&
+        !!String(mailPreferences?.imap_username || '').trim()
+
     useEffect(() => {
         const t = currentUser?.preferences?.technical
         if (currentUser?.role !== 'admin' || !t) return
+        const restoreManitu = !String(t.smtp_host || '').trim() &&
+            String(t.imap_host || '').trim().toLowerCase() === 'mail.manitu.de' &&
+            !!String(t.imap_username || '').trim()
         setTechnicalSettings(prev => ({
             ...prev,
-            smtp_host: t.smtp_host ?? '',
-            smtp_port: String(t.smtp_port ?? '587'),
-            smtp_username: t.smtp_username ?? '',
+            smtp_host: restoreManitu ? t.imap_host : (t.smtp_host ?? ''),
+            smtp_port: restoreManitu ? '465' : String(t.smtp_port ?? '587'),
+            smtp_username: t.smtp_username || (restoreManitu ? t.imap_username : ''),
             smtp_password: '',
-            smtp_from_email: t.smtp_from_email ?? '',
-            smtp_from_name: t.smtp_from_name ?? 'StudioSync',
-            smtp_use_tls: t.smtp_use_tls ?? true,
+            smtp_from_email: t.smtp_from_email || (restoreManitu ? t.imap_username : ''),
+            smtp_from_name: restoreManitu ? (currentUser?.studio?.name || t.smtp_from_name || 'StudioSync') : (t.smtp_from_name ?? 'StudioSync'),
+            smtp_use_tls: restoreManitu ? false : (t.smtp_use_tls ?? true),
             imap_host: t.imap_host ?? 'mail.manitu.de',
             imap_port: String(t.imap_port ?? '993'),
             imap_security: t.imap_security ?? 'ssl',
             imap_username: t.imap_username ?? 'musikunterricht@musart.de',
             imap_password: '',
         }))
-    }, [currentUser?.role, currentUser?.preferences?.technical])
+    }, [currentUser?.role, currentUser?.preferences?.technical, currentUser?.studio?.name])
 
     const tabs = [
         { id: 'profile', label: t('tabProfile'), icon: User },
@@ -347,6 +356,42 @@ export default function GeneralSettingsPage() {
     }
 
     const [testingEmail, setTestingEmail] = useState(false)
+
+    // Save only the selected protocol. IMAP must never blank existing SMTP
+    // fields (or vice versa), including when other settings have not yet loaded.
+    const handleSaveMailSettings = async (protocol: 'smtp' | 'imap') => {
+        setLoading(true)
+        try {
+            const settings = protocol === 'smtp' ? {
+                smtp_host: technicalSettings.smtp_host.trim(),
+                smtp_port: technicalSettings.smtp_port,
+                smtp_username: technicalSettings.smtp_username.trim(),
+                smtp_from_email: technicalSettings.smtp_from_email.trim(),
+                smtp_from_name: technicalSettings.smtp_from_name.trim(),
+                smtp_use_tls: technicalSettings.smtp_port === '465' ? false : technicalSettings.smtp_use_tls,
+                ...(technicalSettings.smtp_password ? { smtp_password: technicalSettings.smtp_password } : {}),
+            } : {
+                imap_host: technicalSettings.imap_host.trim(),
+                imap_port: technicalSettings.imap_port,
+                imap_security: technicalSettings.imap_security,
+                imap_username: technicalSettings.imap_username.trim(),
+                ...(technicalSettings.imap_password ? { imap_password: technicalSettings.imap_password } : {}),
+            }
+            const response = await api.patch('/core/users/me/', {
+                preferences: { technical: settings },
+            })
+            updateCurrentUserSafe(response.data)
+            setTechnicalSettings(prev => ({ ...prev, smtp_password: '', imap_password: '' }))
+            setSmtpPasswordEditing(false)
+            setImapPasswordEditing(false)
+            toast.success(protocol === 'smtp' ? 'SMTP-Einstellungen gespeichert.' : 'IMAP-Einstellungen gespeichert.')
+        } catch (error) {
+            console.error(`Failed to save ${protocol.toUpperCase()} settings:`, error)
+            toast.error(protocol === 'smtp' ? 'SMTP-Einstellungen konnten nicht gespeichert werden.' : 'IMAP-Einstellungen konnten nicht gespeichert werden.')
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const handleTestEmail = async () => {
         setTestingEmail(true)
@@ -1188,14 +1233,20 @@ export default function GeneralSettingsPage() {
                                         <h3 className="font-semibold text-gray-900">{t('smtpConfiguration')}</h3>
                                     </div>
                                     <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                                        {smtpCanBeRestored && (
+                                            <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">
+                                                Die fehlenden SMTP-Angaben wurden aus dem vorhandenen Manitu-Postfach ergänzt.
+                                                Bitte mit „SMTP-Einstellungen speichern“ dauerhaft übernehmen.
+                                            </p>
+                                        )}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('smtpHost')}</label>
-                                                <input type="text" value={technicalSettings.smtp_host} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_host: e.target.value })} placeholder="smtp.gmail.com" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                                <input type="text" value={technicalSettings.smtp_host} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_host: e.target.value })} placeholder="mail.manitu.de" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('port')}</label>
-                                                <select value={technicalSettings.smtp_port} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_port: e.target.value })} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                                <select value={technicalSettings.smtp_port} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_port: e.target.value, smtp_use_tls: e.target.value === '465' ? false : e.target.value === '587' ? true : technicalSettings.smtp_use_tls })} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
                                                     <option value="25">25 (Standard)</option>
                                                     <option value="465">465 (SSL)</option>
                                                     <option value="587">587 (TLS)</option>
@@ -1205,7 +1256,7 @@ export default function GeneralSettingsPage() {
                                         </div>
                                         <div>
                                             <label className="block text-xs font-medium text-gray-700 mb-1">{t('usernameEmail')}</label>
-                                            <input type="text" value={technicalSettings.smtp_username} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_username: e.target.value })} placeholder="your-email@gmail.com" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                            <input type="text" value={technicalSettings.smtp_username} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_username: e.target.value })} placeholder="musikunterricht@musart.de" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-medium text-gray-700 mb-1">{t('password')}</label>
@@ -1216,12 +1267,11 @@ export default function GeneralSettingsPage() {
                                                     {showSmtpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                 </button>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">{t('detailForGmailUseAnAppPassword')}</p>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromEmail')}</label>
-                                                <input type="email" value={technicalSettings.smtp_from_email} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_from_email: e.target.value })} placeholder="noreply@studio.com" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                                <input type="email" value={technicalSettings.smtp_from_email} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_from_email: e.target.value })} placeholder="musikunterricht@musart.de" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromName')}</label>
@@ -1229,11 +1279,16 @@ export default function GeneralSettingsPage() {
                                             </div>
                                         </div>
                                         <label className="flex items-center justify-between p-3 bg-white rounded-lg">
-                                            <span className="text-sm text-gray-700">{t('detailUseTLSSTARTTLS')}</span>
-                                            <input type="checkbox" checked={technicalSettings.smtp_use_tls} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_use_tls: e.target.checked })} className="w-4 h-4 text-primary rounded focus:ring-primary" />
+                                            <span className="text-sm text-gray-700">{technicalSettings.smtp_port === '465' ? 'SSL/TLS auf Port 465 automatisch aktiv' : t('detailUseTLSSTARTTLS')}</span>
+                                            <input type="checkbox" checked={technicalSettings.smtp_port === '465' || technicalSettings.smtp_use_tls} disabled={technicalSettings.smtp_port === '465'} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_use_tls: e.target.checked })} className="w-4 h-4 text-primary rounded focus:ring-primary" />
                                         </label>
-                                        <div className="pt-2">
-                                            <button type="button" onClick={handleTestEmail} disabled={testingEmail} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-semibold disabled:opacity-50">
+                                        <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                                            <button type="button" onClick={() => handleSaveMailSettings('smtp')} disabled={loading || testingEmail}
+                                                className="flex-1 flex justify-center items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors font-semibold disabled:opacity-50">
+                                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                                SMTP-Einstellungen speichern
+                                            </button>
+                                            <button type="button" onClick={handleTestEmail} disabled={testingEmail} className="flex-1 flex justify-center items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-semibold disabled:opacity-50">
                                                 {testingEmail ? <><Loader2 className="w-4 h-4 animate-spin" />{t('detailSendingTestEmail')}</> : <><Mail className="w-4 h-4" />{t('detailTestConnection')}</>}
                                             </button>
                                         </div>
@@ -1300,7 +1355,7 @@ export default function GeneralSettingsPage() {
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                                             <span className="text-xs text-gray-500">Verschlüsselung: {technicalSettings.imap_security === 'starttls' ? 'STARTTLS' : 'SSL/TLS'} (verpflichtend)</span>
                                             <div className="flex flex-wrap gap-2">
-                                                <button type="button" onClick={() => handleSaveSettings('Technical', technicalSettings)} disabled={loading || testingImap}
+                                                <button type="button" onClick={() => handleSaveMailSettings('imap')} disabled={loading || testingImap}
                                                     className="flex justify-center items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-semibold text-sm disabled:opacity-50">
                                                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                                     IMAP-Einstellungen speichern
@@ -1315,11 +1370,7 @@ export default function GeneralSettingsPage() {
                                     </div>
                                 </div>
 
-                                <div className="pt-4 border-t border-gray-200">
-                                    <button onClick={() => handleSaveSettings('Technical', technicalSettings)} disabled={loading} className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors font-medium disabled:opacity-50">
-                                        {loading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('saving')}</> : <><Save className="w-4 h-4" />{t('detailSaveSettings')}</>}
-                                    </button>
-                                </div>
+
                             </div>
                         </div>
                     )}
