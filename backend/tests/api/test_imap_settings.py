@@ -1,6 +1,7 @@
 """Regression tests for the administrator IMAP configuration screen."""
 
 import pytest
+from email.utils import formataddr
 from unittest.mock import MagicMock, patch
 from django.urls import reverse
 
@@ -156,6 +157,7 @@ def test_smtp_connection_test_uses_saved_secret_without_browser_echo(
         "smtp_username": "outgoing@example.org",
         "smtp_password": "existing-smtp-secret",
         "smtp_from_email": "outgoing@example.org",
+        "smtp_from_name": "MUSart Peter Müller",
         "smtp_use_tls": False,
     }}
     admin_user.save(update_fields=["preferences"])
@@ -178,6 +180,9 @@ def test_smtp_connection_test_uses_saved_secret_without_browser_echo(
     assert get_connection.call_args.kwargs["password"] == "existing-smtp-secret"
     assert get_connection.call_args.kwargs["use_ssl"] is True
     assert get_connection.call_args.kwargs["use_tls"] is False
+    assert mail.call_args.kwargs["from_email"] == formataddr(
+        ("MUSart Peter Müller", "outgoing@example.org")
+    )
     mail.return_value.send.assert_called_once()
     assert "existing-smtp-secret" not in str(response.data)
 
