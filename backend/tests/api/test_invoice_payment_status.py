@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.billing.models import Invoice, Payment
 from apps.billing.payment_status import (
@@ -23,6 +24,7 @@ def make_invoice(studio, student, *, due_date, issued=date(2026, 11, 22),
         studio=studio, student=student, issue_date=issued,
         due_date=due_date, total_amount=Decimal(amount),
         amount_paid=Decimal(paid), status=status,
+        sent_at=timezone.now() if status == "sent" else None,
     )
 
 
