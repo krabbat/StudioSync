@@ -27,6 +27,31 @@ class InvoiceSerializer(serializers.ModelSerializer):
     is_overdue = serializers.BooleanField(read_only=True)
     pdf_available = serializers.SerializerMethodField()
     email_sent = serializers.SerializerMethodField()
+    recipient = serializers.SerializerMethodField()
+
+    def get_recipient(self, obj):
+        """Public invoice addressee, frozen after sending, never student login email."""
+        snapshot = obj.document_snapshot
+        if snapshot:
+            return {
+                "name": snapshot.get("recipient_name", ""),
+                "street": snapshot.get("recipient_street", ""),
+                "postal_code": snapshot.get("recipient_postal_code", ""),
+                "city": snapshot.get("recipient_city", ""),
+            }
+        if not obj.student:
+            return {"name": "", "street": "", "postal_code": "", "city": ""}
+        profile = getattr(obj.student, "billing_profile", None)
+        has_override = profile and (
+            profile.recipient_address_line1 or
+            profile.recipient_postal_code or profile.recipient_city
+        )
+        return {
+            "name": profile.recipient_name if profile else "",
+            "street": profile.recipient_address_line1 if has_override else obj.student.address_line1,
+            "postal_code": profile.recipient_postal_code if has_override else obj.student.postal_code,
+            "city": profile.recipient_city if has_override else obj.student.city,
+        }
 
     def get_pdf_available(self, obj):
         return bool(obj.pdf_created_at)
@@ -70,6 +95,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "is_overdue",
             "pdf_available",
             "email_sent",
+            "recipient",
             "sent_at",
             "line_items",
             "created_at",
