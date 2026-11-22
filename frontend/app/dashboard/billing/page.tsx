@@ -678,12 +678,12 @@ export default function BillingPage() {
                                         <div className="text-sm font-bold text-gray-600">
                                             {invoice.student_name || invoice.band_name || 'Generic Client'}
                                         </div>
-                                        <div className="text-lg font-black text-gray-900">
+                                        <div className={`text-lg font-black ${invoice.payment_status === 'paid' ? 'text-green-700' : invoice.payment_status === 'overdue' ? 'text-red-600' : 'text-amber-700'}`}>
                                             {money(invoice.total_amount)}
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 pt-2">
+                                    <div className="flex flex-wrap items-center gap-2 pt-2">
                                         <Button
                                             variant="outline"
                                             onClick={() => handleDownloadInvoice(invoice)}
