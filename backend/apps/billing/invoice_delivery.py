@@ -46,7 +46,7 @@ def smtp_settings_for_studio(studio):
         "use_tls": port == 587,
         "use_ssl": port == 465,
         "timeout": 15,
-    }, tech["smtp_from_email"], tech.get("smtp_from_name") or studio.name
+    }, tech["smtp_from_email"], studio.name
 
 
 def send_invoice(invoice_id, *, resend=False):
@@ -95,7 +95,7 @@ def send_invoice(invoice_id, *, resend=False):
             f"Guten Tag {snapshot['recipient_name']},\n\n"
             f"anbei erhalten Sie Ihre MUSart-Rechnung {invoice.invoice_number} als PDF.\n"
             f"{intro}\n\n"
-            f"Mit freundlichen Grüßen\n{sender_name}\n"
+            f"Mit freundlichen Grüßen\n{snapshot.get('sender_name') or sender_name}\n"
         )
         try:
             email = EmailMultiAlternatives(
