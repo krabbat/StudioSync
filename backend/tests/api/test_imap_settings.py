@@ -29,6 +29,58 @@ def test_imap_password_never_returned_to_frontend_and_blank_update_keeps_it():
 
 
 @pytest.mark.django_db
+def test_auth_profile_includes_saved_mail_settings_for_admin_without_exposing_passwords(
+    authenticated_client, admin_user,
+):
+    """The frontend loads its current user from /auth/me/, not /core/users/me/."""
+    admin_user.preferences = {"technical": {
+        "smtp_host": "smtp.example.org",
+        "smtp_port": "465",
+        "smtp_username": "smtp@example.org",
+        "smtp_password": "secret-smtp",
+        "smtp_from_email": "sender@example.org",
+        "smtp_from_name": "Music Studio",
+        "smtp_use_tls": False,
+        "imap_host": "imap.example.org",
+        "imap_port": "993",
+        "imap_security": "ssl",
+        "imap_username": "imap@example.org",
+        "imap_password": "secret-imap",
+    }}
+    admin_user.save(update_fields=["preferences"])
+
+    response = authenticated_client.get(reverse("user_me"))
+    assert response.status_code == 200, response.data
+    technical = response.data["preferences"]["technical"]
+    assert technical["smtp_host"] == "smtp.example.org"
+    assert technical["smtp_port"] == "465"
+    assert technical["smtp_username"] == "smtp@example.org"
+    assert technical["smtp_from_email"] == "sender@example.org"
+    assert technical["smtp_from_name"] == "Music Studio"
+    assert technical["smtp_use_tls"] is False
+    assert technical["imap_host"] == "imap.example.org"
+    assert technical["imap_port"] == "993"
+    assert technical["imap_security"] == "ssl"
+    assert technical["imap_username"] == "imap@example.org"
+    assert technical["smtp_password_set"] is True
+    assert technical["imap_password_set"] is True
+    assert "smtp_password" not in technical
+    assert "imap_password" not in technical
+    assert "secret-smtp" not in str(response.data)
+    assert "secret-imap" not in str(response.data)
+
+
+@pytest.mark.django_db
+def test_auth_profile_hides_technical_settings_for_other_roles(
+    teacher_authenticated_client, student_authenticated_client,
+):
+    for client in (teacher_authenticated_client, student_authenticated_client):
+        response = client.get(reverse("user_me"))
+        assert response.status_code == 200, response.data
+        assert "technical" not in response.data.get("preferences", {})
+
+
+@pytest.mark.django_db
 def test_admin_test_imap_uses_saved_password_without_echo(authenticated_client, admin_user):
     admin_user.preferences = {"technical": {
         "imap_host": "mail.manitu.de", "imap_port": "993",
