@@ -52,6 +52,9 @@ type WidgetId =
   | "monthly_revenue"
   | "active_teachers"
   | "unpaid_invoices"
+  | "invoice_pending"
+  | "invoice_paid"
+  | "invoice_overdue"
   | "avg_attendance"
   | "new_enquiries"
   | "next_lesson"
@@ -74,6 +77,9 @@ const DEFAULT_WIDGETS: Record<string, WidgetConfig[]> = {
     { id: "monthly_revenue", visible: true },
     { id: "active_teachers", visible: true },
     { id: "unpaid_invoices", visible: false },
+    { id: "invoice_pending", visible: true },
+    { id: "invoice_paid", visible: true },
+    { id: "invoice_overdue", visible: true },
     { id: "avg_attendance", visible: false },
     { id: "new_enquiries", visible: false },
   ],
@@ -424,6 +430,38 @@ export default function DashboardPage() {
         }}
         color="blue"
         icon={<Music className="w-6 h-6" />}
+        className={isEditing ? "pointer-events-none" : ""}
+      />
+    ),
+
+    // Admin invoice payment totals: all issued invoices in this studio.
+    invoice_pending: (
+      <MetricCard
+        title="Ausstehende Rechnungen"
+        value={money(overview.invoice_pending?.value || 0)}
+        color="orange"
+        icon={<DollarSignIcon className="w-6 h-6" />}
+        onClick={() => !isEditing && router.push("/dashboard/billing")}
+        className={isEditing ? "pointer-events-none" : ""}
+      />
+    ),
+    invoice_paid: (
+      <MetricCard
+        title="Bezahlte Rechnungen"
+        value={money(overview.invoice_paid?.value || 0)}
+        color="green"
+        icon={<Check className="w-6 h-6" />}
+        onClick={() => !isEditing && router.push("/dashboard/billing")}
+        className={isEditing ? "pointer-events-none" : ""}
+      />
+    ),
+    invoice_overdue: (
+      <MetricCard
+        title="Überfällige Rechnungen"
+        value={money(overview.invoice_overdue?.value || 0)}
+        color="red"
+        icon={<DollarSignIcon className="w-6 h-6" />}
+        onClick={() => !isEditing && router.push("/dashboard/billing")}
         className={isEditing ? "pointer-events-none" : ""}
       />
     ),
