@@ -92,6 +92,24 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "sent_at",
         ]
 
+    def validate(self, attrs):
+        if self.instance is None:
+            items = attrs.get("line_items") or []
+            if not items:
+                raise serializers.ValidationError({
+                    "line_items": "Mindestens eine Rechnungsposition ist erforderlich."
+                })
+            for item in items:
+                if item["quantity"] <= 0 or item["unit_price"] < 0:
+                    raise serializers.ValidationError({
+                        "line_items": "Menge muss positiv sein; Preise dürfen nicht negativ sein."
+                    })
+            if attrs.get("tax_amount", 0):
+                raise serializers.ValidationError({
+                    "tax_amount": "MUSart-Unterricht ist umsatzsteuerfrei (§ 4 Nr. 21 Buchst. c UStG)."
+                })
+        return attrs
+
     def create(self, validated_data):
         line_items_data = validated_data.pop("line_items", [])
         invoice = Invoice.objects.create(**validated_data)
