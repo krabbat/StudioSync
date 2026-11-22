@@ -41,6 +41,7 @@ def payload(student, **extras):
     return {
         "student": str(student.pk),
         "due_date": "2027-01-07",
+        "service_month": "2027-01-01",
         "line_items": [{
             "description": "Klavierunterricht – Monatsbeitrag Januar 2027",
             "quantity": "1",
@@ -68,6 +69,7 @@ def test_issue_emails_explicit_bill_to_not_student_login(authenticated_client, s
     assert bytes(invoice.pdf_document).startswith(b"%PDF")
     assert invoice.document_snapshot["recipient_email"] == "eltern@example.org"
     assert invoice.document_snapshot["recipient_name"] == "Mutter Beispiel"
+    assert invoice.document_snapshot["service_period"] == "01.01.2027 - 31.01.2027"
     assert response.data["email_sent"] is True
     assert response.data["email_error"] == ""
     assert len(mail.outbox) == 1
