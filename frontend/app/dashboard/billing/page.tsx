@@ -183,7 +183,7 @@ export default function BillingPage() {
         setNewInvoice(previous => {
             const from = field === 'serviceMonth' ? value : previous.serviceMonth
             const to = field === 'serviceMonthTo' ? value : previous.serviceMonthTo
-            const validTo = from && to && to < from ? '' : to
+            const validTo = from && to && to <= from ? '' : to
             const months = Math.max(1, monthsInPeriod(from, validTo))
             const previousDescription = suggestedInvoiceDescription(
                 previous.serviceMonth, previous.serviceMonthTo,
