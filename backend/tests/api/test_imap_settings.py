@@ -149,8 +149,10 @@ def test_updating_smtp_only_preserves_existing_imap_fields_and_secret(
 
 @pytest.mark.django_db
 def test_smtp_connection_test_uses_saved_secret_without_browser_echo(
-    authenticated_client, admin_user,
+    authenticated_client, admin_user, studio,
 ):
+    studio.name = "MUSart Musikunterricht"
+    studio.save(update_fields=["name"])
     admin_user.preferences = {"technical": {
         "smtp_host": "mail.manitu.de",
         "smtp_port": "465",
@@ -181,10 +183,29 @@ def test_smtp_connection_test_uses_saved_secret_without_browser_echo(
     assert get_connection.call_args.kwargs["use_ssl"] is True
     assert get_connection.call_args.kwargs["use_tls"] is False
     assert mail.call_args.kwargs["from_email"] == formataddr(
-        ("MUSart Peter Müller", "outgoing@example.org")
+        ("MUSart Musikunterricht", "outgoing@example.org")
     )
     mail.return_value.send.assert_called_once()
     assert "existing-smtp-secret" not in str(response.data)
+
+
+@pytest.mark.django_db
+def test_background_mail_uses_current_studio_name_not_stored_smtp_alias(
+    admin_user, studio,
+):
+    """The central mail worker must read the studio name even after it changes."""
+    from apps.core.email_utils import get_email_settings
+    admin_user.preferences = {"technical": {
+        "smtp_from_email": "outgoing@example.org",
+        "smtp_from_name": "Muikunterricht (veraltet)",
+    }}
+    admin_user.save(update_fields=["preferences"])
+    studio.name = "MUSart - Musikunterricht"
+    studio.save(update_fields=["name"])
+
+    settings = get_email_settings()
+    assert settings["from_name"] == "MUSart - Musikunterricht"
+    assert settings["from_email"] == "outgoing@example.org"
 
 
 @pytest.mark.django_db
