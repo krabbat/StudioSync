@@ -24,7 +24,8 @@ export default function GeneralSettingsPage() {
     const [showSmtpPassword, setShowSmtpPassword] = useState(false)
     const [showImapPassword, setShowImapPassword] = useState(false)
     const [testingImap, setTestingImap] = useState(false)
-    const [showSmsApiKey, setShowSmsApiKey] = useState(false)
+    const [smtpPasswordEditing, setSmtpPasswordEditing] = useState(false)
+    const [imapPasswordEditing, setImapPasswordEditing] = useState(false)
     const [cropImage, setCropImage] = useState<string | null>(null)
     const [geoDetecting, setGeoDetecting] = useState(false)
 
@@ -212,12 +213,12 @@ export default function GeneralSettingsPage() {
         }
     }
 
-    // Technical settings (SMTP/IMAP/SMS) - Admin only
+    // Technical settings (SMTP/IMAP) - Admin only
     const [technicalSettings, setTechnicalSettings] = useState({
         smtp_host: currentUser?.preferences?.technical?.smtp_host ?? '',
         smtp_port: currentUser?.preferences?.technical?.smtp_port ?? '587',
         smtp_username: currentUser?.preferences?.technical?.smtp_username ?? '',
-        smtp_password: currentUser?.preferences?.technical?.smtp_password ?? '',
+        smtp_password: '',
         smtp_from_email: currentUser?.preferences?.technical?.smtp_from_email ?? '',
         smtp_from_name: currentUser?.preferences?.technical?.smtp_from_name ?? 'StudioSync',
         smtp_use_tls: currentUser?.preferences?.technical?.smtp_use_tls ?? true,
@@ -225,20 +226,24 @@ export default function GeneralSettingsPage() {
         imap_port: currentUser?.preferences?.technical?.imap_port ?? '993',
         imap_security: currentUser?.preferences?.technical?.imap_security ?? 'ssl',
         imap_username: currentUser?.preferences?.technical?.imap_username ?? 'musikunterricht@musart.de',
-        imap_password: '',
-        sms_provider: currentUser?.preferences?.technical?.sms_provider ?? 'twilio',
-        sms_account_sid: currentUser?.preferences?.technical?.sms_account_sid ?? '',
-        sms_auth_token: currentUser?.preferences?.technical?.sms_auth_token ?? '',
-        sms_from_number: currentUser?.preferences?.technical?.sms_from_number ?? ''
+        imap_password: ''
     })
 
     // The admin profile may be fetched after the first render.
-    // Refresh only the IMAP fields when fresh saved settings arrive.
+    // Populate all saved SMTP and IMAP values once the admin profile arrives.
+    // Passwords are deliberately never returned by the API.
     useEffect(() => {
         const t = currentUser?.preferences?.technical
         if (currentUser?.role !== 'admin' || !t) return
         setTechnicalSettings(prev => ({
             ...prev,
+            smtp_host: t.smtp_host ?? '',
+            smtp_port: String(t.smtp_port ?? '587'),
+            smtp_username: t.smtp_username ?? '',
+            smtp_password: '',
+            smtp_from_email: t.smtp_from_email ?? '',
+            smtp_from_name: t.smtp_from_name ?? 'StudioSync',
+            smtp_use_tls: t.smtp_use_tls ?? true,
             imap_host: t.imap_host ?? 'mail.manitu.de',
             imap_port: String(t.imap_port ?? '993'),
             imap_security: t.imap_security ?? 'ssl',
@@ -528,6 +533,12 @@ export default function GeneralSettingsPage() {
                 })
 
                 updateCurrentUserSafe(response.data)
+                if (settingsType === 'Technical') {
+                    // Never retain newly entered mailbox passwords after a successful save.
+                    setTechnicalSettings(prev => ({ ...prev, smtp_password: '', imap_password: '' }))
+                    setSmtpPasswordEditing(false)
+                    setImapPasswordEditing(false)
+                }
                 toast.success(t("sectionSettingsSaved", {section: settingsType}))
             }
         } catch (error) {
@@ -1199,9 +1210,9 @@ export default function GeneralSettingsPage() {
                                         <div>
                                             <label className="block text-xs font-medium text-gray-700 mb-1">{t('password')}</label>
                                             <div className="relative">
-                                                <input type={showSmtpPassword ? 'text' : 'password'} value={technicalSettings.smtp_password} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_password: e.target.value })} placeholder={currentUser?.preferences?.technical?.smtp_password_set ? t('detailSavedPasswordOnFile') : '••••••••'} className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                                <input type={showSmtpPassword ? 'text' : 'password'} value={smtpPasswordEditing || technicalSettings.smtp_password ? technicalSettings.smtp_password : currentUser?.preferences?.technical?.smtp_password_set ? '••••••••' : ''} onFocus={() => setSmtpPasswordEditing(true)} onBlur={() => { if (!technicalSettings.smtp_password) setSmtpPasswordEditing(false) }} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_password: e.target.value })} autoComplete="new-password" placeholder={currentUser?.preferences?.technical?.smtp_password_set ? '' : t('password')} className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                                 <p className="text-xs text-gray-500 mt-1">{t('leaveBlankToKeepTheSavedPasswordItIsNotSentBackByTheAPI')}</p>
-                                                <button type="button" onClick={() => setShowSmtpPassword(!showSmtpPassword)} className="absolute right-3 top-2.5 text-gray-500">
+                                                <button type="button" onClick={() => setShowSmtpPassword(!showSmtpPassword)} disabled={!technicalSettings.smtp_password} title={technicalSettings.smtp_password ? undefined : 'Gespeicherte Passwörter werden nicht ausgelesen'} className="absolute right-3 top-2.5 text-gray-500 disabled:opacity-40">
                                                     {showSmtpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                 </button>
                                             </div>
@@ -1270,11 +1281,15 @@ export default function GeneralSettingsPage() {
                                             <label htmlFor="imap-password" className="block text-xs font-medium text-gray-700 mb-1">Postfach-Passwort</label>
                                             <div className="relative">
                                                 <input id="imap-password" type={showImapPassword ? 'text' : 'password'} autoComplete="new-password"
-                                                    value={technicalSettings.imap_password}
+                                                    value={imapPasswordEditing || technicalSettings.imap_password ? technicalSettings.imap_password : currentUser?.preferences?.technical?.imap_password_set ? '••••••••' : ''}
+                                                    onFocus={() => setImapPasswordEditing(true)}
+                                                    onBlur={() => { if (!technicalSettings.imap_password) setImapPasswordEditing(false) }}
                                                     onChange={e => setTechnicalSettings({ ...technicalSettings, imap_password: e.target.value })}
-                                                    placeholder={currentUser?.preferences?.technical?.imap_password_set ? 'Passwort ist gespeichert' : 'Postfach-Passwort eingeben'}
+                                                    placeholder={currentUser?.preferences?.technical?.imap_password_set ? '' : 'Postfach-Passwort eingeben'}
                                                     className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-primary" />
                                                 <button type="button" onClick={() => setShowImapPassword(!showImapPassword)}
+                                                    disabled={!technicalSettings.imap_password}
+                                                    title={technicalSettings.imap_password ? undefined : 'Gespeicherte Passwörter werden nicht ausgelesen'}
                                                     aria-label={showImapPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
                                                     className="absolute right-3 top-2.5 text-gray-500">
                                                     {showImapPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -1296,41 +1311,6 @@ export default function GeneralSettingsPage() {
                                                     {testingImap ? 'IMAP-Verbindung wird geprüft …' : 'IMAP-Verbindung testen'}
                                                 </button>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="pt-6 border-t border-gray-200">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <Bell className="w-5 h-5 text-gray-600" />
-                                        <h3 className="font-semibold text-gray-900">{t('detailSMSConfiguration')}</h3>
-                                    </div>
-                                    <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailSMSProvider')}</label>
-                                            <select value={technicalSettings.sms_provider} onChange={e => setTechnicalSettings({ ...technicalSettings, sms_provider: e.target.value })} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                                                <option value="twilio">Twilio</option>
-                                                <option value="aws-sns">Amazon SNS</option>
-                                                <option value="messagebird">MessageBird</option>
-                                                <option value="plivo">Plivo</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailAccountSID')}</label>
-                                            <input type="text" value={technicalSettings.sms_account_sid} onChange={e => setTechnicalSettings({ ...technicalSettings, sms_account_sid: e.target.value })} placeholder="ACxxxxxxxx" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailAuthToken')}</label>
-                                            <div className="relative">
-                                                <input type={showSmsApiKey ? 'text' : 'password'} value={technicalSettings.sms_auth_token} onChange={e => setTechnicalSettings({ ...technicalSettings, sms_auth_token: e.target.value })} placeholder="••••••••" className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-                                                <button type="button" onClick={() => setShowSmsApiKey(!showSmsApiKey)} className="absolute right-3 top-2.5 text-gray-500">
-                                                    {showSmsApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromNumber')}</label>
-                                            <input type="tel" value={technicalSettings.sms_from_number} onChange={e => setTechnicalSettings({ ...technicalSettings, sms_from_number: formatPhoneNumber(e.target.value) })} placeholder="+1234567890" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                         </div>
                                     </div>
                                 </div>
