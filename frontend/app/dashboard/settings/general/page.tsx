@@ -1284,11 +1284,18 @@ export default function GeneralSettingsPage() {
                                         </div>
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                                             <span className="text-xs text-gray-500">Verschlüsselung: {technicalSettings.imap_security === 'starttls' ? 'STARTTLS' : 'SSL/TLS'} (verpflichtend)</span>
-                                            <button type="button" onClick={handleTestImap} disabled={testingImap || loading}
-                                                className="flex justify-center items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-semibold text-sm disabled:opacity-50">
-                                                {testingImap ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
-                                                {testingImap ? 'IMAP-Verbindung wird geprüft …' : 'IMAP-Verbindung testen'}
-                                            </button>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button type="button" onClick={() => handleSaveSettings('Technical', technicalSettings)} disabled={loading || testingImap}
+                                                    className="flex justify-center items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-semibold text-sm disabled:opacity-50">
+                                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                                    IMAP-Einstellungen speichern
+                                                </button>
+                                                <button type="button" onClick={handleTestImap} disabled={testingImap || loading}
+                                                    className="flex justify-center items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-semibold text-sm disabled:opacity-50">
+                                                    {testingImap ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
+                                                    {testingImap ? 'IMAP-Verbindung wird geprüft …' : 'IMAP-Verbindung testen'}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
