@@ -393,8 +393,8 @@ export default function DashboardPage() {
     unpaid_invoices: (
       <MetricCard
         title={t("unpaidInvoices")}
-        value={overview.unpaid_invoices?.value || 0}
-        subtitle={t("overdue")}
+        value={money(overview.unpaid_invoices?.value || 0)}
+        subtitle="Ausstehend und überfällig"
         trend={{
           value: localizeTrend(overview.unpaid_invoices?.trend),
           positive: !!overview.unpaid_invoices?.positive,
