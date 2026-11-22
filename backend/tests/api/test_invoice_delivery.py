@@ -1,6 +1,7 @@
 """MUSart manual invoice PDF and SMTP integration; no live mail is sent."""
 
 from datetime import date
+from email.utils import formataddr
 from io import BytesIO
 from unittest.mock import patch
 
@@ -126,6 +127,7 @@ def test_issue_emails_explicit_bill_to_not_student_login(authenticated_client, s
     assert response.data["email_error"] == ""
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == ["eltern@example.org"]
+    assert mail.outbox[0].from_email == formataddr((studio.name, "info@example.org"))
     assert mail.outbox[0].to != [student.user.email]
     assert mail.outbox[0].attachments[0][2] == "application/pdf"
 
