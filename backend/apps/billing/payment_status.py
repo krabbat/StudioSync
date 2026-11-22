@@ -24,6 +24,13 @@ def open_amount(invoice):
     return max(Decimal("0"), (invoice.total_amount or Decimal("0")) - paid_amount(invoice))
 
 
+def effective_due_date(invoice):
+    """Treat backdated due dates as due seven days after the invoice was issued."""
+    if invoice.due_date < invoice.issue_date:
+        return invoice.issue_date + timedelta(days=7)
+    return invoice.due_date
+
+
 def payment_state(invoice, *, on_date=None):
     """pending / overdue / paid; past-due-date retro invoices get 7 issue days."""
     if invoice.status == "cancelled":
@@ -31,10 +38,7 @@ def payment_state(invoice, *, on_date=None):
     if invoice.status == "paid" or open_amount(invoice) == 0:
         return "paid"
     today = on_date or berlin_today()
-    threshold = invoice.due_date
-    if invoice.due_date < invoice.issue_date:
-        threshold = invoice.issue_date + timedelta(days=7)
-    return "overdue" if today > threshold else "pending"
+    return "overdue" if today > effective_due_date(invoice) else "pending"
 
 
 def payment_totals(invoices, *, on_date=None):

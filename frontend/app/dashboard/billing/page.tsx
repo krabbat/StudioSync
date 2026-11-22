@@ -43,6 +43,7 @@ interface Invoice {
     payment_received: number | string
     recipient?: { name: string; street: string; postal_code: string; city: string }
     due_date: string
+    effective_due_date?: string
     status: 'paid' | 'pending' | 'overdue' | 'draft' | 'sent' | 'partial' | 'cancelled'
     line_items: Array<{
         id: string
@@ -117,7 +118,7 @@ export default function BillingPage() {
 
     const [newInvoice, setNewInvoice] = useState({
         student: '',
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         serviceMonth: '',
         serviceMonthTo: '',
         line_items: [{ description: '', quantity: 1, unit_price: '' }]
@@ -158,7 +159,7 @@ export default function BillingPage() {
             setShowCreateModal(false)
             setNewInvoice({
                 student: '',
-                dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 serviceMonth: '',
                 serviceMonthTo: '',
                 line_items: [{ description: '', quantity: 1, unit_price: '' }]
@@ -580,7 +581,7 @@ export default function BillingPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-6 font-bold text-gray-500 text-xs">
-                                                {new Date(invoice.due_date).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                {new Date(invoice.effective_due_date || invoice.due_date).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </td>
                                             <td className="px-6 py-6">
                                                 <div className="flex items-center justify-end gap-2">
@@ -664,7 +665,7 @@ export default function BillingPage() {
                                             <div>
                                                 <div className="font-black text-gray-900 text-sm tracking-tight">{invoice.invoice_number}</div>
                                                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mt-1">
-                                                    {new Date(invoice.due_date).toLocaleDateString(locale)}
+                                                    {new Date(invoice.effective_due_date || invoice.due_date).toLocaleDateString(locale)}
                                                 </div>
                                             </div>
                                         </div>

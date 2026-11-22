@@ -13,6 +13,8 @@ from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
+from .payment_status import effective_due_date
+
 from reportlab.platypus import (
     HRFlowable,
     Image,
@@ -26,6 +28,10 @@ from reportlab.platypus import (
 
 
 TAX_NOTICE = "Umsatzsteuerfrei gemäß § 4 Nr. 21 Satz 1 Buchstabe c UStG."
+PAYMENT_NOTICE = (
+    "Bitte zahlen Sie den offenen Betrag innerhalb von 7 Tagen "
+    "entsprechend der vereinbarten Zahlungsmodalität."
+)
 
 
 def currency(amount):
@@ -87,7 +93,7 @@ def invoice_snapshot(invoice):
     return {
         "invoice_number": invoice.invoice_number,
         "issue_date": date_de(invoice.issue_date),
-        "due_date": date_de(invoice.due_date),
+        "due_date": date_de(effective_due_date(invoice)),
         "service_period": (
             f"01.{invoice.service_month.month:02d}.{invoice.service_month.year} - "
             f"{monthrange(period_end.year, period_end.month)[1]:02d}."
@@ -272,7 +278,13 @@ def render_invoice_pdf(data):
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
         ("RIGHTPADDING", (0, 0), (-1, -1), 8),
     ]))
-    story += [table, Spacer(1, 7 * mm), paragraph(TAX_NOTICE, small), Spacer(1, 11 * mm)]
+    story += [
+        table, Spacer(1, 7 * mm),
+        paragraph(TAX_NOTICE, small),
+        Spacer(1, 2 * mm),
+        paragraph(PAYMENT_NOTICE, small),
+        Spacer(1, 7 * mm),
+    ]
     # All agreed payment options are printed, regardless of the preferred method.
     # The preferred method in the student's billing profile controls follow-up workflow.
     section = [paragraph("ZAHLUNGSMÖGLICHKEITEN", subheading), Spacer(1, 3 * mm)]
@@ -280,8 +292,7 @@ def render_invoice_pdf(data):
         section += [paragraph("Dieser Rechnungsbetrag ist bereits vollständig bezahlt.", small),
                     Spacer(1, 3 * mm)]
     else:
-        section += [paragraph("Bitte zahlen Sie den offenen Betrag bis zum " +
-                              data["due_date"] + ".", small), Spacer(1, 3 * mm)]
+        section.append(Spacer(1, 3 * mm))
     bank_lines = []
     if data.get("bank_holder"):
         bank_lines.append(paragraph("Empfänger: " + data["bank_holder"], small))

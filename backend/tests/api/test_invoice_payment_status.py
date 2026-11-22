@@ -15,6 +15,7 @@ from apps.billing.payment_status import (
     open_amount,
     payment_state,
     payment_totals,
+    effective_due_date,
 )
 
 
@@ -31,6 +32,7 @@ def make_invoice(studio, student, *, due_date, issued=date(2026, 11, 22),
 @pytest.mark.django_db
 def test_backdated_due_date_stays_pending_when_newly_issued(studio, student):
     invoice = make_invoice(studio, student, due_date=date(2026, 10, 7))
+    assert effective_due_date(invoice) == date(2026, 11, 29)
     assert payment_state(invoice, on_date=date(2026, 11, 22)) == "pending"
     assert payment_state(invoice, on_date=date(2026, 11, 29)) == "pending"
     assert payment_state(invoice, on_date=date(2026, 11, 30)) == "overdue"
@@ -152,3 +154,47 @@ def test_dashboard_reports_three_amounts(authenticated_client, studio, student):
     assert overview["invoice_paid"]["value"] == 135.0
     assert overview["invoice_overdue"]["value"] == 135.0
     assert overview["unpaid_invoices"]["value"] == 270.0
+
+
+
+@pytest.mark.django_db
+def test_backdated_invoice_pdf_and_list_use_seven_day_deadline(studio, student):
+    from apps.billing.invoice_pdf import (
+        TAX_NOTICE, PAYMENT_NOTICE, invoice_snapshot, render_invoice_pdf,
+    )
+    from apps.billing.serializers import InvoiceSerializer
+    from apps.billing.models import InvoiceLineItem
+
+    invoice = make_invoice(
+        studio, student, issued=date(2026, 11, 22),
+        due_date=date(2026, 10, 7),
+    )
+    InvoiceLineItem.objects.create(
+        invoice=invoice, description="Musikunterricht Oktober 2026",
+        quantity=1, unit_price=135,
+    )
+    snapshot = invoice_snapshot(invoice)
+    assert snapshot["issue_date"] == "22.11.2026"
+    assert snapshot["due_date"] == "29.11.2026"
+    # The original chosen date stays in the database as an audit attribute.
+    assert invoice.due_date == date(2026, 10, 7)
+    assert InvoiceSerializer(invoice).data["effective_due_date"] == "2026-11-29"
+    assert payment_state(invoice, on_date=date(2026, 11, 29)) == "pending"
+    assert payment_state(invoice, on_date=date(2026, 11, 30)) == "overdue"
+    assert "Umsatzsteuerfrei" in TAX_NOTICE
+    assert PAYMENT_NOTICE == (
+        "Bitte zahlen Sie den offenen Betrag innerhalb von 7 Tagen "
+        "entsprechend der vereinbarten Zahlungsmodalität."
+    )
+    assert render_invoice_pdf(snapshot).startswith(b"%PDF")
+
+
+@pytest.mark.django_db
+def test_future_due_date_remains_unchanged(studio, student):
+    invoice = make_invoice(
+        studio, student, issued=date(2026, 11, 22),
+        due_date=date(2026, 12, 7),
+    )
+    assert effective_due_date(invoice) == date(2026, 12, 7)
+    assert payment_state(invoice, on_date=date(2026, 12, 7)) == "pending"
+    assert payment_state(invoice, on_date=date(2026, 12, 8)) == "overdue"

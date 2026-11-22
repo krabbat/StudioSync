@@ -30,6 +30,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
     payment_status = serializers.SerializerMethodField()
     payment_remaining = serializers.SerializerMethodField()
     payment_received = serializers.SerializerMethodField()
+    effective_due_date = serializers.SerializerMethodField()
+
+    def get_effective_due_date(self, obj):
+        from .payment_status import effective_due_date
+        return effective_due_date(obj).isoformat()
 
     def get_payment_status(self, obj):
         from .payment_status import payment_state
@@ -108,6 +113,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "status",
             "issue_date",
             "due_date",
+            "effective_due_date",
             "service_month",
             "service_month_end",
             "subtotal",
