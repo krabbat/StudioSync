@@ -33,7 +33,9 @@ class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        # The serializer needs the authenticated request to expose the owner's
+        # technical settings while keeping SMTP/IMAP passwords redacted.
+        serializer = UserSerializer(request.user, context={"request": request})
         return Response(serializer.data)
 
 
