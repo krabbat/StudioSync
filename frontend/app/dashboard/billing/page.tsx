@@ -94,6 +94,7 @@ export default function BillingPage() {
     const [newInvoice, setNewInvoice] = useState({
         student: '',
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        serviceMonth: '',
         line_items: [{ description: '', quantity: 1, unit_price: '' }]
     })
 
@@ -113,6 +114,7 @@ export default function BillingPage() {
             const result = await api.post('/billing/invoices/', {
                 student: newInvoice.student,
                 due_date: newInvoice.dueDate,
+                service_month: newInvoice.serviceMonth ? `${newInvoice.serviceMonth}-01` : null,
                 send_now: true,
                 line_items: newInvoice.line_items.map(item => ({
                     ...item,
@@ -123,6 +125,7 @@ export default function BillingPage() {
             setNewInvoice({
                 student: '',
                 dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                serviceMonth: '',
                 line_items: [{ description: '', quantity: 1, unit_price: '' }]
             })
             if (result.data.email_sent) {
@@ -722,6 +725,15 @@ export default function BillingPage() {
                                     required
                                     value={newInvoice.dueDate}
                                     onChange={(e) => setNewInvoice({ ...newInvoice, dueDate: e.target.value })}
+                                    className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all"
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Leistungsmonat (bei Monatsbeiträgen)</label>
+                                <input
+                                    type="month"
+                                    value={newInvoice.serviceMonth}
+                                    onChange={(e) => setNewInvoice({ ...newInvoice, serviceMonth: e.target.value })}
                                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all"
                                 />
                             </div>
