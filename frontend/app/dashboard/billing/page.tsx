@@ -58,6 +58,26 @@ interface Invoice {
     stripe_transaction_id?: string
 }
 
+function monthsInPeriod(from: string, to: string): number {
+    if (!from) return 1
+    const [startYear, startMonth] = from.split('-').map(Number)
+    const [endYear, endMonth] = (to || from).split('-').map(Number)
+    return (endYear - startYear) * 12 + endMonth - startMonth + 1
+}
+
+function periodMonthText(month: string): string {
+    if (!month) return ''
+    const [year, monthNumber] = month.split('-').map(Number)
+    return new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+        .format(new Date(Date.UTC(year, monthNumber - 1, 1)))
+}
+
+function suggestedInvoiceDescription(from: string, to: string): string {
+    if (!from) return ''
+    if (!to || from === to) return 'Unterrichtsbeitrag ' + periodMonthText(from)
+    return 'Unterrichtsbeiträge ' + periodMonthText(from) + ' bis ' + periodMonthText(to)
+}
+
 export default function BillingPage() {
   const tr = useTranslations('Billing')
   const locale = useLocale()
@@ -96,6 +116,7 @@ export default function BillingPage() {
         student: '',
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         serviceMonth: '',
+        serviceMonthTo: '',
         line_items: [{ description: '', quantity: 1, unit_price: '' }]
     })
 
@@ -109,6 +130,14 @@ export default function BillingPage() {
 
     const handleCreateInvoice = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (newInvoice.serviceMonthTo && !newInvoice.serviceMonth) {
+            toast.error('Bitte zuerst den Anfangsmonat auswählen.')
+            return
+        }
+        if (newInvoice.serviceMonth && monthsInPeriod(newInvoice.serviceMonth, newInvoice.serviceMonthTo) < 1) {
+            toast.error('Der Endmonat darf nicht vor dem Anfangsmonat liegen.')
+            return
+        }
         setCreating(true)
 
         try {
@@ -116,6 +145,7 @@ export default function BillingPage() {
                 student: newInvoice.student,
                 due_date: newInvoice.dueDate,
                 service_month: newInvoice.serviceMonth ? `${newInvoice.serviceMonth}-01` : null,
+                service_month_end: newInvoice.serviceMonthTo ? `${newInvoice.serviceMonthTo}-01` : null,
                 send_now: true,
                 line_items: newInvoice.line_items.map(item => ({
                     ...item,
@@ -127,6 +157,7 @@ export default function BillingPage() {
                 student: '',
                 dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 serviceMonth: '',
+                serviceMonthTo: '',
                 line_items: [{ description: '', quantity: 1, unit_price: '' }]
             })
             if (result.data.email_sent) {
@@ -146,6 +177,57 @@ export default function BillingPage() {
         } finally {
             setCreating(false)
         }
+    }
+
+    const handleInvoicePeriodChange = (field: 'serviceMonth' | 'serviceMonthTo', value: string) => {
+        setNewInvoice(previous => {
+            const from = field === 'serviceMonth' ? value : previous.serviceMonth
+            const to = field === 'serviceMonthTo' ? value : previous.serviceMonthTo
+            const validTo = from && to && to < from ? '' : to
+            const months = Math.max(1, monthsInPeriod(from, validTo))
+            const previousDescription = suggestedInvoiceDescription(
+                previous.serviceMonth, previous.serviceMonthTo,
+            )
+            const nextDescription = suggestedInvoiceDescription(from, validTo)
+            return {
+                ...previous,
+                serviceMonth: from,
+                serviceMonthTo: validTo,
+                line_items: previous.line_items.map((item, index) => index === 0 ? {
+                    ...item,
+                    quantity: months,
+                    description: !item.description || item.description === previousDescription
+                        ? nextDescription : item.description,
+                } : item),
+            }
+        })
+    }
+
+    const handleInvoiceStudentChange = (studentId: string) => {
+        setNewInvoice(previous => ({
+            ...previous,
+            student: studentId,
+            line_items: previous.line_items.map((item, index) => index === 0
+                ? { ...item, unit_price: '' } : item),
+        }))
+        if (!studentId) return
+        // Use this student's agreed monthly amount, including individual contracts.
+        // The admin can still change the amount manually.
+        api.get('/students/' + encodeURIComponent(studentId) + '/contract/')
+            .then(response => {
+                const agreedAmount = response.data?.contract?.monthly_amount
+                if (agreedAmount === null || agreedAmount === undefined) return
+                setNewInvoice(previous => {
+                    if (previous.student !== studentId) return previous
+                    if (previous.line_items[0]?.unit_price !== '') return previous
+                    return {
+                        ...previous,
+                        line_items: previous.line_items.map((item, index) => index === 0
+                            ? { ...item, unit_price: String(agreedAmount) } : item),
+                    }
+                })
+            })
+            .catch(() => { /* Without a teaching contract, enter the price manually. */ })
     }
 
     const addLineItem = () => {
@@ -708,7 +790,7 @@ export default function BillingPage() {
                                 <select
                                     required
                                     value={newInvoice.student}
-                                    onChange={(e) => setNewInvoice({ ...newInvoice, student: e.target.value })}
+                                    onChange={(e) => handleInvoiceStudentChange(e.target.value)}
                                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all appearance-none"
                                 >
                                     <option value="">{tr('selectStudent')}</option>
@@ -729,15 +811,36 @@ export default function BillingPage() {
                                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all"
                                 />
                             </div>
-                            <div className="space-y-2 md:col-span-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Leistungsmonat (bei Monatsbeiträgen)</label>
+                            <div className="space-y-2">
+                                <label htmlFor="invoice-service-from" className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Leistungszeitraum von (Monat)</label>
                                 <input
+                                    id="invoice-service-from"
                                     type="month"
                                     value={newInvoice.serviceMonth}
-                                    onChange={(e) => setNewInvoice({ ...newInvoice, serviceMonth: e.target.value })}
+                                    onChange={(e) => handleInvoicePeriodChange('serviceMonth', e.target.value)}
                                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all"
                                 />
                             </div>
+                            <div className="space-y-2">
+                                <label htmlFor="invoice-service-to" className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Leistungszeitraum bis (optional)</label>
+                                <input
+                                    id="invoice-service-to"
+                                    type="month"
+                                    min={newInvoice.serviceMonth || undefined}
+                                    value={newInvoice.serviceMonthTo}
+                                    disabled={!newInvoice.serviceMonth}
+                                    onChange={(e) => handleInvoicePeriodChange('serviceMonthTo', e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-2xl font-bold text-sm text-gray-700 outline-none transition-all disabled:opacity-50"
+                                />
+                            </div>
+                            {newInvoice.serviceMonth && (
+                                <p className="md:col-span-2 text-xs text-gray-500">
+                                    {newInvoice.serviceMonthTo
+                                        ? `${monthsInPeriod(newInvoice.serviceMonth, newInvoice.serviceMonthTo)} Monate – Betrag aus Monatsbeitrag × Anzahl der Monate`
+                                        : 'Ein Monat – Feld „Bis“ bleibt leer.'}
+                                    {' '}Der Rechnungsbetrag kann weiterhin manuell angepasst werden.
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-4">
