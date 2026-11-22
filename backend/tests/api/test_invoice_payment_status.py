@@ -139,7 +139,8 @@ def test_only_admin_can_mark_payments(
 @pytest.mark.django_db
 def test_dashboard_reports_three_amounts(authenticated_client, studio, student):
     make_invoice(studio, student, due_date=date(2026, 10, 7))
-    make_invoice(studio, student, due_date=date(2026, 11, 1))
+    make_invoice(studio, student, due_date=date(2026, 11, 1),
+                 issued=date(2026, 10, 22))
     make_invoice(studio, student, due_date=date(2026, 11, 1), status="paid")
     with patch("apps.billing.payment_status.berlin_today", return_value=date(2026, 11, 22)):
         response = authenticated_client.get(reverse("dashboard-stats"))
