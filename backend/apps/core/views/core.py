@@ -348,13 +348,17 @@ class UserViewSet(viewsets.ModelViewSet):
         print("=" * 60)
         print("Send Test Email Request Started")
 
-        smtp_host = request.data.get("smtp_host")
-        smtp_port = request.data.get("smtp_port")
-        smtp_username = request.data.get("smtp_username")
-        smtp_password = request.data.get("smtp_password")
-        smtp_use_tls = request.data.get("smtp_use_tls", True)
-        smtp_from_email = request.data.get("smtp_from_email")
-        smtp_from_name = request.data.get("smtp_from_name", "StudioSync")
+        # The browser receives only smtp_password_set, never the password.
+        # Use the stored secret when testing an unchanged mailbox configuration.
+        prefs = request.user.preferences if isinstance(request.user.preferences, dict) else {}
+        saved = prefs.get("technical") if isinstance(prefs.get("technical"), dict) else {}
+        smtp_host = request.data.get("smtp_host") or saved.get("smtp_host")
+        smtp_port = request.data.get("smtp_port") or saved.get("smtp_port")
+        smtp_username = request.data.get("smtp_username") or saved.get("smtp_username")
+        smtp_password = request.data.get("smtp_password") or saved.get("smtp_password")
+        smtp_use_tls = request.data.get("smtp_use_tls", saved.get("smtp_use_tls", True))
+        smtp_from_email = request.data.get("smtp_from_email") or saved.get("smtp_from_email")
+        smtp_from_name = request.data.get("smtp_from_name") or saved.get("smtp_from_name", "StudioSync")
 
         print(f"SMTP Host: {smtp_host}")
         print(f"SMTP Port: {smtp_port}")
