@@ -81,6 +81,108 @@ def test_auth_profile_hides_technical_settings_for_other_roles(
 
 
 @pytest.mark.django_db
+def test_updating_imap_only_preserves_existing_smtp_fields_and_secret(
+    authenticated_client, admin_user,
+):
+    admin_user.preferences = {"technical": {
+        "smtp_host": "mail.manitu.de",
+        "smtp_port": "465",
+        "smtp_username": "outgoing@example.org",
+        "smtp_password": "existing-smtp-secret",
+        "smtp_from_email": "outgoing@example.org",
+        "smtp_use_tls": False,
+    }}
+    admin_user.save(update_fields=["preferences"])
+
+    response = authenticated_client.patch(reverse("user-me-manual"), {
+        "preferences": {"technical": {
+            "imap_host": "mail.manitu.de",
+            "imap_port": "993",
+            "imap_username": "incoming@example.org",
+            "imap_password": "new-imap-secret",
+            "imap_security": "ssl",
+        }}
+    }, format="json")
+    assert response.status_code == 200, response.data
+    admin_user.refresh_from_db()
+    tech = admin_user.preferences["technical"]
+    assert tech["smtp_host"] == "mail.manitu.de"
+    assert tech["smtp_port"] == "465"
+    assert tech["smtp_username"] == "outgoing@example.org"
+    assert tech["smtp_from_email"] == "outgoing@example.org"
+    assert tech["smtp_password"] == "existing-smtp-secret"
+    assert tech["imap_password"] == "new-imap-secret"
+
+
+@pytest.mark.django_db
+def test_updating_smtp_only_preserves_existing_imap_fields_and_secret(
+    authenticated_client, admin_user,
+):
+    admin_user.preferences = {"technical": {
+        "imap_host": "mail.manitu.de",
+        "imap_port": "993",
+        "imap_username": "incoming@example.org",
+        "imap_password": "existing-imap-secret",
+        "imap_security": "ssl",
+    }}
+    admin_user.save(update_fields=["preferences"])
+
+    response = authenticated_client.patch(reverse("user-me-manual"), {
+        "preferences": {"technical": {
+            "smtp_host": "mail.manitu.de",
+            "smtp_port": "465",
+            "smtp_username": "outgoing@example.org",
+            "smtp_from_email": "outgoing@example.org",
+            "smtp_use_tls": False,
+        }}
+    }, format="json")
+    assert response.status_code == 200, response.data
+    admin_user.refresh_from_db()
+    tech = admin_user.preferences["technical"]
+    assert tech["imap_host"] == "mail.manitu.de"
+    assert tech["imap_port"] == "993"
+    assert tech["imap_username"] == "incoming@example.org"
+    assert tech["imap_password"] == "existing-imap-secret"
+    assert tech["smtp_host"] == "mail.manitu.de"
+
+
+@pytest.mark.django_db
+def test_smtp_connection_test_uses_saved_secret_without_browser_echo(
+    authenticated_client, admin_user,
+):
+    admin_user.preferences = {"technical": {
+        "smtp_host": "mail.manitu.de",
+        "smtp_port": "465",
+        "smtp_username": "outgoing@example.org",
+        "smtp_password": "existing-smtp-secret",
+        "smtp_from_email": "outgoing@example.org",
+        "smtp_use_tls": False,
+    }}
+    admin_user.save(update_fields=["preferences"])
+
+    with (
+        patch("apps.core.views.core.assert_public_host"),
+        patch("django.core.mail.get_connection") as get_connection,
+        patch("django.core.mail.EmailMultiAlternatives") as mail,
+    ):
+        response = authenticated_client.post(reverse("user-send-test-email"), {
+            "smtp_host": "mail.manitu.de",
+            "smtp_port": "465",
+            "smtp_username": "outgoing@example.org",
+            "smtp_password": "",
+            "smtp_from_email": "outgoing@example.org",
+            "smtp_use_tls": False,
+        }, format="json")
+
+    assert response.status_code == 200, response.data
+    assert get_connection.call_args.kwargs["password"] == "existing-smtp-secret"
+    assert get_connection.call_args.kwargs["use_ssl"] is True
+    assert get_connection.call_args.kwargs["use_tls"] is False
+    mail.return_value.send.assert_called_once()
+    assert "existing-smtp-secret" not in str(response.data)
+
+
+@pytest.mark.django_db
 def test_admin_test_imap_uses_saved_password_without_echo(authenticated_client, admin_user):
     admin_user.preferences = {"technical": {
         "imap_host": "mail.manitu.de", "imap_port": "993",
