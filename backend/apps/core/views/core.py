@@ -427,6 +427,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
             # Use the email utility to send a nice HTML test email
             from django.core.mail import EmailMultiAlternatives
+            from email.utils import formataddr
 
             subject = f"Test Email from {smtp_from_name}"
             text_content = f"""This is a test email from {smtp_from_name}.
@@ -492,7 +493,7 @@ The {smtp_from_name} Team
             email = EmailMultiAlternatives(
                 subject=subject,
                 body=text_content,
-                from_email=smtp_from_email,
+                from_email=formataddr((smtp_from_name, smtp_from_email)),
                 to=[request.user.email],
                 connection=connection,
             )
