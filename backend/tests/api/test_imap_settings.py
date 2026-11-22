@@ -197,7 +197,7 @@ def test_background_mail_uses_current_studio_name_not_stored_smtp_alias(
     from apps.core.email_utils import get_email_settings
     admin_user.preferences = {"technical": {
         "smtp_from_email": "outgoing@example.org",
-        "smtp_from_name": "Muikunterricht (veraltet)",
+        "smtp_from_name": "Veralteter SMTP-Absendername",
     }}
     admin_user.save(update_fields=["preferences"])
     studio.name = "MUSart - Musikunterricht"
