@@ -105,7 +105,7 @@ def test_password_reset_sender_uses_studio_name_not_legacy_smtp_name(api_client,
     studio.save(update_fields=["name"])
     admin_user.preferences = {"technical": {
         "smtp_from_email": "musikunterricht@example.org",
-        "smtp_from_name": "Muikunterricht (veraltet)",
+        "smtp_from_name": "Veralteter SMTP-Absendername",
     }}
     admin_user.save(update_fields=["preferences"])
 
