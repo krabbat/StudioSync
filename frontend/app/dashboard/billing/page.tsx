@@ -592,6 +592,28 @@ export default function BillingPage() {
                                                     >
                                                         <Eye className="w-4 h-4 text-gray-400" />
                                                     </Button>
+                                                    {isAdmin && invoice.payment_status !== 'paid' && invoice.payment_status !== 'cancelled' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            title="Als bezahlt markieren"
+                                                            onClick={() => handleMarkPaid(invoice)}
+                                                            className="hover:scale-110 active:scale-95"
+                                                        >
+                                                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                                        </Button>
+                                                    )}
+                                                    {isAdmin && invoice.payment_status === 'paid' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            title="Manuell verbuchte Zahlung zurücknehmen"
+                                                            onClick={() => handleMarkPending(invoice)}
+                                                            className="hover:scale-110 active:scale-95"
+                                                        >
+                                                            <Clock className="w-4 h-4 text-amber-600" />
+                                                        </Button>
+                                                    )}
                                                     {isAdmin && invoice.status !== 'cancelled' && (
                                                         <Button
                                                             variant="ghost"
@@ -679,12 +701,34 @@ export default function BillingPage() {
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Button>
+                                            {isAdmin && invoice.payment_status !== 'paid' && invoice.payment_status !== 'cancelled' && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title="Als bezahlt markieren"
+                                                    onClick={() => handleMarkPaid(invoice)}
+                                                    className="w-11 h-11 rounded-2xl bg-green-50 text-green-600 active:scale-90"
+                                                >
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            {isAdmin && invoice.payment_status === 'paid' && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title="Manuell verbuchte Zahlung zurücknehmen"
+                                                    onClick={() => handleMarkPending(invoice)}
+                                                    className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 active:scale-90"
+                                                >
+                                                    <Clock className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                             {isAdmin && invoice.status !== 'cancelled' && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => handleSendInvoice(invoice.id)}
-                                                    title="Rechnung per E-Mail versenden"
+                                                    title={invoice.email_sent ? 'Rechnung erneut per E-Mail versenden' : 'Rechnung per E-Mail senden'}
                                                     className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-500 active:scale-90"
                                                 >
                                                     <Mail className="w-4 h-4" />
@@ -1101,6 +1145,25 @@ export default function BillingPage() {
                                 <Download className="w-4 h-4" />
                                 {tr('downloadPDF')}
                             </Button>
+                            {isAdmin && viewingInvoice.payment_status !== 'paid' && viewingInvoice.payment_status !== 'cancelled' && (
+                                <Button
+                                    onClick={() => handleMarkPaid(viewingInvoice)}
+                                    className="flex-1 gap-2"
+                                >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    Als bezahlt markieren
+                                </Button>
+                            )}
+                            {isAdmin && viewingInvoice.payment_status === 'paid' && (
+                                <Button
+                                    onClick={() => handleMarkPending(viewingInvoice)}
+                                    variant="outline"
+                                    className="flex-1 gap-2"
+                                >
+                                    <Clock className="w-4 h-4" />
+                                    Zahlung zurücknehmen
+                                </Button>
+                            )}
                             {isAdmin && viewingInvoice.status !== 'cancelled' && (
                                 <Button
                                     onClick={() => handleSendInvoice(viewingInvoice.id)}
