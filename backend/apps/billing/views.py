@@ -113,21 +113,21 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="send")
     def send(self, request, pk=None):
-        """Manual, idempotent retry for a still-unsent invoice."""
+        """Explicit admin action: send again, including already issued invoices."""
         if request.user.role != "admin":
             raise PermissionDenied("Nur Administratoren dürfen Rechnungen versenden.")
         invoice = self.get_object()
         try:
-            delivered = send_invoice(invoice.pk)
+            delivered = send_invoice(invoice.pk, resend=True)
         except InvoiceDeliveryError as exc:
             return Response(
                 {"detail": str(exc), "email_sent": False},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({
-            "detail": "Rechnung per E-Mail verschickt." if delivered else "Rechnung wurde bereits verschickt.",
+            "detail": "Rechnung erneut per E-Mail verschickt." if invoice.sent_at else "Rechnung per E-Mail verschickt.",
             "email_sent": True,
-            "already_sent": not delivered,
+            "already_sent": bool(invoice.sent_at),
         })
 
     def update(self, request, *args, **kwargs):
@@ -149,9 +149,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": "Only admins can delete invoices."}, status=status.HTTP_403_FORBIDDEN
             )
-        invoice = self.get_object()
-        if invoice.sent_at:
-            raise ValidationError({"detail": "Versendete Rechnungen können nicht gelöscht werden."})
         return super().destroy(request, *args, **kwargs)
 
 class SubscriptionPlanViewSet(viewsets.ModelViewSet):

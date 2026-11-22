@@ -281,6 +281,7 @@ export default function BillingPage() {
 
         try {
             await api.delete(`/billing/invoices/${invoiceId}/`)
+            setViewingInvoice(previous => previous?.id === invoiceId ? null : previous)
             toast.success(tr('messageInvoiceDeletedSuccessfully'))
             refetchInvoices()
         } catch (error) {
@@ -558,18 +559,18 @@ export default function BillingPage() {
                                                     >
                                                         <Eye className="w-4 h-4 text-gray-400" />
                                                     </Button>
-                                                    {isAdmin && !invoice.email_sent && invoice.status !== 'cancelled' && (
+                                                    {isAdmin && invoice.status !== 'cancelled' && (
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleSendInvoice(invoice.id)}
-                                                            title="Rechnung per E-Mail senden"
+                                                            title={invoice.email_sent ? 'Rechnung erneut per E-Mail versenden' : 'Rechnung per E-Mail senden'}
                                                             className="hover:scale-110 active:scale-95"
                                                         >
                                                             <Mail className="w-4 h-4 text-gray-400" />
                                                         </Button>
                                                     )}
-                                                    {isAdmin && !invoice.email_sent && (
+                                                    {isAdmin && (
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -645,7 +646,7 @@ export default function BillingPage() {
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Button>
-                                            {isAdmin && !invoice.email_sent && invoice.status !== 'cancelled' && (
+                                            {isAdmin && invoice.status !== 'cancelled' && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -656,7 +657,7 @@ export default function BillingPage() {
                                                     <Mail className="w-4 h-4" />
                                                 </Button>
                                             )}
-                                            {isAdmin && !invoice.email_sent && (
+                                            {isAdmin && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -1067,13 +1068,13 @@ export default function BillingPage() {
                                 <Download className="w-4 h-4" />
                                 {tr('downloadPDF')}
                             </Button>
-                            {isAdmin && !viewingInvoice.email_sent && viewingInvoice.status !== 'cancelled' && (
+                            {isAdmin && viewingInvoice.status !== 'cancelled' && (
                                 <Button
                                     onClick={() => handleSendInvoice(viewingInvoice.id)}
                                     className="flex-1 gap-2"
                                 >
                                     <Mail className="w-4 h-4" />
-                                    Rechnung senden
+                                    {viewingInvoice.email_sent ? 'Erneut senden' : 'Rechnung senden'}
                                 </Button>
                             )}
                         </DialogFooter>

@@ -49,11 +49,10 @@ def smtp_settings_for_studio(studio):
     }, tech["smtp_from_email"], tech.get("smtp_from_name") or studio.name
 
 
-def send_invoice(invoice_id):
-    """Send at most once per invoice; never set 'sent' unless SMTP accepted the message.
+def send_invoice(invoice_id, *, resend=False):
+    """Send another email only if explicitly requested for an issued invoice.
 
-    Drafts use current billing-recipient details. Once delivered, PDF/snapshot stay fixed
-    even if personal data, payment status, or addresses change later.
+    Resending preserves the archived PDF, original addressee and first send date.
     """
     with transaction.atomic():
         invoice = (
@@ -64,8 +63,9 @@ def send_invoice(invoice_id):
             .select_related("studio__owner")
             .get(pk=invoice_id)
         )
-        if invoice.sent_at:
+        if invoice.sent_at and not resend:
             return False
+        already_sent = bool(invoice.sent_at)
         if invoice.status == "cancelled":
             raise InvoiceDeliveryError("Eine stornierte Rechnung kann nicht versendet werden.")
 
@@ -129,8 +129,11 @@ def send_invoice(invoice_id):
             logging.getLogger(__name__).exception(
                 "Invoice email failed for invoice %s", invoice.id
             )
-            raise InvoiceDeliveryError("SMTP-Versand fehlgeschlagen. Die Rechnung bleibt unversendet.") from exc
+            raise InvoiceDeliveryError("SMTP-Versand fehlgeschlagen. Die E-Mail wurde nicht bestätigt.") from exc
 
+        if already_sent:
+            # Do not touch previously issued invoice data or its original send timestamp.
+            return True
         invoice.pdf_document = pdf
         invoice.document_snapshot = snapshot
         invoice.pdf_created_at = timezone.now()

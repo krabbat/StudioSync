@@ -162,7 +162,9 @@ def test_missing_recipient_does_not_claim_sent_and_retry_sends_once(
     assert first.status_code == 200, first.data
     assert first.data["email_sent"] is True
     assert second.data["already_sent"] is True
-    assert len(mail.outbox) == 1
+    assert len(mail.outbox) == 2
+    assert mail.outbox[0].to == mail.outbox[1].to
+    assert mail.outbox[0].attachments[0][1] == mail.outbox[1].attachments[0][1]
 
     invoice.refresh_from_db()
     original_pdf = bytes(invoice.pdf_document)
@@ -314,3 +316,58 @@ def test_multi_month_pdf_without_separate_paypal_request(studio, student):
     assert snapshot["service_period"] == "01.01.2027 - 31.03.2027"
     pdf = render_invoice_pdf(snapshot)
     assert pdf.startswith(b"%PDF")
+
+@pytest.mark.django_db
+def test_resent_invoice_preserves_recipient_pdf_and_first_sent_at(
+    authenticated_client, studio, admin_user, student
+):
+    prepare_billing(studio, admin_user, student)
+    with (
+        patch("apps.billing.invoice_delivery.assert_public_host"),
+        patch("apps.billing.invoice_delivery.get_connection", return_value=InMemoryMailBackend()),
+    ):
+        created = authenticated_client.post(
+            reverse("invoice-list"), payload(student, send_now=True), format="json"
+        )
+        assert created.status_code == 201, created.data
+        invoice = Invoice.objects.get(pk=created.data["id"])
+        original_sent_at = invoice.sent_at
+        original_pdf = bytes(invoice.pdf_document)
+        original_snapshot = invoice.document_snapshot.copy()
+        profile = StudentBillingProfile.objects.get(student=student)
+        profile.recipient_email = "new-recipient@example.org"
+        profile.save(update_fields=["recipient_email"])
+        resent = authenticated_client.post(reverse("invoice-send", args=[invoice.pk]))
+
+    assert resent.status_code == 200, resent.data
+    assert resent.data["already_sent"] is True
+    assert len(mail.outbox) == 2
+    assert mail.outbox[1].to == ["eltern@example.org"]
+    assert mail.outbox[1].attachments[0][1] == original_pdf
+    invoice.refresh_from_db()
+    assert invoice.sent_at == original_sent_at
+    assert bytes(invoice.pdf_document) == original_pdf
+    assert invoice.document_snapshot == original_snapshot
+
+
+@pytest.mark.django_db
+def test_admin_may_delete_sent_invoice_other_roles_may_not(
+    authenticated_client, teacher_authenticated_client, student_authenticated_client,
+    studio, admin_user, student
+):
+    prepare_billing(studio, admin_user, student)
+    with (
+        patch("apps.billing.invoice_delivery.assert_public_host"),
+        patch("apps.billing.invoice_delivery.get_connection", return_value=InMemoryMailBackend()),
+    ):
+        created = authenticated_client.post(
+            reverse("invoice-list"), payload(student, send_now=True), format="json"
+        )
+    assert created.status_code == 201, created.data
+    invoice_id = created.data["id"]
+    url = reverse("invoice-detail", args=[invoice_id])
+    assert teacher_authenticated_client.delete(url).status_code == 403
+    assert student_authenticated_client.delete(url).status_code == 403
+    assert Invoice.objects.filter(pk=invoice_id).exists()
+    assert authenticated_client.delete(url).status_code == 204
+    assert not Invoice.objects.filter(pk=invoice_id).exists()
