@@ -5,6 +5,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import EmailMultiAlternatives, get_connection
+from email.utils import formataddr
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
@@ -180,7 +181,8 @@ def send_email_async(subject, to_email, template_name, context, from_email=None,
         email_settings = get_email_settings()
 
         real_from_email = from_email or email_settings["from_email"]
-        real_from_name = from_name or email_settings["from_name"]
+        # All outbound messages use the central studio name, regardless of legacy overrides.
+        real_from_name = email_settings["from_name"]
 
         # Add common context variables
         context["site_name"] = real_from_name
@@ -205,10 +207,7 @@ def send_email_async(subject, to_email, template_name, context, from_email=None,
             )
 
         # Construct From header
-        if real_from_name and real_from_name != real_from_email:
-            final_from = f"{real_from_name} <{real_from_email}>"
-        else:
-            final_from = real_from_email
+        final_from = formataddr((real_from_name, real_from_email)) if real_from_name else real_from_email
 
         email = EmailMultiAlternatives(
             subject=subject,
