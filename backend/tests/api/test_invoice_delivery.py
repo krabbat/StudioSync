@@ -233,3 +233,84 @@ def test_no_tax_is_added_to_invoice(authenticated_client, studio, admin_user, st
         reverse("invoice-list"), payload(student, tax_amount="25.65"), format="json"
     )
     assert forbidden.status_code == 400
+
+@pytest.mark.django_db
+def test_manual_invoice_range_covers_inclusive_months(authenticated_client, studio, student):
+    from apps.billing.invoice_pdf import invoice_snapshot
+    from apps.billing.models import Invoice
+
+    response = authenticated_client.post(reverse("invoice-list"), payload(
+        student,
+        send_now=False,
+        service_month="2027-01-01",
+        service_month_end="2027-03-01",
+        line_items=[{
+            "description": "Nachberechnung Unterricht Januar–März 2027",
+            "quantity": "3",
+            "unit_price": "135.00",
+        }],
+    ), format="json")
+    assert response.status_code == 201, response.data
+    invoice = Invoice.objects.get(pk=response.data["id"])
+    assert invoice.service_month_end == date(2027, 3, 1)
+    assert invoice.total_amount == 405
+    assert invoice_snapshot(invoice)["service_period"] == "01.01.2027 - 31.03.2027"
+    assert invoice.sent_at is None
+
+
+@pytest.mark.django_db
+def test_single_month_needs_no_end_and_custom_amount_remains_editable(
+    authenticated_client, studio, student
+):
+    from apps.billing.invoice_pdf import invoice_snapshot
+    from apps.billing.models import Invoice
+
+    response = authenticated_client.post(reverse("invoice-list"), payload(
+        student,
+        send_now=False,
+        service_month_end=None,
+        line_items=[{
+            "description": "Individueller Unterrichtsbeitrag Januar 2027",
+            "quantity": "1",
+            "unit_price": "95.00",
+        }],
+    ), format="json")
+    assert response.status_code == 201, response.data
+    invoice = Invoice.objects.get(pk=response.data["id"])
+    assert invoice.service_month_end is None
+    assert invoice.total_amount == 95
+    assert invoice_snapshot(invoice)["service_period"] == "01.01.2027 - 31.01.2027"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("start,end", [
+    ("2027-03-01", "2027-01-01"),
+    (None, "2027-02-01"),
+    ("2027-01-10", "2027-02-01"),
+    ("2027-01-01", "2027-02-03"),
+])
+def test_invalid_month_range_rejected(authenticated_client, studio, student, start, end):
+    response = authenticated_client.post(reverse("invoice-list"), payload(
+        student, send_now=False, service_month=start, service_month_end=end
+    ), format="json")
+    assert response.status_code == 400, response.data
+    assert "service_month_end" in response.data or "service_month" in response.data
+
+
+@pytest.mark.django_db
+def test_multi_month_pdf_without_separate_paypal_request(studio, student):
+    from apps.billing.invoice_pdf import invoice_snapshot, render_invoice_pdf
+    from apps.billing.models import Invoice, InvoiceLineItem
+    invoice = Invoice.objects.create(
+        studio=studio, student=student, due_date=date(2027, 4, 7),
+        service_month=date(2027, 1, 1), service_month_end=date(2027, 3, 1),
+    )
+    InvoiceLineItem.objects.create(
+        invoice=invoice, description="Saxophonunterricht Januar bis März",
+        quantity=3, unit_price=135,
+    )
+    invoice.calculate_totals()
+    snapshot = invoice_snapshot(invoice)
+    assert snapshot["service_period"] == "01.01.2027 - 31.03.2027"
+    pdf = render_invoice_pdf(snapshot)
+    assert pdf.startswith(b"%PDF")

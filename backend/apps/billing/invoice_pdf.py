@@ -83,14 +83,15 @@ def invoice_snapshot(invoice):
     city = profile.recipient_city if override else (student.city if student else "")
 
     studio_settings = studio.settings if isinstance(studio.settings, dict) else {}
+    period_end = invoice.service_month_end or invoice.service_month
     return {
         "invoice_number": invoice.invoice_number,
         "issue_date": date_de(invoice.issue_date),
         "due_date": date_de(invoice.due_date),
         "service_period": (
             f"01.{invoice.service_month.month:02d}.{invoice.service_month.year} - "
-            f"{monthrange(invoice.service_month.year, invoice.service_month.month)[1]:02d}."
-            f"{invoice.service_month.month:02d}.{invoice.service_month.year}"
+            f"{monthrange(period_end.year, period_end.month)[1]:02d}."
+            f"{period_end.month:02d}.{period_end.year}"
         ) if invoice.service_month else "",
         "sender_name": str(studio_settings.get("billing_sender_name") or studio.owner.get_full_name().strip() or studio.name),
         "studio_name": studio.name,
@@ -295,8 +296,6 @@ def render_invoice_pdf(data):
     paypal_section = [paragraph("PayPal", body)]
     if data.get("paypal_email"):
         paypal_section.append(paragraph(data["paypal_email"], small))
-        paypal_section.append(paragraph(
-            "Bei PayPal-Zahlern erfolgt die Zahlungsaufforderung separat.", small))
     else:
         paypal_section.append(paragraph("Nach Vereinbarung", small))
     cash_section = [

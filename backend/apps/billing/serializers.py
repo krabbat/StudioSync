@@ -94,6 +94,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "issue_date",
             "due_date",
             "service_month",
+            "service_month_end",
             "subtotal",
             "tax_amount",
             "discount_amount",
@@ -143,6 +144,24 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "tax_amount": "MUSart-Unterricht ist umsatzsteuerfrei (§ 4 Nr. 21 Buchst. c UStG)."
                 })
+        start = attrs.get("service_month", getattr(self.instance, "service_month", None))
+        end = attrs.get("service_month_end", getattr(self.instance, "service_month_end", None))
+        if start and start.day != 1:
+            raise serializers.ValidationError({
+                "service_month": "Bitte den Monatsersten als Leistungsmonat angeben."
+            })
+        if end and end.day != 1:
+            raise serializers.ValidationError({
+                "service_month_end": "Bitte den Monatsersten als Endmonat angeben."
+            })
+        if end and not start:
+            raise serializers.ValidationError({
+                "service_month_end": "Für einen Endmonat muss ein Anfangsmonat angegeben sein."
+            })
+        if start and end and end < start:
+            raise serializers.ValidationError({
+                "service_month_end": "Der Endmonat darf nicht vor dem Anfangsmonat liegen."
+            })
         return attrs
 
     def create(self, validated_data):
