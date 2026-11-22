@@ -58,7 +58,10 @@ def send_invoice(invoice_id):
     with transaction.atomic():
         invoice = (
             Invoice.objects.select_for_update()
-            .select_related("studio__owner", "student__user")
+            # The student FK is nullable: joining it here creates an OUTER JOIN
+            # that PostgreSQL refuses to lock with SELECT FOR UPDATE.
+            # Student and user are loaded lazily when building the snapshot.
+            .select_related("studio__owner")
             .get(pk=invoice_id)
         )
         if invoice.sent_at:
