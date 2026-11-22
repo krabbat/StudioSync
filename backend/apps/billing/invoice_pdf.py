@@ -307,18 +307,21 @@ def render_invoice_pdf(data):
         Spacer(1, 3 * mm)] + cash_section
     if data["notes"]:
         section += [Spacer(1, 4 * mm), paragraph(data["notes"], small)]
-    story += [KeepTogether(section), Spacer(1, 11 * mm),
-              HRFlowable(width="100%", thickness=.5, color=colors.HexColor("#DDE4ED")),
-              Spacer(1, 3 * mm)]
+    story.append(KeepTogether(section))
     footer = line(data["sender_name"], data["sender_street"],
                   (data["sender_postal_code"] + " " + data["sender_city"]).strip())
-    story.append(paragraph(footer, small))
-    if data["sender_tax_id"]:
-        story.append(paragraph("Steuernummer: " + data["sender_tax_id"], small))
 
     def page_number(canvas, doc):
+        # Fixed footer: avoids a nearly empty second A4 page for normal invoices.
+        canvas.setStrokeColor(colors.HexColor("#DDE4ED"))
+        canvas.setLineWidth(.5)
+        canvas.line(23 * mm, 20 * mm, A4[0] - 23 * mm, 20 * mm)
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(muted)
+        canvas.drawString(23 * mm, 14 * mm, footer)
+        if data["sender_tax_id"]:
+            canvas.drawString(23 * mm, 10 * mm,
+                              "Steuernummer: " + data["sender_tax_id"])
         canvas.drawRightString(A4[0] - 23 * mm, 14 * mm, f"Seite {doc.page}")
 
     document.build(story, onFirstPage=page_number, onLaterPages=page_number)
