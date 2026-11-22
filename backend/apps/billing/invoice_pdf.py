@@ -40,6 +40,32 @@ def _p(value):
     return escape(str(value or ""))
 
 
+def lesson_subject(student):
+    """Use the student's primary instrument to label the tuition, not a manual invoice field."""
+    if not student:
+        return "Musikunterricht"
+    raw = (student.instrument or "").strip()
+    if not raw and isinstance(student.instruments, list):
+        raw = next((value.strip() for value in student.instruments
+                    if isinstance(value, str) and value.strip()), "")
+    if not raw:
+        return "Musikunterricht"
+    names = {
+        "piano": "Klavier", "piano/keyboard": "Klavier", "guitar": "Gitarre",
+        "violin": "Geige", "flute": "Flöte", "recorder": "Blockflöte",
+        "saxophone": "Saxophon", "saxofon": "Saxophon",
+        "accordion": "Akkordeon", "keyboard": "Keyboard",
+        "music theory": "Musiktheorie", "ear training": "Gehörbildung",
+        "geige/violine": "Geige", "saxophon/saxofon": "Saxophon",
+    }
+    instrument = names.get(raw.casefold(), raw)
+    if instrument.casefold().endswith("unterricht"):
+        return instrument
+    if instrument.casefold() in {"musiktheorie", "gehörbildung", "musiktechnik"}:
+        return instrument
+    return instrument + "unterricht"
+
+
 def invoice_snapshot(invoice):
     """Capture exactly the recipient/sender/payment data used for the document."""
     student = invoice.student
@@ -66,12 +92,12 @@ def invoice_snapshot(invoice):
             f"{monthrange(invoice.service_month.year, invoice.service_month.month)[1]:02d}."
             f"{invoice.service_month.month:02d}.{invoice.service_month.year}"
         ) if invoice.service_month else "",
-        "sender_name": studio.owner.get_full_name().strip() or studio.name,
+        "sender_name": str(studio_settings.get("billing_sender_name") or studio.owner.get_full_name().strip() or studio.name),
         "studio_name": studio.name,
-        "sender_street": studio.address_line1,
-        "sender_postal_code": studio.postal_code,
-        "sender_city": studio.city,
-        "sender_email": studio.email,
+        "sender_street": str(studio_settings.get("billing_sender_street") or studio.address_line1),
+        "sender_postal_code": str(studio_settings.get("billing_sender_postal_code") or studio.postal_code),
+        "sender_city": str(studio_settings.get("billing_sender_city") or studio.city),
+        "sender_email": str(studio_settings.get("billing_sender_email") or studio.email),
         "sender_web": studio.website,
         "sender_tax_id": str(studio_settings.get("billing_tax_number", "")),
         "recipient_name": recipient_name,
@@ -80,11 +106,13 @@ def invoice_snapshot(invoice):
         "recipient_city": city,
         "recipient_email": email,
         "student_name": student.user.get_full_name().strip() if student else "",
+        "lesson_subject": lesson_subject(student),
         "payment_method": payment_method,
         "bank_holder": str(studio_settings.get("bank_account_holder") or studio.owner.get_full_name().strip()),
         "bank_name": str(studio_settings.get("bank_name", "")),
         "bank_iban": str(studio_settings.get("bank_iban", "")),
         "bank_bic": str(studio_settings.get("bank_bic", "")),
+        "paypal_email": str(studio_settings.get("paypal_email", "")),
         "items": [
             {"description": item.description, "quantity": str(item.quantity),
              "unit_price": str(item.unit_price), "total": str(item.total_price)}
@@ -138,7 +166,6 @@ def render_invoice_pdf(data):
     ink = colors.HexColor("#172237")
     muted = colors.HexColor("#657083")
     light = colors.HexColor("#F3F6FA")
-    navy = colors.HexColor("#18314D")
     body = ParagraphStyle("body", fontName="Helvetica", fontSize=9.4, leading=14, textColor=ink)
     small = ParagraphStyle("small", parent=body, fontSize=8, leading=11, textColor=muted)
     heading = ParagraphStyle("heading", parent=body, fontName="Helvetica-Bold", fontSize=15, leading=19)
@@ -197,7 +224,10 @@ def render_invoice_pdf(data):
     ]))
     story += [block, Spacer(1, 12 * mm)]
     if data["student_name"]:
-        story += [paragraph("Unterricht für: " + data["student_name"])]
+        story += [paragraph(
+            data.get("lesson_subject", "Musikunterricht") + " für " + data["student_name"],
+            subheading,
+        )]
     if data.get("service_period"):
         story += [paragraph("Leistungszeitraum: " + data["service_period"], small)]
     story += [Spacer(1, 7 * mm)]
@@ -242,26 +272,39 @@ def render_invoice_pdf(data):
         ("RIGHTPADDING", (0, 0), (-1, -1), 8),
     ]))
     story += [table, Spacer(1, 7 * mm), paragraph(TAX_NOTICE, small), Spacer(1, 11 * mm)]
-    payment = data["payment_method"]
-    section = [paragraph("ZAHLUNGSINFORMATIONEN", subheading), Spacer(1, 3 * mm)]
+    # All agreed payment options are printed, regardless of the preferred method.
+    # The preferred method in the student's billing profile controls follow-up workflow.
+    section = [paragraph("ZAHLUNGSMÖGLICHKEITEN", subheading), Spacer(1, 3 * mm)]
     if Decimal(data["balance_due"]) <= 0:
-        section.append(paragraph("Der Rechnungsbetrag wurde bereits vollständig bezahlt."))
-    elif payment == "cash":
-        section.append(paragraph("Barzahlung nach Vereinbarung, spätestens bis zum Fälligkeitstag."))
-    elif payment == "paypal":
-        section.append(paragraph("Für die Bezahlung erhalten Sie eine separate PayPal-Zahlungsaufforderung."))
+        section += [paragraph("Dieser Rechnungsbetrag ist bereits vollständig bezahlt.", small),
+                    Spacer(1, 3 * mm)]
     else:
-        section.append(paragraph("Bitte überweisen Sie den offenen Betrag bis zum Fälligkeitstag."))
-        if data["bank_iban"]:
-            section += [
-                paragraph("Kontoinhaber: " + data["bank_holder"], small),
-                paragraph("Bank: " + data["bank_name"], small) if data["bank_name"] else Spacer(1, 0),
-                paragraph("IBAN: " + data["bank_iban"], small),
-                paragraph("BIC: " + data["bank_bic"], small) if data["bank_bic"] else Spacer(1, 0),
-            ]
-        else:
-            section.append(paragraph("Bankverbindung: wie vereinbart.", small))
-        section.append(paragraph("Verwendungszweck: " + data["invoice_number"], small))
+        section += [paragraph("Bitte zahlen Sie den offenen Betrag bis zum " +
+                              data["due_date"] + ".", small), Spacer(1, 3 * mm)]
+    bank_lines = []
+    if data.get("bank_holder"):
+        bank_lines.append(paragraph("Empfänger: " + data["bank_holder"], small))
+    if data.get("bank_name"):
+        bank_lines.append(paragraph("Bank: " + data["bank_name"], small))
+    if data.get("bank_iban"):
+        bank_lines.append(paragraph("IBAN: " + data["bank_iban"], small))
+    if data.get("bank_bic"):
+        bank_lines.append(paragraph("BIC: " + data["bank_bic"], small))
+    bank_lines.append(paragraph("Verwendungszweck: " + data["invoice_number"], small))
+    bank_section = [paragraph("Banküberweisung", body)] + bank_lines
+    paypal_section = [paragraph("PayPal", body)]
+    if data.get("paypal_email"):
+        paypal_section.append(paragraph(data["paypal_email"], small))
+        paypal_section.append(paragraph(
+            "Bei PayPal-Zahlern erfolgt die Zahlungsaufforderung separat.", small))
+    else:
+        paypal_section.append(paragraph("Nach Vereinbarung", small))
+    cash_section = [
+        paragraph("Barzahlung", body),
+        paragraph("Nach Vereinbarung möglich.", small),
+    ]
+    section += bank_section + [Spacer(1, 3 * mm)] + paypal_section + [
+        Spacer(1, 3 * mm)] + cash_section
     if data["notes"]:
         section += [Spacer(1, 4 * mm), paragraph(data["notes"], small)]
     story += [KeepTogether(section), Spacer(1, 11 * mm),
