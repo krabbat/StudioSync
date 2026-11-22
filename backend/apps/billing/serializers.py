@@ -25,6 +25,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
     line_items = InvoiceLineItemSerializer(many=True, required=False)
     balance_due = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
+    pdf_available = serializers.SerializerMethodField()
+    email_sent = serializers.SerializerMethodField()
+
+    def get_pdf_available(self, obj):
+        return bool(obj.pdf_created_at)
+
+    def get_email_sent(self, obj):
+        return bool(obj.sent_at)
 
     # Display fields
     student_name = serializers.SerializerMethodField()
@@ -60,6 +68,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "amount_paid",
             "balance_due",
             "is_overdue",
+            "pdf_available",
+            "email_sent",
+            "sent_at",
             "line_items",
             "created_at",
             "notes",
@@ -78,6 +89,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "balance_due",
             "is_overdue",
             "created_at",
+            "sent_at",
         ]
 
     def create(self, validated_data):
@@ -89,6 +101,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return invoice
 
     def update(self, instance, validated_data):
+        if instance.sent_at and set(validated_data) - {"status"}:
+            raise serializers.ValidationError(
+                "Eine versendete Rechnung darf inhaltlich nicht verändert werden."
+            )
         line_items_data = validated_data.pop("line_items", [])
         # Update main fields
         for attr, value in validated_data.items():

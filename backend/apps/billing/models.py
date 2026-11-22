@@ -101,6 +101,10 @@ class Invoice(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+    # Archive on the database to avoid exposing private invoices via MEDIA_URL.
+    pdf_document = models.BinaryField(blank=True, null=True, editable=False)
+    pdf_created_at = models.DateTimeField(blank=True, null=True, editable=False)
+    document_snapshot = models.JSONField(default=dict, blank=True, editable=False)
     stripe_session_id = models.CharField(max_length=200, blank=True, db_index=True)
 
     class Meta:
