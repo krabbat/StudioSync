@@ -37,10 +37,10 @@ export default function DashboardLayout({
                         <NotificationsProvider>
                             <div className="dashboard-shell flex h-[100dvh] w-full overflow-hidden">
                                 {/* The navigation is an overlay on every screen size. */}
-                                <Sidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} />
+                                <Sidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} onOpen={handleOpenSidebar} />
 
-                                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                                    <DashboardHeader onMenuClick={handleOpenSidebar} compact={isMailPage} />
+                                <div className="dashboard-content-column flex min-w-0 flex-1 flex-col overflow-hidden">
+                                    <DashboardHeader compact={isMailPage} />
                                     <UpdateBanner />
                                     <main className={isMailPage
                                         ? 'dashboard-mail-main min-h-0 min-w-0 flex-1 overflow-hidden'
