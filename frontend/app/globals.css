@@ -911,3 +911,18 @@ button {
   padding: 0;
   background: var(--mail-page-background);
 }
+
+
+/* Template-aware dashboard dark palette (mail panels follow the existing
+   --card/--foreground/--border colors without additional hard-coded overrides). */
+.dark {
+  --dashboard-header-background: hsl(var(--card));
+  --dashboard-header-border: hsl(var(--border));
+  --dashboard-header-text: hsl(var(--foreground));
+  --dashboard-header-muted: hsl(var(--muted-foreground));
+  --dashboard-header-faint: hsl(var(--muted-foreground));
+  --dashboard-header-card: hsl(var(--secondary));
+  --dashboard-header-hover: hsl(var(--accent));
+  --dashboard-shell-background: hsl(var(--background));
+  --dashboard-sidebar-background: #13151f;
+}
