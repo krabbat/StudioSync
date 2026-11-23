@@ -1,7 +1,7 @@
 'use client'
 
 import {
-    useEffect, useMemo, useRef, useState,
+    useCallback, useEffect, useMemo, useRef, useState,
     type CSSProperties, type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
@@ -9,6 +9,7 @@ import {
     Inbox, Mail, Menu, MoreHorizontal, Paperclip, Pencil, RefreshCw, Reply,
     Search, Send, Star, Trash2, Upload, X,
 } from 'lucide-react'
+import api from '@/services/api'
 
 type FolderId = 'inbox' | 'sent' | 'drafts' | 'outbox' | 'archive' | 'spam' | 'trash'
 type RecipientMode = 'single' | 'all' | 'group'
@@ -27,7 +28,42 @@ interface MailPreview {
     unread: boolean
     starred: boolean
     attachments: string[]
+    has_attachment: boolean
+    bodyLoaded?: boolean
 }
+
+interface InboxApiMessage {
+    id: string
+    from: string
+    email: string
+    subject: string
+    date: string | null
+    unread: boolean
+    starred: boolean
+    preview: string
+    attachments: string[]
+    has_attachment: boolean
+}
+
+interface InboxPage {
+    messages: InboxApiMessage[]
+    total: number
+    has_more: boolean
+    offset: number
+    limit: number
+    uidvalidity: string | null
+}
+
+const normalizeMessage = (message: InboxApiMessage): MailPreview => ({
+    ...message,
+    folder: 'inbox',
+    date: message.date || '',
+    body: '',
+    student: '',
+    instrument: '',
+    attachments: message.attachments || [],
+    has_attachment: Boolean(message.has_attachment),
+})
 
 const FOLDERS: { id: FolderId; name: string; icon: typeof Inbox }[] = [
     { id: 'inbox', name: 'Posteingang', icon: Inbox },
@@ -39,50 +75,13 @@ const FOLDERS: { id: FolderId; name: string; icon: typeof Inbox }[] = [
     { id: 'trash', name: 'Papierkorb', icon: Trash2 },
 ]
 
-// These are explicitly labelled sample messages. No mail is fetched or sent
-// until the IMAP/SMTP message endpoints have been implemented.
-const SAMPLE_MESSAGES: MailPreview[] = [
-    {
-        id: 'sample-1', folder: 'inbox', from: 'Familie Beispiel',
-        email: 'familie@example.invalid', subject: 'Unterricht am Donnerstag',
-        preview: 'Können wir den Termin am Donnerstag etwas verschieben?',
-        body: 'Guten Morgen,\n\nkönnen wir den Unterricht am Donnerstag etwas verschieben?\n\nViele Grüße\nFamilie Beispiel',
-        date: '2026-11-23T09:42:00', student: 'Clara Beispiel', instrument: 'Klavier',
-        unread: true, starred: false, attachments: [],
-    },
-    {
-        id: 'sample-2', folder: 'inbox', from: 'Alex Muster',
-        email: 'alex@example.invalid', subject: 'Neue Gitarrennoten',
-        preview: 'Ich habe eine Frage zu den Noten aus der letzten Stunde.',
-        body: 'Hallo,\n\nich habe eine Frage zu den Noten aus der letzten Stunde.\nKönnen Sie mir das Blatt noch einmal schicken?\n\nViele Grüße\nAlex Muster',
-        date: '2026-11-22T14:30:00', student: 'Alex Muster', instrument: 'Gitarre',
-        unread: false, starred: true, attachments: ['Noten.pdf'],
-    },
-    {
-        id: 'sample-3', folder: 'inbox', from: 'Interessent',
-        email: 'anfrage@example.invalid', subject: 'Anfrage zum Klavierunterricht',
-        preview: 'Bieten Sie auch Unterricht für Erwachsene an?',
-        body: 'Guten Tag,\n\nbieten Sie auch Klavierunterricht für Erwachsene an?\n\nMit freundlichen Grüßen',
-        date: '2026-11-21T11:15:00', student: '', instrument: '',
-        unread: false, starred: false, attachments: [],
-    },
-    {
-        id: 'sample-4', folder: 'sent', from: 'MUSart',
-        email: 'familie@example.invalid', subject: 'Unterrichtsmaterial',
-        preview: 'Anbei finden Sie das vereinbarte Unterrichtsmaterial.',
-        body: 'Guten Tag,\n\nanbei finden Sie das vereinbarte Unterrichtsmaterial.\n\nViele Grüße\nMUSart',
-        date: '2026-11-21T08:15:00', student: 'Clara Beispiel', instrument: 'Klavier',
-        unread: false, starred: false, attachments: ['Übungen.pdf'],
-    },
-]
-
-const dateLabel = (iso: string) => new Intl.DateTimeFormat('de-DE', {
+const dateLabel = (iso: string) => iso ? new Intl.DateTimeFormat('de-DE', {
     day: '2-digit', month: '2-digit', year: 'numeric',
-}).format(new Date(iso))
+}).format(new Date(iso)) : 'Ohne Datum'
 
-const timeLabel = (iso: string) => new Intl.DateTimeFormat('de-DE', {
+const timeLabel = (iso: string) => iso ? new Intl.DateTimeFormat('de-DE', {
     hour: '2-digit', minute: '2-digit',
-}).format(new Date(iso))
+}).format(new Date(iso)) : ''
 
 export default function MailWorkspace() {
     const areaRef = useRef<HTMLElement>(null)
@@ -120,8 +119,18 @@ export default function MailWorkspace() {
     const [dateTo, setDateTo] = useState('')
     const [unreadOnly, setUnreadOnly] = useState(false)
     const [attachmentOnly, setAttachmentOnly] = useState(false)
-    const [messages, setMessages] = useState<MailPreview[]>(SAMPLE_MESSAGES)
-    const [selectedId, setSelectedId] = useState<string | null>('sample-1')
+    const [messages, setMessages] = useState<MailPreview[]>([])
+    const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [mailLoading, setMailLoading] = useState(false)
+    const [detailLoading, setDetailLoading] = useState(false)
+    const [mailError, setMailError] = useState('')
+    const [detailError, setDetailError] = useState('')
+    const [total, setTotal] = useState(0)
+    const [nextOffset, setNextOffset] = useState(0)
+    const [hasMore, setHasMore] = useState(false)
+    const [uidvalidity, setUidvalidity] = useState<string | null>(null)
+    const [lastFetched, setLastFetched] = useState<Date | null>(null)
+    const requestGeneration = useRef(0)
     const [selectedMailIds, setSelectedMailIds] = useState<string[]>([])
     const [composing, setComposing] = useState(false)
     const [recipientMode, setRecipientMode] = useState<RecipientMode>('single')
@@ -130,6 +139,43 @@ export default function MailWorkspace() {
     const [subject, setSubject] = useState('')
     const [body, setBody] = useState('')
     const [localFiles, setLocalFiles] = useState<File[]>([])
+    const detailGeneration = useRef(0)
+
+    const loadInbox = useCallback(async (reset = true, offset = 0) => {
+        const generation = ++requestGeneration.current
+        setMailLoading(true)
+        setMailError('')
+        try {
+            const response = await api.get<InboxPage>('/core/mail/inbox/', {
+                params: { offset: reset ? 0 : offset, limit: 40 },
+            })
+            if (generation !== requestGeneration.current) return
+            const fresh = response.data.messages.map(normalizeMessage)
+            setMessages((previous) => reset
+                ? fresh
+                : [...previous, ...fresh.filter((m) => !previous.some((old) => old.id === m.id))])
+            setTotal(response.data.total)
+            setHasMore(response.data.has_more)
+            setNextOffset(response.data.offset + response.data.messages.length)
+            setUidvalidity(response.data.uidvalidity)
+            setLastFetched(new Date())
+            if (reset) {
+                setSelectedId(null)
+                setSelectedMailIds([])
+            }
+        } catch (error: any) {
+            if (generation !== requestGeneration.current) return
+            setMailError(error?.response?.data?.detail ||
+                'Der Posteingang konnte nicht geladen werden. Bitte die IMAP-Einstellungen prüfen.')
+        } finally {
+            if (generation === requestGeneration.current) setMailLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        void loadInbox()
+        return () => { requestGeneration.current += 1 }
+    }, [loadInbox])
 
     const activeFolder = FOLDERS.find((item) => item.id === folder) || FOLDERS[0]
     const availableStudents = Array.from(new Set(messages.map((m) => m.student).filter(Boolean))).sort()
@@ -146,7 +192,7 @@ export default function MailWorkspace() {
         if (dateFrom && m.date.slice(0, 10) < dateFrom) return false
         if (dateTo && m.date.slice(0, 10) > dateTo) return false
         if (unreadOnly && !m.unread) return false
-        if (attachmentOnly && m.attachments.length === 0) return false
+        if (attachmentOnly && !m.has_attachment && m.attachments.length === 0) return false
         return true
     }).sort((a, b) => b.date.localeCompare(a.date)), [
         messages, folder, query, studentFilter, instrumentFilter, dateFrom, dateTo, unreadOnly, attachmentOnly,
@@ -170,19 +216,7 @@ export default function MailWorkspace() {
     const toggleAllVisible = () => {
         setSelectedMailIds(allVisibleSelected ? [] : visibleIds)
     }
-    const bulkMarkRead = (read: boolean) => {
-        const ids = new Set(selectedVisibleIds)
-        setMessages((items) => items.map((item) =>
-            ids.has(item.id) ? { ...item, unread: !read } : item))
-        setSelectedMailIds([])
-    }
-    const bulkMove = (destination: FolderId) => {
-        const ids = new Set(selectedVisibleIds)
-        setMessages((items) => items.map((item) =>
-            ids.has(item.id) ? { ...item, folder: destination } : item))
-        if (selectedId && ids.has(selectedId)) setSelectedId(null)
-        setSelectedMailIds([])
-    }
+
     const activeFilters = !!(studentFilter || instrumentFilter || dateFrom || dateTo || unreadOnly || attachmentOnly)
     const resetFilters = () => {
         setStudentFilter('')
@@ -199,17 +233,29 @@ export default function MailWorkspace() {
         setFolderMenuOpen(false)
         setSelectedMailIds([])
     }
-    const selectMessage = (message: MailPreview) => {
+    const selectMessage = async (message: MailPreview) => {
         setSelectedId(message.id)
         setComposing(false)
-        if (message.unread) {
-            setMessages((items) => items.map((m) => m.id === message.id ? { ...m, unread: false } : m))
+        setDetailError('')
+        if (message.bodyLoaded) return
+        const generation = ++detailGeneration.current
+        setDetailLoading(true)
+        try {
+            const response = await api.get<InboxApiMessage & { body: string }>(
+                `/core/mail/inbox/${message.id}/`,
+                { params: uidvalidity ? { uidvalidity } : {} },
+            )
+            if (detailGeneration.current !== generation) return
+            setMessages((items) => items.map((item) => item.id === message.id
+                ? { ...item, body: response.data.body, preview: response.data.preview,
+                    attachments: response.data.attachments, has_attachment: response.data.has_attachment,
+                    bodyLoaded: true } : item))
+        } catch (error: any) {
+            if (detailGeneration.current !== generation) return
+            setDetailError(error?.response?.data?.detail || 'Diese Nachricht konnte nicht geladen werden.')
+        } finally {
+            if (detailGeneration.current === generation) setDetailLoading(false)
         }
-    }
-    const moveSelected = (target: FolderId) => {
-        if (!selected) return
-        setMessages((items) => items.map((m) => m.id === selected.id ? { ...m, folder: target } : m))
-        setSelectedId(null)
     }
     const compose = (mode: 'new' | 'reply' | 'forward' = 'new') => {
         if (mode === 'new') {
