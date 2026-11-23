@@ -1,7 +1,7 @@
 'use client'
 
 import {
-    useMemo, useRef, useState,
+    useEffect, useMemo, useRef, useState,
     type CSSProperties, type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
@@ -88,7 +88,27 @@ export default function MailWorkspace() {
     const areaRef = useRef<HTMLElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [listWidth, setListWidth] = useState(32)
+    const [widthLoaded, setWidthLoaded] = useState(false)
     const [resizing, setResizing] = useState(false)
+
+    useEffect(() => {
+        try {
+            const saved = Number(window.localStorage.getItem('studiosync-mail-list-width'))
+            if (Number.isFinite(saved) && saved >= 27 && saved <= 52) setListWidth(saved)
+        } catch {
+            // Private browsing or storage restrictions must not block the workspace.
+        }
+        setWidthLoaded(true)
+    }, [])
+
+    useEffect(() => {
+        if (!widthLoaded) return
+        try {
+            window.localStorage.setItem('studiosync-mail-list-width', String(listWidth))
+        } catch {
+            // Layout still works without browser storage.
+        }
+    }, [listWidth, widthLoaded])
     const [folder, setFolder] = useState<FolderId>('inbox')
     const [folderMenuOpen, setFolderMenuOpen] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
