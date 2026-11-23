@@ -320,7 +320,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         animate={{ x: 0 }}
                         exit={{ x: '-100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed left-0 top-0 h-[100dvh] w-64 max-w-[85vw] flex flex-col z-[101]"
+                        className="studiosync-sidebar fixed left-0 top-0 h-[100dvh] w-64 max-w-[85vw] flex flex-col z-[101]"
                         style={{ backgroundColor: S.bg }}
                         onClick={(e) => e.stopPropagation()}
                         aria-label="StudioSync-Navigation"
