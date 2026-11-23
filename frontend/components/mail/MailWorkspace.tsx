@@ -302,6 +302,7 @@ export default function MailWorkspace() {
         setAttachmentOnly(false)
     }
     const selectFolder = (next: FolderId) => {
+        if (mailActionBusy) return
         if (next === folder) { setFolderMenuOpen(false); return }
         setFolder(next)
         setSelectedId(null)
@@ -392,6 +393,7 @@ export default function MailWorkspace() {
                     <div className="mail-folder-anchor">
                         <button type="button" className="mail-folder-button"
                             onClick={() => setFolderMenuOpen(!folderMenuOpen)}
+                            disabled={mailActionBusy}
                             aria-expanded={folderMenuOpen} aria-label="Postfach auswählen">
                             <Menu size={18} />
                             <span>{activeFolder.name}</span>
@@ -407,7 +409,8 @@ export default function MailWorkspace() {
                                         return (
                                             <button key={item.id} type="button"
                                                 className={item.id === folder ? 'mail-folder-option is-active' : 'mail-folder-option'}
-                                                onClick={() => selectFolder(item.id)}>
+                                                onClick={() => selectFolder(item.id)}
+                                                disabled={mailActionBusy}>
                                                 <Icon size={17} />
                                                 <span>{item.name}</span>
                                                 <span className="mail-folder-count">
@@ -538,6 +541,7 @@ export default function MailWorkspace() {
                                 <Inbox size={16} /> <span>Zurück</span>
                             </button>}
                         <button type="button" className="mail-bulk-clear"
+                            disabled={mailActionBusy}
                             onClick={() => setSelectedMailIds([])}
                             title="Auswahl aufheben" aria-label="Auswahl aufheben">
                             <X size={16} />
@@ -585,6 +589,7 @@ export default function MailWorkspace() {
                                             aria-label={`${message.from}: ${message.subject} auswählen`} />
                                     </label>
                                     <button type="button" className="mail-message-content"
+                                        disabled={mailActionBusy}
                                         onClick={() => selectMessage(message)}>
                                         <div className="mail-message-topline">
                                             <span className="mail-message-sender">
