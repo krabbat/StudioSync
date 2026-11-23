@@ -860,7 +860,25 @@ button {
 /* Dashboard density and mail layout share template-driven design tokens.
    Template changes can override these custom properties without editing pages. */
 :root {
-  --dashboard-shell-background: hsl(var(--background));
+  /* Existing warm StudioSync palette, now replaceable by future templates. */
+  --dashboard-header-background: #faf7f2;
+  --dashboard-header-border: #e3d4bc;
+  --dashboard-header-text: #1c1309;
+  --dashboard-header-muted: #7a6145;
+  --dashboard-header-faint: #b09870;
+  --dashboard-header-accent: #c17c2e;
+  --dashboard-header-accent-soft: rgba(193, 124, 46, 0.1);
+  --dashboard-header-card: #f0e8d8;
+  --dashboard-header-hover: #f0e8d8;
+  --dashboard-sidebar-background: #1c1309;
+  --dashboard-sidebar-border: rgba(255, 255, 255, 0.07);
+  --dashboard-sidebar-accent: #c17c2e;
+  --dashboard-sidebar-accent-soft: rgba(193, 124, 46, 0.14);
+  --dashboard-sidebar-text: rgba(250, 247, 242, 0.9);
+  --dashboard-sidebar-muted: rgba(250, 247, 242, 0.5);
+  --dashboard-sidebar-hover: rgba(250, 247, 242, 0.06);
+  --dashboard-sidebar-badge: rgba(193, 124, 46, 0.2);
+  --dashboard-shell-background: var(--dashboard-header-background);
   --dashboard-content-gap: clamp(0.5rem, 1vw, 1rem);
   --mail-list-width: 32%;
   --mail-min-list-width: 250px;
