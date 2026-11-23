@@ -45,29 +45,30 @@ test('mail design uses shared template tokens instead of a separate theme', () =
     assert.match(css, /var\(--mail-panel-background\)/)
 })
 
-test('preview is visibly identified and cannot send real mail', () => {
+test('real inbox is requested from IMAP and has a working refresh button', () => {
     const jsx = source('components/mail/MailWorkspace.tsx')
-    assert.match(jsx, /Vorschau · Beispieldaten/)
+    assert.doesNotMatch(jsx, /SAMPLE_MESSAGES|example\.invalid|Vorschau · Beispieldaten/)
+    assert.match(jsx, /api\.get<InboxPage>\('\/core\/mail\/inbox\/'/)
+    assert.match(jsx, /api\.get<InboxApiMessage & \{ body: string \}>/)
+    assert.match(jsx, /aria-label="Mails abrufen"/)
+    assert.match(jsx, /void loadInbox\(true\)/)
+    assert.match(jsx, /Weitere Nachrichten laden/)
+    assert.match(jsx, /uidvalidity/)
     assert.match(jsx, /Noch kein Versand und keine dauerhafte Entwurfsspeicherung/)
     assert.match(jsx, /className="mail-send-button" disabled/)
-    assert.match(jsx, /example\.invalid/)
 })
 
 
-test('visible messages can be multi-selected and batched without changing hidden mail', () => {
+test('message selections survive but mutating actions remain safely disabled', () => {
     const jsx = source('components/mail/MailWorkspace.tsx')
     const css = source('app/dashboard/messages/mail.css')
     assert.match(jsx, /selectedMailIds/)
-    assert.match(jsx, /visibleIds\.filter\(\(id\) => selectedMailIds\.includes\(id\)\)/)
     assert.match(jsx, /checked=\{allVisibleSelected\}/)
-    assert.match(jsx, /indeterminate = partiallySelected/)
     assert.match(jsx, /onChange=\{toggleAllVisible\}/)
     assert.match(jsx, /onChange=\{\(\) => toggleMessageSelection\(message\.id\)\}/)
-    assert.match(jsx, /bulkMarkRead\(true\)/)
-    assert.match(jsx, /bulkMarkRead\(false\)/)
-    assert.match(jsx, /bulkMove\('spam'\)/)
-    assert.match(jsx, /bulkMove\('archive'\)/)
-    assert.match(jsx, /new Set\(selectedVisibleIds\)/)
+    assert.match(jsx, /IMAP-Markierungen folgen im nächsten Schritt/)
+    assert.match(jsx, /IMAP-Verschieben folgt im nächsten Schritt/)
+    assert.doesNotMatch(jsx, /onClick=\{\(\) => bulkMove/)
     assert.match(css, /\.mail-bulk-toolbar/)
     assert.match(css, /\.mail-message-select/)
 })
