@@ -36,9 +36,10 @@ const H = {
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
+  compact?: boolean;
 }
 
-export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+export default function DashboardHeader({ onMenuClick, compact = false }: DashboardHeaderProps) {
   const t = useTranslations("DashboardHeader");
   const { currentUser, logout } = useUser();
   const router = useRouter();
@@ -104,29 +105,30 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         borderBottom: `1px solid ${H.border}`,
       }}
     >
-      <div className="flex items-center justify-between px-4 md:px-8 py-3 md:py-4">
-        {/* Mobile Menu Button */}
+      <div className={`flex items-center justify-between ${compact ? "px-2 sm:px-3 py-1" : "px-3 sm:px-4 py-2"}`}>
+        {/* Main navigation opens on all screen sizes. */}
         <Button
           variant="ghost"
           size="icon"
           onClick={onMenuClick}
-          className="md:hidden mr-2"
+          className="mr-1 shrink-0"
           style={{ color: H.muted }}
           aria-label={t("openMenu")}
         >
           <Menu className="w-6 h-6" />
         </Button>
 
-        {/* Left: Page Title */}
-        <div className="flex-1 min-w-0">
-          <h1
-            className="text-xl md:text-2xl font-bold truncate"
-            style={{ color: H.text, fontFamily: "Outfit, sans-serif" }}
-          >{t("dashboard")}</h1>
-          <p className="text-xs md:text-sm truncate" style={{ color: H.muted }}>
-            {t("welcome", {name: currentUser?.full_name || ""})}
-          </p>
-        </div>
+        {/* The mail workspace has its own compact toolbar. */}
+        {compact ? <div className="min-w-0 flex-1" /> : (
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg md:text-xl font-bold truncate" style={{ color: H.text, fontFamily: "Outfit, sans-serif" }}>
+              {t("dashboard")}
+            </h1>
+            <p className="text-xs truncate" style={{ color: H.muted }}>
+              {t("welcome", {name: currentUser?.full_name || ""})}
+            </p>
+          </div>
+        )}
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1.5 md:gap-2">
