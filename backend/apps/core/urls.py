@@ -44,8 +44,16 @@ urlpatterns = (
         path("analytics/", DashboardAnalyticsView.as_view(), name="dashboard-analytics"),
         path("reports/export/", ReportsExportView.as_view(), name="reports-export"),
         re_path(r"^mail/inbox/?$", MailInboxListView.as_view(), name="mail-inbox-list"),
-        re_path(r"^mail/inbox/actions/?$", MailInboxActionView.as_view(), name="mail-inbox-actions"),
-        re_path(r"^mail/inbox/(?P<uid>[0-9]+)/?$", MailInboxDetailView.as_view(), name="mail-inbox-detail"),
+        re_path(
+            r"^mail/inbox/actions/?$",
+            MailInboxActionView.as_view(),
+            name="mail-inbox-actions",
+        ),
+        re_path(
+            r"^mail/inbox/(?P<uid>[0-9]+)/?$",
+            MailInboxDetailView.as_view(),
+            name="mail-inbox-detail",
+        ),
         # Setup Wizard Endpoints (trailing slash optional — Next.js proxy strips trailing slashes)
         re_path(r"^setup/status/?$", setup.check_setup_status, name="setup-status"),
         re_path(r"^setup/complete/?$", setup.complete_setup_wizard, name="setup-complete"),
