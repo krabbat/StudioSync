@@ -83,6 +83,14 @@ const timeLabel = (iso: string) => iso ? new Intl.DateTimeFormat('de-DE', {
     hour: '2-digit', minute: '2-digit',
 }).format(new Date(iso)) : ''
 
+const localDateKey = (iso: string) => {
+    if (!iso) return ''
+    const date = new Date(iso)
+    if (Number.isNaN(date.getTime())) return ''
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')].join('-')
+}
+
 export default function MailWorkspace() {
     const areaRef = useRef<HTMLElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -192,8 +200,8 @@ export default function MailWorkspace() {
         }
         if (studentFilter && m.student !== studentFilter) return false
         if (instrumentFilter && m.instrument !== instrumentFilter) return false
-        if (dateFrom && m.date.slice(0, 10) < dateFrom) return false
-        if (dateTo && m.date.slice(0, 10) > dateTo) return false
+        if (dateFrom && (!localDateKey(m.date) || localDateKey(m.date) < dateFrom)) return false
+        if (dateTo && (!localDateKey(m.date) || localDateKey(m.date) > dateTo)) return false
         if (unreadOnly && !m.unread) return false
         if (attachmentOnly && !m.has_attachment && m.attachments.length === 0) return false
         return true
