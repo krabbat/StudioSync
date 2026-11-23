@@ -59,16 +59,23 @@ test('real inbox is requested from IMAP and has a working refresh button', () =>
 })
 
 
-test('message selections survive but mutating actions remain safely disabled', () => {
+test('selected messages use real IMAP batch actions and stable UIDVALIDITY', () => {
     const jsx = source('components/mail/MailWorkspace.tsx')
     const css = source('app/dashboard/messages/mail.css')
     assert.match(jsx, /selectedMailIds/)
     assert.match(jsx, /checked=\{allVisibleSelected\}/)
     assert.match(jsx, /onChange=\{toggleAllVisible\}/)
     assert.match(jsx, /onChange=\{\(\) => toggleMessageSelection\(message\.id\)\}/)
-    assert.match(jsx, /IMAP-Markierungen folgen im nächsten Schritt/)
-    assert.match(jsx, /IMAP-Verschieben folgt im nächsten Schritt/)
-    assert.doesNotMatch(jsx, /onClick=\{\(\) => bulkMove/)
+    assert.match(jsx, /selectedVisibleIds/)
+    assert.match(jsx, /runMailAction\('read', selectedVisibleIds\)/)
+    assert.match(jsx, /runMailAction\('unread', selectedVisibleIds\)/)
+    assert.match(jsx, /runMailAction\('spam', selectedVisibleIds\)/)
+    assert.match(jsx, /runMailAction\('archive', selectedVisibleIds\)/)
+    assert.match(jsx, /runMailAction\('archive', \[selected\.id\]\)/)
+    assert.match(jsx, /runMailAction\('spam', \[selected\.id\]\)/)
+    assert.match(jsx, /\/core\/mail\/inbox\/actions\//)
+    assert.match(jsx, /\{ action, uids, uidvalidity \}/)
+    assert.match(jsx, /disabled=\{mailActionBusy\}/)
     assert.match(css, /\.mail-bulk-toolbar/)
     assert.match(css, /\.mail-message-select/)
 })
