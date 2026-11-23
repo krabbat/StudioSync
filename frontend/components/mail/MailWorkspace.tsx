@@ -14,7 +14,7 @@ import { toast } from 'react-hot-toast'
 
 type FolderId = 'inbox' | 'sent' | 'drafts' | 'outbox' | 'archive' | 'spam' | 'trash'
 type RecipientMode = 'single' | 'all' | 'group'
-type MailAction = 'read' | 'unread' | 'spam' | 'archive'
+type MailAction = 'read' | 'unread' | 'spam' | 'archive' | 'delete' | 'restore'
 
 interface MailPreview {
     id: string
@@ -56,9 +56,9 @@ interface InboxPage {
     uidvalidity: string | null
 }
 
-const normalizeMessage = (message: InboxApiMessage): MailPreview => ({
+const normalizeMessage = (message: InboxApiMessage, folder: FolderId): MailPreview => ({
     ...message,
-    folder: 'inbox',
+    folder,
     date: message.date || '',
     body: '',
     student: '',
@@ -152,7 +152,7 @@ export default function MailWorkspace() {
     const [localFiles, setLocalFiles] = useState<File[]>([])
     const detailGeneration = useRef(0)
 
-    const loadInbox = useCallback(async (reset = true, offset = 0) => {
+    const loadFolder = useCallback(async (currentFolder: FolderId, reset = true, offset = 0) => {
         const generation = ++requestGeneration.current
         if (reset) {
             detailGeneration.current += 1
@@ -162,14 +162,28 @@ export default function MailWorkspace() {
         setMailLoading(true)
         setMailError('')
         try {
-            const response = await api.get<InboxPage>('/core/mail/inbox/', {
-                params: { offset: reset ? 0 : offset, limit: 40 },
-            })
+            if (currentFolder === 'outbox') {
+                if (generation === requestGeneration.current) {
+                    setMessages([])
+                    setTotal(0)
+                    setHasMore(false)
+                    setUidvalidity(null)
+                    setSelectedId(null)
+                    setSelectedMailIds([])
+                }
+                return
+            }
+            const response = await api.get<InboxPage>(
+                `/core/mail/folders/${currentFolder}/`,
+                { params: { offset: reset ? 0 : offset, limit: 40 } },
+            )
             if (generation !== requestGeneration.current) return
-            const fresh = response.data.messages.map(normalizeMessage)
+            const fresh = response.data.messages.map((item) => normalizeMessage(item, currentFolder))
             setMessages((previous) => reset
                 ? fresh
-                : [...previous, ...fresh.filter((m) => !previous.some((old) => old.id === m.id))])
+                : [...previous, ...fresh.filter((m) => !previous.some(
+                    (old) => old.id === m.id && old.folder === currentFolder
+                ))])
             setTotal(response.data.total)
             setHasMore(response.data.has_more)
             setNextOffset(response.data.offset + response.data.limit)
@@ -189,9 +203,9 @@ export default function MailWorkspace() {
     }, [])
 
     useEffect(() => {
-        void loadInbox()
+        void loadFolder(folder)
         return () => { requestGeneration.current += 1 }
-    }, [loadInbox])
+    }, [folder, loadFolder])
 
     const activeFolder = FOLDERS.find((item) => item.id === folder) || FOLDERS[0]
 
@@ -244,7 +258,7 @@ export default function MailWorkspace() {
         setMailActionBusy(true)
         try {
             const response = await api.post<{ updated: number }>(
-                '/core/mail/inbox/actions/',
+                `/core/mail/folders/${folder}/actions/`,
                 { action, uids, uidvalidity },
             )
             const updated = new Set(uids)
@@ -262,11 +276,13 @@ export default function MailWorkspace() {
                 unread: 'als ungelesen markiert',
                 spam: 'in Spam verschoben',
                 archive: 'archiviert',
+                delete: 'in den Papierkorb verschoben',
+                restore: 'in den Posteingang zurückgelegt',
             }
             toast.success(`${response.data.updated} Nachricht(en) ${names[action]}.`)
-            if (action === 'spam' || action === 'archive') {
-                // Reload the first page to refill gaps after messages were moved.
-                await loadInbox(true)
+            if (action !== 'read' && action !== 'unread') {
+                // Refill the selected folder only after confirmed IMAP MOVE.
+                await loadFolder(folder, true)
             }
         } catch (error: any) {
             toast.error(error?.response?.data?.detail ||
@@ -286,6 +302,7 @@ export default function MailWorkspace() {
         setAttachmentOnly(false)
     }
     const selectFolder = (next: FolderId) => {
+        if (next === folder) { setFolderMenuOpen(false); return }
         setFolder(next)
         setSelectedId(null)
         detailGeneration.current += 1
@@ -302,12 +319,15 @@ export default function MailWorkspace() {
         const generation = ++detailGeneration.current
         if (message.bodyLoaded) {
             setDetailLoading(false)
+            if (message.unread && !mailActionBusy) {
+                await runMailAction('read', [message.id])
+            }
             return
         }
         setDetailLoading(true)
         try {
             const response = await api.get<InboxApiMessage & { body: string }>(
-                `/core/mail/inbox/${message.id}/`,
+                `/core/mail/folders/${folder}/${message.id}/`,
                 { params: uidvalidity ? { uidvalidity } : {} },
             )
             if (detailGeneration.current !== generation) return
@@ -315,6 +335,10 @@ export default function MailWorkspace() {
                 ? { ...item, body: response.data.body, preview: response.data.preview,
                     attachments: response.data.attachments, has_attachment: response.data.has_attachment,
                     bodyLoaded: true } : item))
+            // A message displayed in the preview is now read on the server.
+            if (message.unread && !mailActionBusy) {
+                await runMailAction('read', [message.id])
+            }
         } catch (error: any) {
             if (detailGeneration.current !== generation) return
             setDetailError(error?.response?.data?.detail || 'Diese Nachricht konnte nicht geladen werden.')
@@ -408,9 +432,9 @@ export default function MailWorkspace() {
                             <Filter size={18} />
                         </button>
                         <button type="button" className="mail-fetch-button"
-                            onClick={() => { setFolder('inbox'); void loadInbox(true) }}
+                            onClick={() => void loadFolder(folder, true)}
                             disabled={mailLoading || mailActionBusy}
-                            aria-label="Mails abrufen" title="Posteingang jetzt vom IMAP-Server abrufen">
+                            aria-label="Mails abrufen" title="Aktuellen IMAP-Ordner abrufen">
                             <RefreshCw size={16} className={mailLoading ? 'animate-spin' : ''} />
                             <span>Abrufen</span>
                         </button>
@@ -475,9 +499,9 @@ export default function MailWorkspace() {
                         />
                         <span>{selectedVisibleIds.length > 0
                             ? `${selectedVisibleIds.length} ausgewählt`
-                            : 'Posteingang · IMAP'}</span>
+                            : `${activeFolder.name} · IMAP`}</span>
                     </label>
-                    <span>{folder === 'inbox' ? `${messages.length} / ${total}` : '0'} Mails</span>
+                    <span>{folder === 'outbox' ? '0' : `${messages.length} / ${total}`} Mails</span>
                 </div>
                 {selectedVisibleIds.length > 0 && (
                     <div className="mail-bulk-toolbar" role="toolbar"
@@ -492,16 +516,27 @@ export default function MailWorkspace() {
                             title="Ausgewählte als ungelesen markieren">
                             <Mail size={16} /> <span>Ungelesen</span>
                         </button>
-                        <button type="button" disabled={mailActionBusy}
+                        {folder !== 'spam' && <button type="button" disabled={mailActionBusy}
                             onClick={() => void runMailAction('spam', selectedVisibleIds)}
                             title="Ausgewählte in Spam verschieben">
                             <ShieldAlert size={16} /> <span>Spam</span>
-                        </button>
-                        <button type="button" disabled={mailActionBusy}
+                        </button>}
+                        {folder !== 'archive' && <button type="button" disabled={mailActionBusy}
                             onClick={() => void runMailAction('archive', selectedVisibleIds)}
                             title="Ausgewählte archivieren">
                             <Archive size={16} /> <span>Archiv</span>
-                        </button>
+                        </button>}
+                        {folder !== 'trash' && <button type="button" disabled={mailActionBusy}
+                            onClick={() => void runMailAction('delete', selectedVisibleIds)}
+                            title="Ausgewählte in den Papierkorb verschieben">
+                            <Trash2 size={16} /> <span>Löschen</span>
+                        </button>}
+                        {(['trash', 'archive', 'spam'] as FolderId[]).includes(folder) &&
+                            <button type="button" disabled={mailActionBusy}
+                                onClick={() => void runMailAction('restore', selectedVisibleIds)}
+                                title="Ausgewählte in den Posteingang zurücklegen">
+                                <Inbox size={16} /> <span>Zurück</span>
+                            </button>}
                         <button type="button" className="mail-bulk-clear"
                             onClick={() => setSelectedMailIds([])}
                             title="Auswahl aufheben" aria-label="Auswahl aufheben">
@@ -512,7 +547,7 @@ export default function MailWorkspace() {
                 {mailError && (
                     <div className="mail-fetch-error" role="alert">{mailError}</div>
                 )}
-                {lastFetched && folder === 'inbox' && (
+                {lastFetched && folder !== 'outbox' && (
                     <div className="mail-fetch-status">
                         Letzter Abruf: {lastFetched.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
                         {mailLoading && ' · Aktualisierung läuft'}
@@ -522,12 +557,12 @@ export default function MailWorkspace() {
                     {visible.length === 0 && (
                         <div className="mail-list-empty">
                             <Mail size={24} />
-                            <p>{mailLoading ? 'Posteingang wird geladen …' :
-                                folder !== 'inbox' ? activeFolder.name + ' wird im nächsten Schritt angebunden.' :
+                            <p>{mailLoading ? 'Nachrichten werden geladen …' :
+                                folder === 'outbox' ? 'Postausgang wird später angebunden.' :
                                 mailError ? 'Abruf fehlgeschlagen.' : 'Keine Nachrichten in dieser Ansicht.'}</p>
-                            <span>{folder === 'inbox'
-                                ? 'Mit „Abrufen“ kannst du den Posteingang jederzeit aktualisieren.'
-                                : 'Bislang ist nur der echte Posteingang mit IMAP verbunden.'}</span>
+                            <span>{folder === 'outbox'
+                                ? 'Hier werden später wartende Nachrichten angezeigt.'
+                                : 'Mit „Abrufen“ kannst du diesen Ordner aktualisieren.'}</span>
                         </div>
                     )}
                     {visible.map((message, index) => {
@@ -573,9 +608,9 @@ export default function MailWorkspace() {
                             </div>
                         )
                     })}
-                    {folder === 'inbox' && hasMore && (
+                    {folder !== 'outbox' && hasMore && (
                         <button type="button" className="mail-load-more" disabled={mailLoading}
-                            onClick={() => void loadInbox(false, nextOffset)}>
+                            onClick={() => void loadFolder(folder, false, nextOffset)}>
                             {mailLoading ? 'Lädt …' : 'Weitere Nachrichten laden'}
                         </button>
                     )}
@@ -705,19 +740,27 @@ export default function MailWorkspace() {
                                     aria-label={selected.unread ? 'Als gelesen markieren' : 'Als ungelesen markieren'}>
                                     {selected.unread ? <MailOpen size={19} /> : <Mail size={19} />}
                                 </button>
-                                <button type="button" className="mail-icon"
+                                {folder !== 'spam' && <button type="button" className="mail-icon"
                                     disabled={mailActionBusy}
                                     title="In Spam verschieben" aria-label="In Spam verschieben"
                                     onClick={() => void runMailAction('spam', [selected.id])}>
-                                    <ShieldAlert size={19} /></button>
-                                <button type="button" className="mail-icon"
+                                    <ShieldAlert size={19} /></button>}
+                                {folder !== 'archive' && <button type="button" className="mail-icon"
                                     disabled={mailActionBusy}
                                     title="Archivieren" aria-label="Archivieren"
                                     onClick={() => void runMailAction('archive', [selected.id])}>
-                                    <Archive size={19} /></button>
-                                <button type="button" className="mail-icon" disabled
-                                    title="Papierkorb folgt im nächsten Schritt" aria-label="Löschen">
-                                    <Trash2 size={19} /></button>
+                                    <Archive size={19} /></button>}
+                                {folder !== 'trash' && <button type="button" className="mail-icon"
+                                    disabled={mailActionBusy}
+                                    title="In Papierkorb verschieben" aria-label="Löschen"
+                                    onClick={() => void runMailAction('delete', [selected.id])}>
+                                    <Trash2 size={19} /></button>}
+                                {(['trash', 'archive', 'spam'] as FolderId[]).includes(folder) &&
+                                    <button type="button" className="mail-icon"
+                                        disabled={mailActionBusy} title="In Posteingang zurücklegen"
+                                        aria-label="Wiederherstellen"
+                                        onClick={() => void runMailAction('restore', [selected.id])}>
+                                        <Inbox size={19} /></button>}
                                 <button type="button" className="mail-icon" disabled
                                     title="Stern-Markierung folgt im nächsten Schritt" aria-label="Markieren">
                                     <Star size={19} fill={selected.starred ? 'currentColor' : 'none'} /></button>
