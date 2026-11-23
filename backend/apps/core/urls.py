@@ -17,8 +17,8 @@ from apps.core.views import (
     setup,
     update,
 )
-from config.routers import OptionalSlashRouter
 from apps.core.views.mail import MailInboxDetailView, MailInboxListView
+from config.routers import OptionalSlashRouter
 
 router = OptionalSlashRouter()
 router.register(r"users", UserViewSet, basename="user")
