@@ -5,7 +5,7 @@ import {
     type CSSProperties, type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
-    Archive, ArrowLeft, ChevronDown, ChevronRight, FileText, Filter, Forward,
+    Archive, ChevronDown, ChevronRight, FileText, Filter, Forward,
     Inbox, Mail, Menu, MoreHorizontal, Paperclip, Pencil, RefreshCw, Reply,
     Search, Send, Star, Trash2, Upload, X,
 } from 'lucide-react'
@@ -214,7 +214,7 @@ export default function MailWorkspace() {
                             <>
                                 <button type="button" className="mail-popover-dismiss" aria-label="Postfachmenü schließen"
                                     onClick={() => setFolderMenuOpen(false)} />
-                                <nav className="mail-folder-popover" aria-label="Mailordner">
+                                <div className="mail-folder-popover" role="navigation" aria-label="Mailordner">
                                     {FOLDERS.map((item) => {
                                         const Icon = item.icon
                                         return (
@@ -229,7 +229,7 @@ export default function MailWorkspace() {
                                             </button>
                                         )
                                     })}
-                                </nav>
+                                </div>
                             </>
                         )}
                     </div>
