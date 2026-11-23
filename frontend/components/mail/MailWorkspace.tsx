@@ -5,7 +5,7 @@ import {
     type CSSProperties, type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
-    Archive, ChevronDown, ChevronRight, FileText, Filter, Forward,
+    Archive, CheckCheck, ChevronDown, ChevronRight, FileText, Filter, Forward,
     Inbox, Mail, Menu, MoreHorizontal, Paperclip, Pencil, RefreshCw, Reply,
     Search, Send, Star, Trash2, Upload, X,
 } from 'lucide-react'
@@ -122,6 +122,7 @@ export default function MailWorkspace() {
     const [attachmentOnly, setAttachmentOnly] = useState(false)
     const [messages, setMessages] = useState<MailPreview[]>(SAMPLE_MESSAGES)
     const [selectedId, setSelectedId] = useState<string | null>('sample-1')
+    const [selectedMailIds, setSelectedMailIds] = useState<string[]>([])
     const [composing, setComposing] = useState(false)
     const [recipientMode, setRecipientMode] = useState<RecipientMode>('single')
     const [recipient, setRecipient] = useState('')
@@ -152,6 +153,36 @@ export default function MailWorkspace() {
     ])
 
     const selected = visible.find((m) => m.id === selectedId)
+    const visibleIds = visible.map((m) => m.id)
+    const selectedVisibleIds = visibleIds.filter((id) => selectedMailIds.includes(id))
+    const allVisibleSelected = visible.length > 0 && selectedVisibleIds.length === visible.length
+    const partiallySelected = selectedVisibleIds.length > 0 && !allVisibleSelected
+
+    // An action never silently applies to hidden messages in another folder/filter.
+    useEffect(() => {
+        setSelectedMailIds([])
+    }, [folder, query, studentFilter, instrumentFilter, dateFrom, dateTo, unreadOnly, attachmentOnly])
+
+    const toggleMessageSelection = (id: string) => {
+        setSelectedMailIds((ids) => ids.includes(id)
+            ? ids.filter((item) => item !== id) : [...ids, id])
+    }
+    const toggleAllVisible = () => {
+        setSelectedMailIds(allVisibleSelected ? [] : visibleIds)
+    }
+    const bulkMarkRead = (read: boolean) => {
+        const ids = new Set(selectedVisibleIds)
+        setMessages((items) => items.map((item) =>
+            ids.has(item.id) ? { ...item, unread: !read } : item))
+        setSelectedMailIds([])
+    }
+    const bulkMove = (destination: FolderId) => {
+        const ids = new Set(selectedVisibleIds)
+        setMessages((items) => items.map((item) =>
+            ids.has(item.id) ? { ...item, folder: destination } : item))
+        if (selectedId && ids.has(selectedId)) setSelectedId(null)
+        setSelectedMailIds([])
+    }
     const activeFilters = !!(studentFilter || instrumentFilter || dateFrom || dateTo || unreadOnly || attachmentOnly)
     const resetFilters = () => {
         setStudentFilter('')
@@ -166,6 +197,7 @@ export default function MailWorkspace() {
         setSelectedId(null)
         setComposing(false)
         setFolderMenuOpen(false)
+        setSelectedMailIds([])
     }
     const selectMessage = (message: MailPreview) => {
         setSelectedId(message.id)
@@ -321,9 +353,46 @@ export default function MailWorkspace() {
                 )}
 
                 <div className="mail-list-summary">
-                    <span>Vorschau · Beispieldaten</span>
+                    <label className="mail-select-all" title="Alle sichtbaren Nachrichten auswählen">
+                        <input type="checkbox"
+                            checked={allVisibleSelected}
+                            ref={(element) => { if (element) element.indeterminate = partiallySelected }}
+                            onChange={toggleAllVisible}
+                            disabled={visible.length === 0}
+                            aria-label="Alle sichtbaren Nachrichten auswählen"
+                        />
+                        <span>{selectedVisibleIds.length > 0
+                            ? `${selectedVisibleIds.length} ausgewählt`
+                            : 'Vorschau · Beispieldaten'}</span>
+                    </label>
                     <span>{visible.length} Nachrichten</span>
                 </div>
+                {selectedVisibleIds.length > 0 && (
+                    <div className="mail-bulk-toolbar" role="toolbar"
+                        aria-label="Aktionen für ausgewählte Nachrichten">
+                        <button type="button" onClick={() => bulkMarkRead(true)}
+                            title="Ausgewählte als gelesen markieren">
+                            <CheckCheck size={16} /> <span>Gelesen</span>
+                        </button>
+                        <button type="button" onClick={() => bulkMarkRead(false)}
+                            title="Ausgewählte als ungelesen markieren">
+                            <Mail size={16} /> <span>Ungelesen</span>
+                        </button>
+                        <button type="button" onClick={() => bulkMove('spam')}
+                            title="Ausgewählte in Spam verschieben">
+                            <Filter size={16} /> <span>Spam</span>
+                        </button>
+                        <button type="button" onClick={() => bulkMove('archive')}
+                            title="Ausgewählte archivieren">
+                            <Archive size={16} /> <span>Archiv</span>
+                        </button>
+                        <button type="button" className="mail-bulk-clear"
+                            onClick={() => setSelectedMailIds([])}
+                            title="Auswahl aufheben" aria-label="Auswahl aufheben">
+                            <X size={16} />
+                        </button>
+                    </div>
+                )}
                 <div className="mail-list-scroll">
                     {visible.length === 0 && (
                         <div className="mail-list-empty">
@@ -337,30 +406,39 @@ export default function MailWorkspace() {
                         return (
                             <div key={message.id}>
                                 {showDate && <div className="mail-day-heading">{dateLabel(message.date)}</div>}
-                                <button type="button"
-                                    onClick={() => selectMessage(message)}
+                                <div
                                     className={[
                                         'mail-message-row',
                                         message.id === selectedId && !composing ? 'is-selected' : '',
+                                        selectedMailIds.includes(message.id) ? 'is-checked' : '',
                                         message.unread ? 'is-unread' : '',
                                     ].filter(Boolean).join(' ')}>
-                                    <div className="mail-message-topline">
-                                        <span className="mail-message-sender">
-                                            {message.unread && <span className="mail-unread-dot" />}
-                                            {message.from}
-                                        </span>
-                                        <span className="mail-message-date">{timeLabel(message.date)}</span>
-                                    </div>
-                                    <div className="mail-message-subject">{message.subject}</div>
-                                    <div className="mail-message-preview">{message.preview}</div>
-                                    <div className="mail-message-bottom">
-                                        <span>{message.student || 'Nicht zugeordnet'}</span>
-                                        <div>
-                                            {message.starred && <Star size={13} aria-label="Markiert" />}
-                                            {message.attachments.length > 0 && <Paperclip size={13} aria-label="Mit Anhang" />}
+                                    <label className="mail-message-select" title="Nachricht für mehrere Aktionen auswählen">
+                                        <input type="checkbox"
+                                            checked={selectedMailIds.includes(message.id)}
+                                            onChange={() => toggleMessageSelection(message.id)}
+                                            aria-label={`${message.from}: ${message.subject} auswählen`} />
+                                    </label>
+                                    <button type="button" className="mail-message-content"
+                                        onClick={() => selectMessage(message)}>
+                                        <div className="mail-message-topline">
+                                            <span className="mail-message-sender">
+                                                {message.unread && <span className="mail-unread-dot" />}
+                                                {message.from}
+                                            </span>
+                                            <span className="mail-message-date">{timeLabel(message.date)}</span>
                                         </div>
-                                    </div>
-                                </button>
+                                        <div className="mail-message-subject">{message.subject}</div>
+                                        <div className="mail-message-preview">{message.preview}</div>
+                                        <div className="mail-message-bottom">
+                                            <span>{message.student || 'Nicht zugeordnet'}</span>
+                                            <div>
+                                                {message.starred && <Star size={13} aria-label="Markiert" />}
+                                                {message.attachments.length > 0 && <Paperclip size={13} aria-label="Mit Anhang" />}
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
                             </div>
                         )
                     })}
