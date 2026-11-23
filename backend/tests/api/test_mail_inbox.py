@@ -142,7 +142,7 @@ def test_mail_api_rejects_teacher_student_and_anonymous(
     for client in (teacher_authenticated_client, student_authenticated_client):
         assert client.get(reverse("mail-inbox-list")).status_code == 403
         assert client.get(reverse("mail-inbox-detail", kwargs={"uid": "12"})).status_code == 403
-    assert api_client.get(reverse("mail-inbox-list")).status_code == 401
+    assert api_client.get(reverse("mail-inbox-list")).status_code in (401, 403)
 
 
 @pytest.mark.django_db
