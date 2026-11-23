@@ -143,6 +143,11 @@ export default function MailWorkspace() {
 
     const loadInbox = useCallback(async (reset = true, offset = 0) => {
         const generation = ++requestGeneration.current
+        if (reset) {
+            detailGeneration.current += 1
+            setDetailLoading(false)
+            setDetailError('')
+        }
         setMailLoading(true)
         setMailError('')
         try {
@@ -156,7 +161,7 @@ export default function MailWorkspace() {
                 : [...previous, ...fresh.filter((m) => !previous.some((old) => old.id === m.id))])
             setTotal(response.data.total)
             setHasMore(response.data.has_more)
-            setNextOffset(response.data.offset + response.data.messages.length)
+            setNextOffset(response.data.offset + response.data.limit)
             setUidvalidity(response.data.uidvalidity)
             setLastFetched(new Date())
             if (reset) {
@@ -227,6 +232,9 @@ export default function MailWorkspace() {
     const selectFolder = (next: FolderId) => {
         setFolder(next)
         setSelectedId(null)
+        detailGeneration.current += 1
+        setDetailLoading(false)
+        setDetailError('')
         setComposing(false)
         setFolderMenuOpen(false)
         setSelectedMailIds([])
@@ -235,8 +243,11 @@ export default function MailWorkspace() {
         setSelectedId(message.id)
         setComposing(false)
         setDetailError('')
-        if (message.bodyLoaded) return
         const generation = ++detailGeneration.current
+        if (message.bodyLoaded) {
+            setDetailLoading(false)
+            return
+        }
         setDetailLoading(true)
         try {
             const response = await api.get<InboxApiMessage & { body: string }>(
@@ -483,7 +494,7 @@ export default function MailWorkspace() {
                                             <span className="mail-message-date">{timeLabel(message.date)}</span>
                                         </div>
                                         <div className="mail-message-subject">{message.subject}</div>
-                                        <div className="mail-message-preview">{message.preview || 'Zum Lesen öffnen'}</div>
+                                        <div className="mail-message-preview">{message.preview || message.email}</div>
                                         <div className="mail-message-bottom">
                                             <span>{message.student || 'Nicht zugeordnet'}</span>
                                             <div>
