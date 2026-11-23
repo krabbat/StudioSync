@@ -11,12 +11,19 @@ test('mail screen is the two-pane workspace, preserving the old chat for other r
     assert.match(page, /<MessagingCenter\s*\/>/)
 })
 
-test('dashboard menu is an overlay instead of permanent reserved width', () => {
+test('sidebar is a stable icon rail with an expanding overlay and no scroll locking', () => {
     const layout = source('app/dashboard/layout.tsx')
     const sidebar = source('components/Sidebar.tsx')
+    const css = source('app/globals.css')
     assert.doesNotMatch(layout, /md:ml-64/)
-    assert.match(sidebar, /className="studiosync-sidebar fixed/)
-    assert.doesNotMatch(sidebar, /hidden md:flex fixed/)
+    assert.match(layout, /dashboard-content-column/)
+    assert.match(sidebar, /studiosync-sidebar.*is-expanded.*is-collapsed/)
+    assert.match(sidebar, /studiosync-sidebar-icon/)
+    assert.doesNotMatch(sidebar, /document\.body\.style\.overflow/)
+    assert.doesNotMatch(sidebar, /AnimatePresence|motion\.aside/)
+    assert.match(css, /--dashboard-sidebar-rail-width:\s*60px/)
+    assert.match(css, /--dashboard-sidebar-expanded-width/)
+    assert.match(css, /\.dashboard-content-column\s*\{\s*padding-left:/)
     assert.match(layout, /compact=\{isMailPage\}/)
 })
 
@@ -44,4 +51,23 @@ test('preview is visibly identified and cannot send real mail', () => {
     assert.match(jsx, /Noch kein Versand und keine dauerhafte Entwurfsspeicherung/)
     assert.match(jsx, /className="mail-send-button" disabled/)
     assert.match(jsx, /example\.invalid/)
+})
+
+
+test('visible messages can be multi-selected and batched without changing hidden mail', () => {
+    const jsx = source('components/mail/MailWorkspace.tsx')
+    const css = source('app/dashboard/messages/mail.css')
+    assert.match(jsx, /selectedMailIds/)
+    assert.match(jsx, /visibleIds\.filter\(\(id\) => selectedMailIds\.includes\(id\)\)/)
+    assert.match(jsx, /checked=\{allVisibleSelected\}/)
+    assert.match(jsx, /indeterminate = partiallySelected/)
+    assert.match(jsx, /onChange=\{toggleAllVisible\}/)
+    assert.match(jsx, /onChange=\{\(\) => toggleMessageSelection\(message\.id\)\}/)
+    assert.match(jsx, /bulkMarkRead\(true\)/)
+    assert.match(jsx, /bulkMarkRead\(false\)/)
+    assert.match(jsx, /bulkMove\('spam'\)/)
+    assert.match(jsx, /bulkMove\('archive'\)/)
+    assert.match(jsx, /new Set\(selectedVisibleIds\)/)
+    assert.match(css, /\.mail-bulk-toolbar/)
+    assert.match(css, /\.mail-message-select/)
 })
