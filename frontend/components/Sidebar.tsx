@@ -303,55 +303,45 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     )
 
     return (
-        <>
-            {/* Desktop Sidebar */}
-            <aside
-                className="hidden md:flex fixed left-0 top-0 h-screen w-64 flex-col z-30"
-                style={{ backgroundColor: S.bg }}
-            >
-                <SidebarContent />
-            </aside>
+        <AnimatePresence>
+            {isOpen && (
+                <MobileSidebarPortal>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="fixed inset-0 z-[100]"
+                        style={{ backgroundColor: 'rgba(28,19,9,0.6)', backdropFilter: 'blur(2px)' }}
+                    />
 
-            {/* Mobile Sidebar */}
-            <AnimatePresence>
-                {isOpen && (
-                    <MobileSidebarPortal>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={onClose}
-                            className="fixed inset-0 z-[100] md:hidden"
-                            style={{ backgroundColor: 'rgba(28,19,9,0.6)', backdropFilter: 'blur(2px)' }}
-                        />
+                    <motion.aside
+                        initial={{ x: '-100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '-100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="fixed left-0 top-0 h-[100dvh] w-64 max-w-[85vw] flex flex-col z-[101]"
+                        style={{ backgroundColor: S.bg }}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label="StudioSync-Navigation"
+                    >
+                        <div className="absolute top-4 right-4 z-10">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onClose}
+                                className="shadow-none"
+                                style={{ color: S.muted }}
+                                aria-label={t('closeMenu')}
+                            >
+                                <X className="w-5 h-5" />
+                            </Button>
+                        </div>
 
-                        <motion.aside
-                            initial={{ x: '-100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '-100%' }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed left-0 top-0 h-screen w-64 flex flex-col z-[101] md:hidden"
-                            style={{ backgroundColor: S.bg }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="absolute top-4 right-4 z-10">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={onClose}
-                                    className="shadow-none"
-                                    style={{ color: S.muted }}
-                                    aria-label={t('closeMenu')}
-                                >
-                                    <X className="w-5 h-5" />
-                                </Button>
-                            </div>
-
-                            <SidebarContent />
-                        </motion.aside>
-                    </MobileSidebarPortal>
-                )}
-            </AnimatePresence>
-        </>
+                        <SidebarContent />
+                    </motion.aside>
+                </MobileSidebarPortal>
+            )}
+        </AnimatePresence>
     )
 }
