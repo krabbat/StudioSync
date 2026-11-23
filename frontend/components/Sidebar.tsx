@@ -204,8 +204,9 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
                                 const Icon = item.icon
                                 const content = (
                                     <>
-                                        <Icon className="studiosync-sidebar-icon" size={19}
-                                            style={{ color: active ? S.amber : S.muted }} />
+                                        <span className="studiosync-sidebar-icon">
+                                            <Icon size={19} style={{ color: active ? S.amber : S.muted }} />
+                                        </span>
                                         <span className="studiosync-sidebar-label studiosync-sidebar-item-name">{item.name}</span>
                                         {item.badge !== undefined && (
                                             <span className="studiosync-sidebar-label studiosync-sidebar-badge">{item.badge}</span>
