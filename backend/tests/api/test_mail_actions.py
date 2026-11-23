@@ -54,7 +54,7 @@ def run_with_client(client, action, uids=None, generation="99"):
         patch("apps.core.mail_actions.imaplib.IMAP4_SSL", return_value=client),
     ):
         return apply_inbox_action(
-            CONFIG, action, uids or ["12", "34"], generation
+            CONFIG, action, uids if uids is not None else ["12", "34"], generation
         )
 
 
