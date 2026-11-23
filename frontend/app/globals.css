@@ -856,3 +856,40 @@ button {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Dashboard density and mail layout share template-driven design tokens.
+   Template changes can override these custom properties without editing pages. */
+:root {
+  --dashboard-shell-background: hsl(var(--background));
+  --dashboard-content-gap: clamp(0.5rem, 1vw, 1rem);
+  --mail-list-width: 32%;
+  --mail-min-list-width: 250px;
+  --mail-page-background: hsl(var(--background));
+  --mail-panel-background: hsl(var(--card));
+  --mail-toolbar-background: hsl(var(--card));
+  --mail-hover-background: hsl(var(--muted));
+  --mail-selected-background: hsl(var(--accent));
+  --mail-text-color: hsl(var(--foreground));
+  --mail-muted-color: hsl(var(--muted-foreground));
+  --mail-border-color: hsl(var(--border));
+  --mail-action-color: hsl(var(--primary));
+  --mail-action-text: hsl(var(--primary-foreground));
+  --mail-panel-radius: var(--radius);
+  --mail-panel-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --mail-toolbar-height: 46px;
+  --mail-row-min-height: 72px;
+  --mail-content-padding: 12px;
+}
+
+.dashboard-shell {
+  background: var(--dashboard-shell-background);
+}
+
+.dashboard-main {
+  padding: var(--dashboard-content-gap);
+}
+
+.dashboard-mail-main {
+  padding: 0;
+  background: var(--mail-page-background);
+}
