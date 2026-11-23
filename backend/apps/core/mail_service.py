@@ -40,15 +40,21 @@ def _configuration(config):
         raise MailFetchError("Der IMAP-Port ist ungültig.") from exc
 
     if not host or not user or not password:
-        raise MailFetchError("Bitte zuerst IMAP unter Einstellungen → Technik vollständig einrichten.")
+        raise MailFetchError(
+            "Bitte zuerst IMAP unter Einstellungen → Technik vollständig einrichten."
+        )
     if len(host) > 253 or any(char.isspace() for char in host):
         raise MailFetchError("Der IMAP-Servername ist ungültig.")
     if (security, port) not in {("ssl", 993), ("starttls", 143)}:
-        raise MailFetchError("Nur IMAP über SSL/TLS (993) oder STARTTLS (143) wird unterstützt.")
+        raise MailFetchError(
+            "Nur IMAP über SSL/TLS (993) oder STARTTLS (143) wird unterstützt."
+        )
     try:
         assert_public_host(host, port)
     except (OSError, ValueError) as exc:
-        raise MailFetchError("Der IMAP-Server ist nicht zulässig oder nicht erreichbar.") from exc
+        raise MailFetchError(
+            "Der IMAP-Server ist nicht zulässig oder nicht erreichbar."
+        ) from exc
     return host, port, user, password, security
 
 
@@ -73,7 +79,9 @@ def _readonly_inbox(config):
         raise
     except (imaplib.IMAP4.error, OSError, ssl.SSLError, TimeoutError) as exc:
         LOG.warning("Read-only IMAP inbox access failed: %s", type(exc).__name__)
-        raise MailFetchError("Der Posteingang konnte nicht abgerufen werden. Bitte IMAP-Zugang prüfen.") from exc
+        raise MailFetchError(
+            "Der Posteingang konnte nicht abgerufen werden. Bitte IMAP-Zugang prüfen."
+        ) from exc
     finally:
         if client is not None:
             try:
@@ -154,7 +162,9 @@ def list_inbox(config, offset=0, limit=LIST_PAGE_SIZE):
                 "FETCH", ",".join(batch), "(UID FLAGS RFC822.SIZE BODY.PEEK[HEADER])"
             )
             if status != "OK":
-                raise MailFetchError("Die Nachrichtenköpfe konnten nicht geladen werden.")
+                raise MailFetchError(
+                    "Die Nachrichtenköpfe konnten nicht geladen werden."
+                )
 
             indexed = {}
             for record in records or []:
@@ -204,7 +214,13 @@ def _message_body(message):
     if plain is not None:
         body = plain
     elif html is not None:
-        body = strip_tags(re.sub(r"(?i)<\s*br\s*/?\s*>|</\s*(?:p|div|li|tr|h[1-6])\s*>", "\n", html))
+        body = strip_tags(
+            re.sub(
+                r"(?i)<\s*br\s*/?\s*>|</\s*(?:p|div|li|tr|h[1-6])\s*>",
+                "\n",
+                html,
+            )
+        )
         body = unescape(body)
     else:
         body = "(Kein lesbarer Nachrichtentext)"
@@ -219,15 +235,21 @@ def get_inbox_message(config, uid, expected_uidvalidity=None):
     with _readonly_inbox(config) as client:
         uidvalidity = _uidvalidity(client)
         if expected_uidvalidity and uidvalidity != str(expected_uidvalidity):
-            raise MailFetchError("Das Postfach wurde verändert. Bitte die Nachrichten neu abrufen.")
+            raise MailFetchError(
+                "Das Postfach wurde verändert. Bitte die Nachrichten neu abrufen."
+            )
 
-        status, records = client.uid("FETCH", str(uid), "(UID RFC822.SIZE FLAGS BODY.PEEK[HEADER])")
+        status, records = client.uid(
+            "FETCH", str(uid), "(UID RFC822.SIZE FLAGS BODY.PEEK[HEADER])"
+        )
         if status != "OK":
             raise MailFetchError("Die Nachricht konnte nicht gefunden werden.")
         parsed = next((candidate for item in (records or [])
                        if (candidate := _parse_metadata(item)) is not None), None)
         if not parsed or parsed["id"] != str(uid):
-            raise MailFetchError("Die Nachricht existiert nicht mehr. Bitte erneut abrufen.")
+            raise MailFetchError(
+                "Die Nachricht existiert nicht mehr. Bitte erneut abrufen."
+            )
         if parsed["size"] is None or parsed["size"] > MAX_PREVIEW_BYTES:
             raise MailFetchError(
                 "Diese Nachricht ist für die Textvorschau zu groß (über 5 MB). "
@@ -239,11 +261,15 @@ def get_inbox_message(config, uid, expected_uidvalidity=None):
             raise MailFetchError("Der Nachrichtentext konnte nicht geladen werden.")
         raw = next(
             (item[1] for item in (data or [])
-             if isinstance(item, tuple) and len(item) > 1 and isinstance(item[1], bytes)),
+             if isinstance(item, tuple)
+             and len(item) > 1
+             and isinstance(item[1], bytes)),
             None,
         )
         if raw is None or len(raw) > MAX_PREVIEW_BYTES:
-            raise MailFetchError("Der Nachrichtentext konnte nicht sicher geladen werden.")
+            raise MailFetchError(
+                "Der Nachrichtentext konnte nicht sicher geladen werden."
+            )
         message = BytesParser(policy=policy.default).parsebytes(raw)
         body, attachments = _message_body(message)
         parsed.update({"body": body, "preview": body[:160], "attachments": attachments})
