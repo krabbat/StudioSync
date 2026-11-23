@@ -173,7 +173,7 @@ def apply_inbox_action(config, action, uids, expected_uidvalidity):
 
     No flags or folders are changed if UIDVALIDITY/UID membership is stale.
     """
-    if action not in ALLOWED_ACTIONS:
+    if not isinstance(action, str) or action not in ALLOWED_ACTIONS:
         raise MailFetchError("Unbekannte E-Mail-Aktion.")
     selected = _validated_uids(uids)
     expected = str(expected_uidvalidity or "")
