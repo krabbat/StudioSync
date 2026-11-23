@@ -12,10 +12,18 @@ from apps.core.tenancy import studio_for_request
 def _mailbox_config(request):
     """Credentials always come from saved admin settings, never from the request."""
     studio = studio_for_request(request)
-    if request.user.role != "admin" or studio is None or studio.owner_id != request.user.id:
-        raise PermissionDenied("Nur der Studio-Administrator darf auf das E-Mail-Postfach zugreifen.")
+    if (
+        request.user.role != "admin"
+        or studio is None
+        or studio.owner_id != request.user.id
+    ):
+        raise PermissionDenied(
+            "Nur der Studio-Administrator darf auf das E-Mail-Postfach zugreifen."
+        )
 
-    preferences = request.user.preferences if isinstance(request.user.preferences, dict) else {}
+    preferences = (
+        request.user.preferences if isinstance(request.user.preferences, dict) else {}
+    )
     technical = preferences.get("technical", {})
     if not isinstance(technical, dict):
         technical = {}
@@ -32,9 +40,15 @@ class MailInboxListView(APIView):
             offset = int(request.query_params.get("offset", "0"))
             limit = int(request.query_params.get("limit", "40"))
         except (ValueError, TypeError):
-            return Response({"detail": "Ungültige Seitenangabe."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Ungültige Seitenangabe."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if not 0 <= offset <= 1_000_000 or not 1 <= limit <= 80:
-            return Response({"detail": "Ungültige Seitenangabe."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Ungültige Seitenangabe."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         config = _mailbox_config(request)
         try:
