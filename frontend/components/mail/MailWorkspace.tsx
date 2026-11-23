@@ -6,13 +6,15 @@ import {
 } from 'react'
 import {
     Archive, CheckCheck, ChevronDown, ChevronRight, FileText, Filter, Forward,
-    Inbox, Mail, Menu, MoreHorizontal, Paperclip, Pencil, RefreshCw, Reply,
-    Search, Send, Star, Trash2, Upload, X,
+    Inbox, Mail, MailOpen, Menu, MoreHorizontal, Paperclip, Pencil, RefreshCw, Reply,
+    Search, Send, ShieldAlert, Star, Trash2, Upload, X,
 } from 'lucide-react'
 import api from '@/services/api'
+import { toast } from 'react-hot-toast'
 
 type FolderId = 'inbox' | 'sent' | 'drafts' | 'outbox' | 'archive' | 'spam' | 'trash'
 type RecipientMode = 'single' | 'all' | 'group'
+type MailAction = 'read' | 'unread' | 'spam' | 'archive'
 
 interface MailPreview {
     id: string
@@ -130,6 +132,7 @@ export default function MailWorkspace() {
     const [messages, setMessages] = useState<MailPreview[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [mailLoading, setMailLoading] = useState(false)
+    const [mailActionBusy, setMailActionBusy] = useState(false)
     const [detailLoading, setDetailLoading] = useState(false)
     const [mailError, setMailError] = useState('')
     const [detailError, setDetailError] = useState('')
@@ -226,6 +229,51 @@ export default function MailWorkspace() {
     }
     const toggleAllVisible = () => {
         setSelectedMailIds(allVisibleSelected ? [] : visibleIds)
+    }
+
+    const runMailAction = async (action: MailAction, uids: string[]) => {
+        if (mailActionBusy || uids.length === 0) return
+        if (!uidvalidity) {
+            toast.error('Bitte zuerst die Mails mit „Abrufen“ aktualisieren.')
+            return
+        }
+        if (uids.length > 200) {
+            toast.error('Bitte höchstens 200 Nachrichten gleichzeitig auswählen.')
+            return
+        }
+        setMailActionBusy(true)
+        try {
+            const response = await api.post<{ updated: number }>(
+                '/core/mail/inbox/actions/',
+                { action, uids, uidvalidity },
+            )
+            const updated = new Set(uids)
+            if (action === 'read' || action === 'unread') {
+                setMessages((items) => items.map((item) => updated.has(item.id)
+                    ? { ...item, unread: action === 'unread' } : item))
+            } else {
+                // MOVE succeeds on the IMAP server before any local row disappears.
+                setMessages((items) => items.filter((item) => !updated.has(item.id)))
+                if (selectedId && updated.has(selectedId)) setSelectedId(null)
+            }
+            setSelectedMailIds([])
+            const names: Record<MailAction, string> = {
+                read: 'als gelesen markiert',
+                unread: 'als ungelesen markiert',
+                spam: 'in Spam verschoben',
+                archive: 'archiviert',
+            }
+            toast.success(`${response.data.updated} Nachricht(en) ${names[action]}.`)
+            if (action === 'spam' || action === 'archive') {
+                // Reload the first page to refill gaps after messages were moved.
+                await loadInbox(true)
+            }
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail ||
+                'Die IMAP-Aktion ist fehlgeschlagen. Bitte erneut versuchen.')
+        } finally {
+            setMailActionBusy(false)
+        }
     }
 
     const activeFilters = !!(studentFilter || instrumentFilter || dateFrom || dateTo || unreadOnly || attachmentOnly)
@@ -361,7 +409,7 @@ export default function MailWorkspace() {
                         </button>
                         <button type="button" className="mail-fetch-button"
                             onClick={() => { setFolder('inbox'); void loadInbox(true) }}
-                            disabled={mailLoading}
+                            disabled={mailLoading || mailActionBusy}
                             aria-label="Mails abrufen" title="Posteingang jetzt vom IMAP-Server abrufen">
                             <RefreshCw size={16} className={mailLoading ? 'animate-spin' : ''} />
                             <span>Abrufen</span>
@@ -422,7 +470,7 @@ export default function MailWorkspace() {
                             checked={allVisibleSelected}
                             ref={(element) => { if (element) element.indeterminate = partiallySelected }}
                             onChange={toggleAllVisible}
-                            disabled={visible.length === 0}
+                            disabled={visible.length === 0 || mailActionBusy}
                             aria-label="Alle sichtbaren Nachrichten auswählen"
                         />
                         <span>{selectedVisibleIds.length > 0
@@ -434,16 +482,24 @@ export default function MailWorkspace() {
                 {selectedVisibleIds.length > 0 && (
                     <div className="mail-bulk-toolbar" role="toolbar"
                         aria-label="Aktionen für ausgewählte Nachrichten">
-                        <button type="button" disabled title="IMAP-Markierungen folgen im nächsten Schritt">
+                        <button type="button" disabled={mailActionBusy}
+                            onClick={() => void runMailAction('read', selectedVisibleIds)}
+                            title="Ausgewählte als gelesen markieren">
                             <CheckCheck size={16} /> <span>Gelesen</span>
                         </button>
-                        <button type="button" disabled title="IMAP-Markierungen folgen im nächsten Schritt">
+                        <button type="button" disabled={mailActionBusy}
+                            onClick={() => void runMailAction('unread', selectedVisibleIds)}
+                            title="Ausgewählte als ungelesen markieren">
                             <Mail size={16} /> <span>Ungelesen</span>
                         </button>
-                        <button type="button" disabled title="IMAP-Verschieben folgt im nächsten Schritt">
-                            <Filter size={16} /> <span>Spam</span>
+                        <button type="button" disabled={mailActionBusy}
+                            onClick={() => void runMailAction('spam', selectedVisibleIds)}
+                            title="Ausgewählte in Spam verschieben">
+                            <ShieldAlert size={16} /> <span>Spam</span>
                         </button>
-                        <button type="button" disabled title="IMAP-Verschieben folgt im nächsten Schritt">
+                        <button type="button" disabled={mailActionBusy}
+                            onClick={() => void runMailAction('archive', selectedVisibleIds)}
+                            title="Ausgewählte archivieren">
                             <Archive size={16} /> <span>Archiv</span>
                         </button>
                         <button type="button" className="mail-bulk-clear"
@@ -489,6 +545,7 @@ export default function MailWorkspace() {
                                     <label className="mail-message-select" title="Nachricht für mehrere Aktionen auswählen">
                                         <input type="checkbox"
                                             checked={selectedMailIds.includes(message.id)}
+                                            disabled={mailActionBusy}
                                             onChange={() => toggleMessageSelection(message.id)}
                                             aria-label={`${message.from}: ${message.subject} auswählen`} />
                                     </label>
@@ -639,14 +696,30 @@ export default function MailWorkspace() {
                                     onClick={() => compose('reply')}><Reply size={19} /></button>
                                 <button type="button" className="mail-icon" title="Weiterleiten" aria-label="Weiterleiten"
                                     onClick={() => compose('forward')}><Forward size={19} /></button>
-                                <button type="button" className="mail-icon" disabled
-                                    title="IMAP-Archivieren folgt im nächsten Schritt" aria-label="Archivieren">
+                                <button type="button" className="mail-icon"
+                                    disabled={mailActionBusy}
+                                    onClick={() => void runMailAction(
+                                        selected.unread ? 'read' : 'unread', [selected.id]
+                                    )}
+                                    title={selected.unread ? 'Als gelesen markieren' : 'Als ungelesen markieren'}
+                                    aria-label={selected.unread ? 'Als gelesen markieren' : 'Als ungelesen markieren'}>
+                                    {selected.unread ? <MailOpen size={19} /> : <Mail size={19} />}
+                                </button>
+                                <button type="button" className="mail-icon"
+                                    disabled={mailActionBusy}
+                                    title="In Spam verschieben" aria-label="In Spam verschieben"
+                                    onClick={() => void runMailAction('spam', [selected.id])}>
+                                    <ShieldAlert size={19} /></button>
+                                <button type="button" className="mail-icon"
+                                    disabled={mailActionBusy}
+                                    title="Archivieren" aria-label="Archivieren"
+                                    onClick={() => void runMailAction('archive', [selected.id])}>
                                     <Archive size={19} /></button>
                                 <button type="button" className="mail-icon" disabled
-                                    title="IMAP-Papierkorb folgt im nächsten Schritt" aria-label="Löschen">
+                                    title="Papierkorb folgt im nächsten Schritt" aria-label="Löschen">
                                     <Trash2 size={19} /></button>
                                 <button type="button" className="mail-icon" disabled
-                                    title="IMAP-Markierung folgt im nächsten Schritt" aria-label="Markieren">
+                                    title="Stern-Markierung folgt im nächsten Schritt" aria-label="Markieren">
                                     <Star size={19} fill={selected.starred ? 'currentColor' : 'none'} /></button>
                             </div>
                             <button type="button" className="mail-icon" disabled title="Weitere Aktionen folgen"
