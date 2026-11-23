@@ -178,8 +178,6 @@ export default function MailWorkspace() {
     }, [loadInbox])
 
     const activeFolder = FOLDERS.find((item) => item.id === folder) || FOLDERS[0]
-    const availableStudents = Array.from(new Set(messages.map((m) => m.student).filter(Boolean))).sort()
-    const availableInstruments = Array.from(new Set(messages.map((m) => m.instrument).filter(Boolean))).sort()
 
     const visible = useMemo(() => messages.filter((m) => {
         if (m.folder !== folder) return false
@@ -295,7 +293,7 @@ export default function MailWorkspace() {
         <section
             className="mail-workspace"
             ref={areaRef}
-            aria-label="StudioSync E-Mail-Zentrale – Oberflächenvorschau"
+            aria-label="StudioSync E-Mail-Zentrale"
             style={{ '--mail-list-width': String(listWidth) + '%' } as CSSProperties}
         >
             <div className="mail-list-pane">
@@ -342,9 +340,12 @@ export default function MailWorkspace() {
                             onClick={() => setFilterOpen(!filterOpen)}>
                             <Filter size={18} />
                         </button>
-                        <button type="button" className="mail-icon" disabled
-                            aria-label="Nachrichten aktualisieren" title="IMAP-Abruf wird als Nächstes integriert">
-                            <RefreshCw size={18} />
+                        <button type="button" className="mail-fetch-button"
+                            onClick={() => { setFolder('inbox'); void loadInbox(true) }}
+                            disabled={mailLoading}
+                            aria-label="Mails abrufen" title="Posteingang jetzt vom IMAP-Server abrufen">
+                            <RefreshCw size={16} className={mailLoading ? 'animate-spin' : ''} />
+                            <span>Abrufen</span>
                         </button>
                         <button type="button" className="mail-primary-icon" aria-label="Neue E-Mail"
                             title="Neue E-Mail entwerfen" onClick={() => compose()}>
@@ -358,7 +359,7 @@ export default function MailWorkspace() {
                         <Search size={16} aria-hidden="true" />
                         <input autoFocus type="search" value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Absender, Betreff, Inhalt …" aria-label="Nachrichten durchsuchen" />
+                            placeholder="Absender, Betreff …" aria-label="Geladene Nachrichten durchsuchen" />
                         {query && <button type="button" className="mail-icon" onClick={() => setQuery('')}
                             aria-label="Suche löschen"><X size={16} /></button>}
                     </div>
@@ -368,15 +369,13 @@ export default function MailWorkspace() {
                     <div className="mail-filters">
                         <div className="mail-filter-fields">
                             <label>Schüler
-                                <select value={studentFilter} onChange={(e) => setStudentFilter(e.target.value)}>
-                                    <option value="">Alle</option>
-                                    {availableStudents.map((name) => <option key={name} value={name}>{name}</option>)}
+                                <select value={studentFilter} disabled title="Schülerzuordnung folgt im nächsten Schritt">
+                                    <option value="">Zuordnung folgt</option>
                                 </select>
                             </label>
                             <label>Instrument
-                                <select value={instrumentFilter} onChange={(e) => setInstrumentFilter(e.target.value)}>
-                                    <option value="">Alle</option>
-                                    {availableInstruments.map((name) => <option key={name} value={name}>{name}</option>)}
+                                <select value={instrumentFilter} disabled title="Instrumentzuordnung folgt im nächsten Schritt">
+                                    <option value="">Zuordnung folgt</option>
                                 </select>
                             </label>
                             <label>Von
@@ -409,27 +408,23 @@ export default function MailWorkspace() {
                         />
                         <span>{selectedVisibleIds.length > 0
                             ? `${selectedVisibleIds.length} ausgewählt`
-                            : 'Vorschau · Beispieldaten'}</span>
+                            : 'Posteingang · IMAP'}</span>
                     </label>
-                    <span>{visible.length} Nachrichten</span>
+                    <span>{folder === 'inbox' ? `${messages.length} / ${total}` : '0'} Mails</span>
                 </div>
                 {selectedVisibleIds.length > 0 && (
                     <div className="mail-bulk-toolbar" role="toolbar"
                         aria-label="Aktionen für ausgewählte Nachrichten">
-                        <button type="button" onClick={() => bulkMarkRead(true)}
-                            title="Ausgewählte als gelesen markieren">
+                        <button type="button" disabled title="IMAP-Markierungen folgen im nächsten Schritt">
                             <CheckCheck size={16} /> <span>Gelesen</span>
                         </button>
-                        <button type="button" onClick={() => bulkMarkRead(false)}
-                            title="Ausgewählte als ungelesen markieren">
+                        <button type="button" disabled title="IMAP-Markierungen folgen im nächsten Schritt">
                             <Mail size={16} /> <span>Ungelesen</span>
                         </button>
-                        <button type="button" onClick={() => bulkMove('spam')}
-                            title="Ausgewählte in Spam verschieben">
+                        <button type="button" disabled title="IMAP-Verschieben folgt im nächsten Schritt">
                             <Filter size={16} /> <span>Spam</span>
                         </button>
-                        <button type="button" onClick={() => bulkMove('archive')}
-                            title="Ausgewählte archivieren">
+                        <button type="button" disabled title="IMAP-Verschieben folgt im nächsten Schritt">
                             <Archive size={16} /> <span>Archiv</span>
                         </button>
                         <button type="button" className="mail-bulk-clear"
@@ -439,12 +434,25 @@ export default function MailWorkspace() {
                         </button>
                     </div>
                 )}
+                {mailError && (
+                    <div className="mail-fetch-error" role="alert">{mailError}</div>
+                )}
+                {lastFetched && folder === 'inbox' && (
+                    <div className="mail-fetch-status">
+                        Letzter Abruf: {lastFetched.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                        {mailLoading && ' · Aktualisierung läuft'}
+                    </div>
+                )}
                 <div className="mail-list-scroll">
                     {visible.length === 0 && (
                         <div className="mail-list-empty">
                             <Mail size={24} />
-                            <p>Keine Nachrichten in dieser Ansicht.</p>
-                            <span>Der echte Postfachabruf folgt im nächsten Entwicklungsschritt.</span>
+                            <p>{mailLoading ? 'Posteingang wird geladen …' :
+                                folder !== 'inbox' ? activeFolder.name + ' wird im nächsten Schritt angebunden.' :
+                                mailError ? 'Abruf fehlgeschlagen.' : 'Keine Nachrichten in dieser Ansicht.'}</p>
+                            <span>{folder === 'inbox'
+                                ? 'Mit „Abrufen“ kannst du den Posteingang jederzeit aktualisieren.'
+                                : 'Bislang ist nur der echte Posteingang mit IMAP verbunden.'}</span>
                         </div>
                     )}
                     {visible.map((message, index) => {
@@ -475,12 +483,13 @@ export default function MailWorkspace() {
                                             <span className="mail-message-date">{timeLabel(message.date)}</span>
                                         </div>
                                         <div className="mail-message-subject">{message.subject}</div>
-                                        <div className="mail-message-preview">{message.preview}</div>
+                                        <div className="mail-message-preview">{message.preview || 'Zum Lesen öffnen'}</div>
                                         <div className="mail-message-bottom">
                                             <span>{message.student || 'Nicht zugeordnet'}</span>
                                             <div>
                                                 {message.starred && <Star size={13} aria-label="Markiert" />}
-                                                {message.attachments.length > 0 && <Paperclip size={13} aria-label="Mit Anhang" />}
+                                                {(message.has_attachment || message.attachments.length > 0) &&
+                                                <Paperclip size={13} aria-label="Mit Anhang" />}
                                             </div>
                                         </div>
                                     </button>
@@ -488,6 +497,12 @@ export default function MailWorkspace() {
                             </div>
                         )
                     })}
+                    {folder === 'inbox' && hasMore && (
+                        <button type="button" className="mail-load-more" disabled={mailLoading}
+                            onClick={() => void loadInbox(false, nextOffset)}>
+                            {mailLoading ? 'Lädt …' : 'Weitere Nachrichten laden'}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -605,13 +620,15 @@ export default function MailWorkspace() {
                                     onClick={() => compose('reply')}><Reply size={19} /></button>
                                 <button type="button" className="mail-icon" title="Weiterleiten" aria-label="Weiterleiten"
                                     onClick={() => compose('forward')}><Forward size={19} /></button>
-                                <button type="button" className="mail-icon" title="Archivieren" aria-label="Archivieren"
-                                    onClick={() => moveSelected('archive')}><Archive size={19} /></button>
-                                <button type="button" className="mail-icon" title="In Papierkorb verschieben" aria-label="Löschen"
-                                    onClick={() => moveSelected('trash')}><Trash2 size={19} /></button>
-                                <button type="button" className="mail-icon" title="Markierung umschalten" aria-label="Markieren"
-                                    onClick={() => setMessages((items) => items.map((m) => m.id === selected.id
-                                        ? { ...m, starred: !m.starred } : m))}><Star size={19} fill={selected.starred ? 'currentColor' : 'none'} /></button>
+                                <button type="button" className="mail-icon" disabled
+                                    title="IMAP-Archivieren folgt im nächsten Schritt" aria-label="Archivieren">
+                                    <Archive size={19} /></button>
+                                <button type="button" className="mail-icon" disabled
+                                    title="IMAP-Papierkorb folgt im nächsten Schritt" aria-label="Löschen">
+                                    <Trash2 size={19} /></button>
+                                <button type="button" className="mail-icon" disabled
+                                    title="IMAP-Markierung folgt im nächsten Schritt" aria-label="Markieren">
+                                    <Star size={19} fill={selected.starred ? 'currentColor' : 'none'} /></button>
                             </div>
                             <button type="button" className="mail-icon" disabled title="Weitere Aktionen folgen"
                                 aria-label="Weitere Aktionen"><MoreHorizontal size={19} /></button>
@@ -633,12 +650,14 @@ export default function MailWorkspace() {
                                     <span>Nicht zugeordnet · Schülerzuordnung folgt</span>
                                 )}
                             </div>
-                            <div className="mail-body-text">{selected.body}</div>
-                            {selected.attachments.length > 0 && (
+                            {detailLoading ? <div className="mail-body-text">Nachricht wird geladen …</div> :
+                                detailError ? <div className="mail-fetch-error" role="alert">{detailError}</div> :
+                                <div className="mail-body-text">{selected.body || 'Zum Lesen öffnen'}</div>}
+                            {selected.bodyLoaded && selected.attachments.length > 0 && (
                                 <div className="mail-reader-attachments">
                                     <strong>Anhänge</strong>
                                     {selected.attachments.map((filename) => (
-                                        <span key={filename}><Paperclip size={15} /> {filename} (Beispieldatei)</span>
+                                        <span key={filename}><Paperclip size={15} /> {filename} (Download folgt)</span>
                                     ))}
                                 </div>
                             )}
@@ -649,7 +668,7 @@ export default function MailWorkspace() {
                         <Mail size={36} strokeWidth={1.5} />
                         <strong>Nachricht auswählen</strong>
                         <span>Nachrichten werden hier gelesen und beantwortet.</span>
-                        <span className="mail-reader-note">Der echte IMAP-Abruf folgt nach Freigabe der Oberfläche.</span>
+                        <span className="mail-reader-note">Nachrichten werden über den IMAP-Posteingang geladen.</span>
                     </div>
                 )}
             </div>
