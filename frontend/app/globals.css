@@ -926,3 +926,11 @@ button {
   --dashboard-shell-background: hsl(var(--background));
   --dashboard-sidebar-background: #13151f;
 }
+
+
+/* Keep the legacy broad .dark aside/.dark nav overrides from changing the
+   template-controlled dashboard navigation background. */
+.dark .studiosync-sidebar,
+.dark .studiosync-sidebar nav {
+  background-color: var(--dashboard-sidebar-background) !important;
+}
