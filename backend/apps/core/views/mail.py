@@ -5,6 +5,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.mail_actions import apply_inbox_action
 from apps.core.mail_service import MailFetchError, get_inbox_message, list_inbox
 from apps.core.tenancy import studio_for_request
 
@@ -69,3 +70,27 @@ class MailInboxDetailView(APIView):
         except MailFetchError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
         return Response(data)
+
+
+class MailInboxActionView(APIView):
+    """Write selected inbox UIDs only for the authenticated studio owner."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        config = _mailbox_config(request)
+        if not isinstance(request.data, dict):
+            return Response(
+                {"detail": "Ungültige Aktionsdaten."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        action = request.data.get("action")
+        uids = request.data.get("uids")
+        uidvalidity = request.data.get("uidvalidity")
+        try:
+            result = apply_inbox_action(config, action, uids, uidvalidity)
+        except MailFetchError as exc:
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(result)
