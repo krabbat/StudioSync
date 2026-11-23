@@ -10,7 +10,8 @@ import './mail.css'
 // available to other roles until the mail replacement is fully functional.
 export default function MessagesPage() {
     const { currentUser } = useUser()
-    if (currentUser?.role !== 'admin') {
+    if (!currentUser) return null
+    if (currentUser.role !== 'admin') {
         return (
             <ChatProvider>
                 <MessagingCenter />
