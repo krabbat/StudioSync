@@ -12,7 +12,6 @@ import {
   GraduationCap,
   FileText,
   BookOpen,
-  Menu,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { toast } from "react-hot-toast";
@@ -35,11 +34,10 @@ const H = {
 } as const;
 
 interface DashboardHeaderProps {
-  onMenuClick: () => void;
   compact?: boolean;
 }
 
-export default function DashboardHeader({ onMenuClick, compact = false }: DashboardHeaderProps) {
+export default function DashboardHeader({ compact = false }: DashboardHeaderProps) {
   const t = useTranslations("DashboardHeader");
   const { currentUser, logout } = useUser();
   const router = useRouter();
@@ -106,18 +104,6 @@ export default function DashboardHeader({ onMenuClick, compact = false }: Dashbo
       }}
     >
       <div className={`flex items-center justify-between ${compact ? "px-2 sm:px-3 py-1" : "px-3 sm:px-4 py-2"}`}>
-        {/* Main navigation opens on all screen sizes. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMenuClick}
-          className="mr-1 shrink-0"
-          style={{ color: H.muted }}
-          aria-label={t("openMenu")}
-        >
-          <Menu className="w-6 h-6" />
-        </Button>
-
         {/* The mail workspace has its own compact toolbar. */}
         {compact ? <div className="min-w-0 flex-1" /> : (
           <div className="flex-1 min-w-0">
