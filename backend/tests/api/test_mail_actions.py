@@ -27,6 +27,7 @@ def mock_imap():
             rb'(\HasNoChildren) "/" "INBOX"',
             rb'(\HasNoChildren \Junk) "/" "Junk"',
             rb'(\HasNoChildren \Archive) "/" "Archive"',
+            rb'(\HasNoChildren \Trash) "/" "Trash"',
         ],
     )
 
@@ -78,7 +79,7 @@ def test_batch_seen_flags_use_uid_store_and_do_not_move(action, operator):
 
 @pytest.mark.parametrize(
     ("action", "folder"),
-    [("spam", b'"Junk"'), ("archive", b'"Archive"')],
+    [("spam", b'"Junk"'), ("archive", b'"Archive"'), ("delete", b'"Trash"')],
 )
 def test_move_uses_real_server_folders_without_expunging(action, folder):
     client = mock_imap()
@@ -150,7 +151,7 @@ def test_missing_mail_uid_does_not_change_partial_batch():
 @pytest.mark.parametrize(
     ("action", "uids", "generation"),
     [
-        ("delete", ["12"], "99"),
+        ("expunge", ["12"], "99"),
         ("read", [], "99"),
         ("read", ["12", "2:*"], "99"),
         ("read", ["12"], ""),
@@ -198,3 +199,29 @@ def test_action_endpoint_rejects_other_roles_and_invalid_request(
         endpoint, {"action": "read", "uids": [], "uidvalidity": "99"},
         format="json",
     ).status_code == 400
+
+
+def test_delete_is_move_to_trash_never_permanent_deletion():
+    client = mock_imap()
+    run_with_client(client, "delete")
+    client.uid.assert_any_call("MOVE", "12,34", b'"Trash"')
+    client.expunge.assert_not_called()
+    assert not any(
+        call.args[0] == "STORE" and "\\Deleted" in str(call.args)
+        for call in client.uid.call_args_list
+    )
+
+
+def test_delete_creates_trash_only_when_user_requests_move():
+    client = mock_imap()
+    client.list.side_effect = [
+        ("OK", [rb'(\\HasNoChildren) "/" "INBOX"']),
+        ("OK", [
+            rb'(\\HasNoChildren) "/" "INBOX"',
+            rb'(\\HasNoChildren) "/" "Trash"',
+        ]),
+    ]
+    client.create.return_value = ("OK", [])
+    run_with_client(client, "delete")
+    client.create.assert_called_once_with("Trash")
+    client.uid.assert_any_call("MOVE", "12,34", b'"Trash"')
