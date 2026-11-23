@@ -22,16 +22,16 @@ import { useTranslations } from "next-intl";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const H = {
-  bg: "#faf7f2",
-  border: "#e3d4bc",
-  text: "#1c1309",
-  muted: "#7a6145",
-  faint: "#b09870",
-  amber: "#c17c2e",
-  amberLight: "rgba(193,124,46,0.1)",
-  cardBg: "#f0e8d8",
-  dropBorder: "#e3d4bc",
-  hoverBg: "#f0e8d8",
+  bg: "var(--dashboard-header-background)",
+  border: "var(--dashboard-header-border)",
+  text: "var(--dashboard-header-text)",
+  muted: "var(--dashboard-header-muted)",
+  faint: "var(--dashboard-header-faint)",
+  amber: "var(--dashboard-header-accent)",
+  amberLight: "var(--dashboard-header-accent-soft)",
+  cardBg: "var(--dashboard-header-card)",
+  dropBorder: "var(--dashboard-header-border)",
+  hoverBg: "var(--dashboard-header-hover)",
 } as const;
 
 interface DashboardHeaderProps {
