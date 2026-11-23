@@ -18,6 +18,9 @@ from apps.core.views import (
     update,
 )
 from apps.core.views.mail import (
+    MailFolderActionView,
+    MailFolderDetailView,
+    MailFolderListView,
     MailInboxActionView,
     MailInboxDetailView,
     MailInboxListView,
@@ -53,6 +56,21 @@ urlpatterns = (
             r"^mail/inbox/(?P<uid>[0-9]+)/?$",
             MailInboxDetailView.as_view(),
             name="mail-inbox-detail",
+        ),
+        re_path(
+            r"^mail/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/?$",
+            MailFolderListView.as_view(),
+            name="mail-folder-list",
+        ),
+        re_path(
+            r"^mail/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/actions/?$",
+            MailFolderActionView.as_view(),
+            name="mail-folder-actions",
+        ),
+        re_path(
+            r"^mail/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/(?P<uid>[0-9]+)/?$",
+            MailFolderDetailView.as_view(),
+            name="mail-folder-detail",
         ),
         # Setup Wizard Endpoints (trailing slash optional — Next.js proxy strips trailing slashes)
         re_path(r"^setup/status/?$", setup.check_setup_status, name="setup-status"),
