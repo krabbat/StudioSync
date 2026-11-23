@@ -245,7 +245,7 @@ export default function MailWorkspace() {
         setSelectedMailIds(allVisibleSelected ? [] : visibleIds)
     }
 
-    const runMailAction = async (action: MailAction, uids: string[]) => {
+    const runMailAction = async (action: MailAction, uids: string[], silent = false) => {
         if (mailActionBusy || uids.length === 0) return
         if (!uidvalidity) {
             toast.error('Bitte zuerst die Mails mit „Abrufen“ aktualisieren.')
@@ -270,7 +270,7 @@ export default function MailWorkspace() {
                 setMessages((items) => items.filter((item) => !updated.has(item.id)))
                 if (selectedId && updated.has(selectedId)) setSelectedId(null)
             }
-            setSelectedMailIds([])
+            if (!silent) setSelectedMailIds([])
             const names: Record<MailAction, string> = {
                 read: 'als gelesen markiert',
                 unread: 'als ungelesen markiert',
@@ -279,7 +279,7 @@ export default function MailWorkspace() {
                 delete: 'in den Papierkorb verschoben',
                 restore: 'in den Posteingang zurückgelegt',
             }
-            toast.success(`${response.data.updated} Nachricht(en) ${names[action]}.`)
+            if (!silent) toast.success(`${response.data.updated} Nachricht(en) ${names[action]}.`)
             if (action !== 'read' && action !== 'unread') {
                 // Refill the selected folder only after confirmed IMAP MOVE.
                 await loadFolder(folder, true)
@@ -320,7 +320,7 @@ export default function MailWorkspace() {
         if (message.bodyLoaded) {
             setDetailLoading(false)
             if (message.unread && !mailActionBusy) {
-                await runMailAction('read', [message.id])
+                await runMailAction('read', [message.id], true)
             }
             return
         }
@@ -337,7 +337,7 @@ export default function MailWorkspace() {
                     bodyLoaded: true } : item))
             // A message displayed in the preview is now read on the server.
             if (message.unread && !mailActionBusy) {
-                await runMailAction('read', [message.id])
+                await runMailAction('read', [message.id], true)
             }
         } catch (error: any) {
             if (detailGeneration.current !== generation) return
