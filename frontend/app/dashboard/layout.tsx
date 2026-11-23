@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import DashboardHeader from '@/components/DashboardHeader'
 import AuthGuard from '@/components/auth/AuthGuard'
@@ -17,6 +18,8 @@ export default function DashboardLayout({
     children: React.ReactNode
 }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const pathname = usePathname()
+    const isMailPage = pathname === '/dashboard/messages'
 
     const handleCloseSidebar = useCallback(() => {
         setIsSidebarOpen(false)
@@ -32,26 +35,21 @@ export default function DashboardLayout({
                 <AppearanceProvider>
                     <ColorSchemeProvider>
                         <NotificationsProvider>
-                            <div className="flex h-screen overflow-x-hidden" style={{ backgroundColor: '#faf7f2' }}>
-                            {/* Sidebar */}
-                            <Sidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} />
+                            <div className="dashboard-shell flex h-[100dvh] w-full overflow-hidden">
+                                {/* The navigation is an overlay on every screen size. */}
+                                <Sidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} />
 
-                            {/* Main Content */}
-                            <div className="flex-1 flex flex-col ml-0 md:ml-64 overflow-x-hidden w-full">
-                                {/* Header */}
-                                <DashboardHeader onMenuClick={handleOpenSidebar} />
+                                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                                    <DashboardHeader onMenuClick={handleOpenSidebar} compact={isMailPage} />
+                                    <UpdateBanner />
+                                    <main className={isMailPage
+                                        ? 'dashboard-mail-main min-h-0 min-w-0 flex-1 overflow-hidden'
+                                        : 'dashboard-main min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto'}>
+                                        {children}
+                                    </main>
+                                </div>
 
-                                {/* Update banner (admin-only, shown when a new version is available) */}
-                                <UpdateBanner />
-
-                                {/* Page Content */}
-                                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 w-full">
-                                    {children}
-                                </main>
-                            </div>
-
-                            {/* Global Command Palette */}
-                            <CommandPalette />
+                                <CommandPalette />
                             </div>
                         </NotificationsProvider>
                     </ColorSchemeProvider>
