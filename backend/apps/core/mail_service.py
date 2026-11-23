@@ -1,7 +1,7 @@
-"""Read-only IMAP inbox access for StudioSync.
+"""Read-only IMAP message retrieval from server-discovered folders.
 
-No remote flags are changed by browsing. UID is scoped to INBOX and paired
-with UIDVALIDITY to prevent stale selections after a mailbox rebuild.
+Reading does not mark messages as read; callers explicitly mark them after
+successful display. UIDs are scoped to each folder and UIDVALIDITY.
 """
 
 import imaplib
@@ -16,6 +16,7 @@ from html import unescape
 
 from django.utils.html import strip_tags
 
+from apps.core.mail_folders import MailFolderError, resolve_folder
 from apps.core.security import assert_public_host
 
 LOG = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ def _configuration(config):
 
 
 @contextmanager
-def _readonly_inbox(config):
+def _readonly_folder(config, folder='inbox'):
     host, port, user, password, security = _configuration(config)
     client = None
     try:
@@ -71,9 +72,13 @@ def _readonly_inbox(config):
             client.starttls(ssl_context=tls)
 
         client.login(user, password)
-        status, _ = client.select("INBOX", readonly=True)
+        try:
+            mailbox = resolve_folder(client, folder)
+        except MailFolderError as exc:
+            raise MailFetchError(str(exc)) from exc
+        status, _ = client.select(mailbox, readonly=True)
         if status != "OK":
-            raise MailFetchError("Der Posteingang konnte nicht geöffnet werden.")
+            raise MailFetchError("Der ausgewählte Mailordner konnte nicht geöffnet werden.")
         yield client
     except MailFetchError:
         raise
@@ -143,11 +148,11 @@ def _parse_metadata(item):
     }
 
 
-def list_inbox(config, offset=0, limit=LIST_PAGE_SIZE):
-    """Return newest IMAP UIDs first. Header-only fetch is fast and read-only."""
+def list_folder(config, folder='inbox', offset=0, limit=LIST_PAGE_SIZE):
+    """Return newest UIDs in the selected folder using header-only IMAP fetch."""
     offset = max(0, int(offset))
     limit = max(1, min(MAX_PAGE_SIZE, int(limit)))
-    with _readonly_inbox(config) as client:
+    with _readonly_folder(config, folder) as client:
         status, data = client.uid("SEARCH", None, "ALL")
         if status != "OK":
             raise MailFetchError("Die Nachrichtenliste konnte nicht geladen werden.")
@@ -227,12 +232,12 @@ def _message_body(message):
     return body[:MAX_TEXT_LENGTH], attachments
 
 
-def get_inbox_message(config, uid, expected_uidvalidity=None):
+def get_folder_message(config, folder, uid, expected_uidvalidity=None):
     """Fetch one selected message; reject stale UIDs and oversized previews."""
     if not re.fullmatch(r"[1-9]\d{0,19}", str(uid)):
         raise MailFetchError("Ungültige Nachrichtenkennung.")
 
-    with _readonly_inbox(config) as client:
+    with _readonly_folder(config, folder) as client:
         uidvalidity = _uidvalidity(client)
         if expected_uidvalidity and uidvalidity != str(expected_uidvalidity):
             raise MailFetchError(
@@ -274,3 +279,15 @@ def get_inbox_message(config, uid, expected_uidvalidity=None):
         body, attachments = _message_body(message)
         parsed.update({"body": body, "preview": body[:160], "attachments": attachments})
         return parsed
+
+
+def list_inbox(config, offset=0, limit=LIST_PAGE_SIZE):
+    """Backward-compatible authenticated inbox endpoint."""
+    return list_folder(config, "inbox", offset=offset, limit=limit)
+
+
+def get_inbox_message(config, uid, expected_uidvalidity=None):
+    """Backward-compatible read-only inbox detail endpoint."""
+    return get_folder_message(
+        config, "inbox", uid, expected_uidvalidity=expected_uidvalidity,
+    )
