@@ -1,14 +1,11 @@
 'use client'
 
-import { createPortal } from 'react-dom'
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useUser, UserRole } from '@/contexts/UserContext'
 import { useFeatureFlags } from '@/hooks/useFeatureFlags'
 import { FeatureFlags } from '@/types/setup'
-import { Logo } from '@/components/Logo'
 import {
     LayoutDashboard,
     Users,
@@ -28,12 +25,12 @@ import {
     Package,
     FileText,
     Music,
-    X,
+    PanelLeftClose,
+    PanelLeftOpen,
     Pencil,
     MapPin,
 } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
-import { Button } from '@/components/ui/button'
 import { useTranslations } from 'next-intl'
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
@@ -47,19 +44,6 @@ const S = {
     hoverBg: 'var(--dashboard-sidebar-hover)',
     badgeBg: 'var(--dashboard-sidebar-badge)',
 } as const
-
-const MobileSidebarPortal = ({ children }: { children: React.ReactNode }) => {
-    const [mounted, setMounted] = useState(false)
-
-    useEffect(() => {
-        setMounted(true)
-        return () => setMounted(false)
-    }, [])
-
-    if (!mounted) return null
-
-    return createPortal(children, document.body)
-}
 
 interface SidebarItem {
     name: string
@@ -79,23 +63,31 @@ interface SidebarSection {
 interface SidebarProps {
     isOpen: boolean
     onClose: () => void
+    onOpen: () => void
 }
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
     const t = useTranslations('Sidebar')
     const pathname = usePathname()
     const { currentUser } = useUser()
     const { flags } = useFeatureFlags()
     const { unreadCount } = useNotifications(60000)
+    const sidebarRef = useRef<HTMLElement>(null)
 
     useEffect(() => {
         onClose()
     }, [pathname, onClose])
 
+    // The rail always remains mounted; avoid scroll locking, backdrops, and
+    // mounting animations that formerly caused the content pane to flicker.
     useEffect(() => {
-        document.body.style.overflow = isOpen ? 'hidden' : 'unset'
-        return () => { document.body.style.overflow = 'unset' }
-    }, [isOpen])
+        if (!isOpen) return
+        const closeOutside = (event: PointerEvent) => {
+            if (event.target instanceof Node && !sidebarRef.current?.contains(event.target)) onClose()
+        }
+        document.addEventListener('pointerdown', closeOutside)
+        return () => document.removeEventListener('pointerdown', closeOutside)
+    }, [isOpen, onClose])
 
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -164,184 +156,82 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         return pathname === href || (pathname?.startsWith(href + '/') ?? false)
     }
 
-    const SidebarContent = () => (
-        <>
-            {/* Logo / brand */}
-            <div
-                className="p-5 pb-4"
-                style={{ borderBottom: `1px solid ${S.border}` }}
-            >
-                <Link href="/" className="flex items-center gap-2.5 mb-2" onClick={onClose}>
-                    <Logo className="w-9 h-9" />
-                    <span
-                        className="text-base font-bold"
-                        style={{ color: S.text, fontFamily: 'Outfit, sans-serif' }}
-                    >
-                        StudioSync
-                    </span>
-                </Link>
-                <p className="text-xs" style={{ color: S.muted }}>
-                    {currentUser?.role
-                        ? t('roleDashboard', {role: currentUser.role === 'teacher' ? t('roleTeacher') : currentUser.role === 'admin' ? t('roleAdmin') : currentUser.role === 'student' ? t('roleStudent') : currentUser.role})
-                        : t('studioManagement')}
-                </p>
+
+    const toggleNavigation = () => {
+        if (isOpen) onClose()
+        else onOpen()
+    }
+
+    return (
+        <aside
+            ref={sidebarRef}
+            className={`studiosync-sidebar ${isOpen ? 'is-expanded' : 'is-collapsed'}`}
+            aria-label="StudioSync-Hauptnavigation"
+            style={{ backgroundColor: S.bg }}
+        >
+            <div className="studiosync-sidebar-header">
+                <button
+                    type="button"
+                    className="studiosync-sidebar-toggle"
+                    onClick={toggleNavigation}
+                    title={isOpen ? 'Menü einklappen' : 'Menü aufklappen'}
+                    aria-label={isOpen ? 'StudioSync-Menü einklappen' : 'StudioSync-Menü aufklappen'}
+                    aria-expanded={isOpen}
+                >
+                    {isOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}
+                </button>
+                <span className="studiosync-sidebar-label studiosync-sidebar-brand">StudioSync</span>
             </div>
 
-            {/* Nav */}
-            <nav className="flex-1 overflow-y-auto py-4 pb-24">
+            <nav className="studiosync-sidebar-nav" aria-label="Hauptmenü">
                 {sections.map((section, sectionIdx) => {
                     if (section.roles && (!currentUser || !section.roles.includes(currentUser.role))) return null
-
-                    const visibleItems = section.items.filter((item) => {
-                        const hasRoleAccess = !item.roles || (currentUser && item.roles.includes(currentUser.role))
-                        if (!hasRoleAccess) return false
-                        if (item.featureFlag && !flags[item.featureFlag]) return false
-                        return true
+                    const items = section.items.filter((item) => {
+                        if (item.roles && (!currentUser || !item.roles.includes(currentUser.role))) return false
+                        return !item.featureFlag || flags[item.featureFlag]
                     })
-
-                    if (visibleItems.length === 0) return null
+                    if (items.length === 0) return null
 
                     return (
-                        <div key={sectionIdx} className="mb-5">
+                        <div className="studiosync-sidebar-section" key={sectionIdx}>
                             {section.title && (
-                                <p
-                                    className="px-5 text-[10px] font-semibold uppercase tracking-widest mb-1.5"
-                                    style={{ color: S.amber, opacity: 0.75 }}
-                                >
+                                <div className="studiosync-sidebar-section-title studiosync-sidebar-label">
                                     {section.title}
-                                </p>
+                                </div>
                             )}
-                            <ul className="space-y-0.5 px-3">
-                                {visibleItems.map((item) => {
-                                    const active = isActive(item.href)
-                                    const isExternal = item.href.startsWith('http')
-
-                                    const itemContent = (
-                                        <>
-                                            <div className="flex items-center gap-3">
-                                                <item.icon
-                                                    className="w-4 h-4 flex-shrink-0"
-                                                    style={{ color: active ? S.amber : S.muted }}
-                                                />
-                                                <span
-                                                    className="text-sm font-medium"
-                                                    style={{ color: active ? S.amber : S.text }}
-                                                >
-                                                    {item.name}
-                                                </span>
-                                            </div>
-                                            {item.badge !== undefined && (
-                                                <span
-                                                    className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
-                                                    style={{
-                                                        backgroundColor: S.badgeBg,
-                                                        color: S.amber,
-                                                    }}
-                                                >
-                                                    {item.badge}
-                                                </span>
-                                            )}
-                                        </>
-                                    )
-
-                                    const itemStyle: React.CSSProperties = {
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '7px 12px',
-                                        borderRadius: '8px',
-                                        transition: 'background-color 0.15s',
-                                        backgroundColor: active ? S.amberBg : 'transparent',
-                                        borderLeft: active ? `2px solid ${S.amber}` : '2px solid transparent',
-                                    }
-
-                                    if (isExternal) {
-                                        return (
-                                            <li key={item.href}>
-                                                <a
-                                                    href={item.href}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    style={itemStyle}
-                                                    onMouseEnter={(e) => {
-                                                        if (!active) e.currentTarget.style.backgroundColor = S.hoverBg
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        if (!active) e.currentTarget.style.backgroundColor = 'transparent'
-                                                    }}
-                                                >
-                                                    {itemContent}
-                                                </a>
-                                            </li>
-                                        )
-                                    }
-
-                                    return (
-                                        <li key={item.href}>
-                                            <Link
-                                                href={item.href}
-                                                onClick={onClose}
-                                                style={itemStyle}
-                                                onMouseEnter={(e) => {
-                                                    if (!active) e.currentTarget.style.backgroundColor = S.hoverBg
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    if (!active) e.currentTarget.style.backgroundColor = active ? S.amberBg : 'transparent'
-                                                }}
-                                            >
-                                                {itemContent}
-                                            </Link>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
+                            {items.map((item) => {
+                                const active = isActive(item.href)
+                                const Icon = item.icon
+                                const content = (
+                                    <>
+                                        <Icon className="studiosync-sidebar-icon" size={19}
+                                            style={{ color: active ? S.amber : S.muted }} />
+                                        <span className="studiosync-sidebar-label studiosync-sidebar-item-name">{item.name}</span>
+                                        {item.badge !== undefined && (
+                                            <span className="studiosync-sidebar-label studiosync-sidebar-badge">{item.badge}</span>
+                                        )}
+                                    </>
+                                )
+                                return item.href.startsWith('http') ? (
+                                    <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
+                                        title={!isOpen ? item.name : undefined}
+                                        className={`studiosync-sidebar-item ${active ? 'is-active' : ''}`}>
+                                        {content}
+                                    </a>
+                                ) : (
+                                    <Link key={item.href} href={item.href}
+                                        onClick={onClose}
+                                        title={!isOpen ? item.name : undefined}
+                                        aria-current={active ? 'page' : undefined}
+                                        className={`studiosync-sidebar-item ${active ? 'is-active' : ''}`}>
+                                        {content}
+                                    </Link>
+                                )
+                            })}
                         </div>
                     )
                 })}
             </nav>
-        </>
-    )
-
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <MobileSidebarPortal>
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={onClose}
-                        className="fixed inset-0 z-[100]"
-                        style={{ backgroundColor: 'rgba(28,19,9,0.6)', backdropFilter: 'blur(2px)' }}
-                    />
-
-                    <motion.aside
-                        initial={{ x: '-100%' }}
-                        animate={{ x: 0 }}
-                        exit={{ x: '-100%' }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="studiosync-sidebar fixed left-0 top-0 h-[100dvh] w-64 max-w-[85vw] flex flex-col z-[101]"
-                        style={{ backgroundColor: S.bg }}
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label="StudioSync-Navigation"
-                    >
-                        <div className="absolute top-4 right-4 z-10">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={onClose}
-                                className="shadow-none"
-                                style={{ color: S.muted }}
-                                aria-label={t('closeMenu')}
-                            >
-                                <X className="w-5 h-5" />
-                            </Button>
-                        </div>
-
-                        <SidebarContent />
-                    </motion.aside>
-                </MobileSidebarPortal>
-            )}
-        </AnimatePresence>
+        </aside>
     )
 }
