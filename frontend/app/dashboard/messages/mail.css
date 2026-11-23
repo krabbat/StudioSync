@@ -790,3 +790,65 @@
         font-size: 10px;
     }
 }
+
+
+/* Real IMAP retrieval: compact, visible refresh action and truthful load states. */
+.mail-fetch-button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid var(--mail-border-color);
+    border-radius: var(--mail-panel-radius);
+    min-height: 34px;
+    padding: 0 7px;
+    background: var(--mail-panel-background);
+    color: var(--mail-text-color);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.mail-fetch-button:hover:not(:disabled),
+.mail-load-more:hover:not(:disabled) {
+    background: var(--mail-hover-background);
+}
+
+.mail-fetch-button:disabled,
+.mail-bulk-toolbar button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.mail-fetch-error {
+    flex-shrink: 0;
+    background: var(--mail-hover-background);
+    color: var(--mail-text-color);
+    border-bottom: 1px solid var(--mail-border-color);
+    padding: 9px 11px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.mail-fetch-status {
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--mail-border-color);
+    font-size: 10px;
+    color: var(--mail-muted-color);
+    flex-shrink: 0;
+}
+
+.mail-load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(100% - 20px);
+    min-height: 38px;
+    margin: 10px;
+    border: 1px solid var(--mail-border-color);
+    border-radius: var(--mail-panel-radius);
+    background: var(--mail-panel-background);
+    color: var(--mail-text-color);
+    cursor: pointer;
+    font-size: 12px;
+}
