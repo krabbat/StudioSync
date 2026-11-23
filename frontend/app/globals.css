@@ -934,3 +934,162 @@ button {
 .dark .studiosync-sidebar nav {
   background-color: var(--dashboard-sidebar-background) !important;
 }
+
+
+/* Persistent StudioSync icon rail.
+   Expanded navigation overlays the page instead of resizing or locking it,
+   so the right-hand workspace never flashes or reflows. */
+:root {
+  --dashboard-sidebar-rail-width: 60px;
+  --dashboard-sidebar-expanded-width: 254px;
+  --dashboard-sidebar-row-height: 42px;
+  --dashboard-sidebar-transition: 190ms ease;
+  --dashboard-sidebar-expanded-shadow: 6px 0 22px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-content-column {
+  padding-left: var(--dashboard-sidebar-rail-width);
+}
+
+.studiosync-sidebar {
+  position: fixed;
+  z-index: 101;
+  inset: 0 auto 0 0;
+  width: var(--dashboard-sidebar-rail-width);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--dashboard-sidebar-background);
+  color: var(--dashboard-sidebar-text);
+  border-right: 1px solid var(--dashboard-sidebar-border);
+  transition: width var(--dashboard-sidebar-transition), box-shadow var(--dashboard-sidebar-transition);
+}
+
+.studiosync-sidebar.is-expanded {
+  width: var(--dashboard-sidebar-expanded-width);
+  box-shadow: var(--dashboard-sidebar-expanded-shadow);
+}
+
+.studiosync-sidebar-header {
+  display: flex;
+  align-items: center;
+  height: 56px;
+  flex: 0 0 56px;
+  border-bottom: 1px solid var(--dashboard-sidebar-border);
+}
+
+.studiosync-sidebar-toggle {
+  flex: 0 0 var(--dashboard-sidebar-rail-width);
+  width: var(--dashboard-sidebar-rail-width);
+  height: 48px;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--dashboard-sidebar-accent);
+  cursor: pointer;
+}
+
+.studiosync-sidebar-toggle:hover,
+.studiosync-sidebar-item:hover {
+  background: var(--dashboard-sidebar-hover);
+}
+
+.studiosync-sidebar-label {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease, max-width var(--dashboard-sidebar-transition);
+}
+
+.studiosync-sidebar.is-expanded .studiosync-sidebar-label {
+  max-width: 190px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 160ms ease 60ms, max-width var(--dashboard-sidebar-transition);
+}
+
+.studiosync-sidebar-brand {
+  font-weight: 750;
+  font-size: 15px;
+  color: var(--dashboard-sidebar-text);
+}
+
+.studiosync-sidebar-nav {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dashboard-sidebar-border) transparent;
+}
+
+.studiosync-sidebar-section {
+  padding: 3px 0 7px;
+  border-bottom: 1px solid var(--dashboard-sidebar-border);
+}
+
+.studiosync-sidebar-section-title {
+  display: flex;
+  align-items: center;
+  min-height: 14px;
+  height: 14px;
+  font-size: 10px;
+  line-height: 14px;
+  margin-left: var(--dashboard-sidebar-rail-width);
+  color: var(--dashboard-sidebar-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.studiosync-sidebar-item {
+  display: flex;
+  align-items: center;
+  height: var(--dashboard-sidebar-row-height);
+  width: 100%;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--dashboard-sidebar-text);
+  text-decoration: none;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 550;
+  transition: background-color 120ms ease;
+  cursor: pointer;
+}
+
+.studiosync-sidebar-item.is-active {
+  border-left-color: var(--dashboard-sidebar-accent);
+  background: var(--dashboard-sidebar-accent-soft);
+  color: var(--dashboard-sidebar-accent);
+}
+
+.studiosync-sidebar-icon {
+  flex: 0 0 calc(var(--dashboard-sidebar-rail-width) - 3px);
+  width: calc(var(--dashboard-sidebar-rail-width) - 3px);
+  min-width: 0;
+}
+
+.studiosync-sidebar-item-name {
+  flex-shrink: 0;
+}
+
+.studiosync-sidebar-badge {
+  margin-left: auto;
+  margin-right: 10px;
+  font-size: 11px;
+  color: var(--dashboard-sidebar-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studiosync-sidebar,
+  .studiosync-sidebar-label {
+    transition: none !important;
+  }
+}
