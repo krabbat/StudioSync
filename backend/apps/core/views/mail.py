@@ -5,8 +5,14 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.mail_actions import apply_inbox_action
-from apps.core.mail_service import MailFetchError, get_inbox_message, list_inbox
+from apps.core.mail_actions import apply_folder_action, apply_inbox_action
+from apps.core.mail_service import (
+    MailFetchError,
+    get_folder_message,
+    get_inbox_message,
+    list_folder,
+    list_inbox,
+)
 from apps.core.tenancy import studio_for_request
 
 
@@ -89,6 +95,76 @@ class MailInboxActionView(APIView):
         uidvalidity = request.data.get("uidvalidity")
         try:
             result = apply_inbox_action(config, action, uids, uidvalidity)
+        except MailFetchError as exc:
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(result)
+
+
+class MailFolderListView(APIView):
+    """Load message headers for a known server-discovered folder."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, folder):
+        config = _mailbox_config(request)
+        try:
+            offset = int(request.query_params.get("offset", "0"))
+            limit = int(request.query_params.get("limit", "40"))
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "Ungültige Seitenangabe."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not 0 <= offset <= 1_000_000 or not 1 <= limit <= 80:
+            return Response(
+                {"detail": "Ungültige Seitenangabe."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            return Response(list_folder(config, folder, offset=offset, limit=limit))
+        except MailFetchError as exc:
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY
+            )
+
+
+class MailFolderDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, folder, uid):
+        config = _mailbox_config(request)
+        uidvalidity = request.query_params.get("uidvalidity") or None
+        try:
+            data = get_folder_message(
+                config, folder, uid, expected_uidvalidity=uidvalidity,
+            )
+        except MailFetchError as exc:
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY
+            )
+        return Response(data)
+
+
+class MailFolderActionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, folder):
+        config = _mailbox_config(request)
+        if not isinstance(request.data, dict):
+            return Response(
+                {"detail": "Ungültige Aktionsdaten."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            result = apply_folder_action(
+                config,
+                folder,
+                request.data.get("action"),
+                request.data.get("uids"),
+                request.data.get("uidvalidity"),
+            )
         except MailFetchError as exc:
             return Response(
                 {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
