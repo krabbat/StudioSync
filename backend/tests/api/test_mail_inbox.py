@@ -42,9 +42,15 @@ def test_inbox_lists_newest_uids_with_headers_only_and_keeps_mail_unread():
         assert command == "FETCH"
         assert args == ("42,17", "(UID FLAGS RFC822.SIZE BODY.PEEK[HEADER])")
         return "OK", [
-            (b"3 (UID 17 FLAGS () RFC822.SIZE 123 BODY[HEADER] {80}", headers(subject="Alt")),
+            (
+                b"3 (UID 17 FLAGS () RFC822.SIZE 123 BODY[HEADER] {80}",
+                headers(subject="Alt"),
+            ),
             b")",
-            (b"2 (UID 42 FLAGS (\\Seen \\Flagged) RFC822.SIZE 400 BODY[HEADER] {80}", headers(subject="Neu")),
+            (
+                b"2 (UID 42 FLAGS (\\Seen \\Flagged) RFC822.SIZE 400 BODY[HEADER] {80}",
+                headers(subject="Neu"),
+            ),
             b")",
         ]
 
@@ -119,7 +125,9 @@ def test_oversized_mail_is_not_downloaded():
 
 
 @pytest.mark.django_db
-def test_mail_api_reuses_admin_saved_credentials_without_echo(authenticated_client, admin_user, studio):
+def test_mail_api_reuses_admin_saved_credentials_without_echo(
+    authenticated_client, admin_user, studio
+):
     admin_user.preferences = {"technical": dict(CONFIG)}
     admin_user.save(update_fields=["preferences"])
 
@@ -141,14 +149,18 @@ def test_mail_api_rejects_teacher_student_and_anonymous(
 ):
     for client in (teacher_authenticated_client, student_authenticated_client):
         assert client.get(reverse("mail-inbox-list")).status_code == 403
-        assert client.get(reverse("mail-inbox-detail", kwargs={"uid": "12"})).status_code == 403
+        response = client.get(reverse("mail-inbox-detail", kwargs={"uid": "12"}))
+        assert response.status_code == 403
     assert api_client.get(reverse("mail-inbox-list")).status_code in (401, 403)
 
 
 @pytest.mark.django_db
 def test_mail_api_returns_safe_error_and_validates_page(authenticated_client, studio):
-    assert authenticated_client.get(reverse("mail-inbox-list") + "?limit=10000").status_code == 400
-    with patch("apps.core.views.mail.list_inbox", side_effect=MailFetchError("IMAP-Fehler")):
+    response = authenticated_client.get(reverse("mail-inbox-list") + "?limit=10000")
+    assert response.status_code == 400
+    with patch(
+        "apps.core.views.mail.list_inbox", side_effect=MailFetchError("IMAP-Fehler")
+    ):
         response = authenticated_client.get(reverse("mail-inbox-list"))
     assert response.status_code == 502
     assert response.data["detail"] == "IMAP-Fehler"
