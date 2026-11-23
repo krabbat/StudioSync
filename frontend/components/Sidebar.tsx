@@ -38,14 +38,14 @@ import { useTranslations } from 'next-intl'
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const S = {
-    bg: '#1c1309',
-    border: 'rgba(255,255,255,0.07)',
-    amber: '#c17c2e',
-    amberBg: 'rgba(193,124,46,0.14)',
-    text: 'rgba(250,247,242,0.9)',
-    muted: 'rgba(250,247,242,0.5)',
-    hoverBg: 'rgba(250,247,242,0.06)',
-    badgeBg: 'rgba(193,124,46,0.2)',
+    bg: 'var(--dashboard-sidebar-background)',
+    border: 'var(--dashboard-sidebar-border)',
+    amber: 'var(--dashboard-sidebar-accent)',
+    amberBg: 'var(--dashboard-sidebar-accent-soft)',
+    text: 'var(--dashboard-sidebar-text)',
+    muted: 'var(--dashboard-sidebar-muted)',
+    hoverBg: 'var(--dashboard-sidebar-hover)',
+    badgeBg: 'var(--dashboard-sidebar-badge)',
 } as const
 
 const MobileSidebarPortal = ({ children }: { children: React.ReactNode }) => {
