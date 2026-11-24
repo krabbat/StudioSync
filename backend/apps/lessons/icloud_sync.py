@@ -389,8 +389,28 @@ def _push_changes(series, remote, stats):
 
 
 def sync_icloud_user(user):
-    """Run one pull-then-push, idempotent round trip; returns per-direction counts."""
-        cfg = _settings(user)
+    """Serialize manual and scheduled jobs for the same Apple account."""
+    if connection.vendor != "postgresql":
+        return _sync_icloud_user_impl(user)
+    lock_id = int.from_bytes(
+        sha256(("musart-icloud:" + str(user.pk)).encode()).digest()[:8],
+        byteorder="big", signed=True,
+    )
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_try_advisory_lock(%s)", [lock_id])
+        acquired = cursor.fetchone()[0]
+    if not acquired:
+        raise ICloudSetupError("Der iCloud-Abgleich läuft bereits. Bitte erneut versuchen.")
+    try:
+        return _sync_icloud_user_impl(user)
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_unlock(%s)", [lock_id])
+
+
+def _sync_icloud_user_impl(user):
+    """Run one pull-then-push idempotent round trip."""
+    cfg = _settings(user)
     calendar_url = _allowed_calendar_url(cfg.get("icloud_calendar_url") or "")
     username, password = _credentials(user)
     studio = user.owned_studios.order_by("id").first()
