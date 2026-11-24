@@ -141,7 +141,7 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                     </p>
                     {problems.map(item => (
                         <div key={item.id} className="mt-3 space-y-2">
-                            <p><strong>{item.title}:</strong> {item.error}</p>
+                            <p className="whitespace-pre-line"><strong>{item.title}:</strong> {item.error}</p>
                             {item.error.includes('Konflikt:') && (
                                 <div className="flex flex-wrap gap-2">
                                     <button type="button" disabled={resolving !== null || assigning !== null}
