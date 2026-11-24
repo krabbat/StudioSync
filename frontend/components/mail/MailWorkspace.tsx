@@ -685,7 +685,7 @@ export default function MailWorkspace() {
     }
 
     const sendMail = async () => {
-        if (sendBusyRef.current || mailSending || recipientsLoading || recipientsError) return
+        if (sendBusyRef.current || mailSending || draftSaving || recipientsLoading || recipientsError) return
         if (!distinctRecipientCount || !subject.trim() || !body.trim()) {
             toast.error('Bitte Empfänger, Betreff und Nachrichtentext angeben.')
             return
@@ -1476,7 +1476,7 @@ export default function MailWorkspace() {
                                 {draftSaving ? 'Speichert …' : 'Entwurf speichern'}
                             </button>
                             <button type="button" className="mail-send-button"
-                                disabled={mailSending || recipientsLoading || !!recipientsError ||
+                                disabled={mailSending || draftSaving || recipientsLoading || !!recipientsError ||
                                     !distinctRecipientCount || !subject.trim() || !body.trim()}
                                 onClick={() => void sendMail()}
                                 title="Ausgewählte Empfänger über SMTP anschreiben">
