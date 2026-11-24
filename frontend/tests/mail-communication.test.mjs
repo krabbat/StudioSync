@@ -16,6 +16,25 @@ test('student profile adds an admin-only Kommunikation tab and a mail overview',
     assert.match(panel, /&uid=/)
 })
 
+test('student communication overview includes received, sent and drafts without a 25-message cap', () => {
+    const panel = read('components/StudentCommunicationPanel.tsx')
+    const client = read('components/mail/MailWorkspace.tsx')
+    assert.match(panel, /kindName: Record<MailKind, string>/)
+    assert.match(panel, /received: 'Empfangen'/)
+    assert.match(panel, /sent: 'Gesendet'/)
+    assert.match(panel, /draft: 'Entwurf'/)
+    assert.match(panel, /PAGE_SIZE = 40/)
+    assert.match(panel, /offset: messages\.length/)
+    assert.match(panel, /setHasMore\(data\.has_more\)/)
+    assert.match(panel, /Weitere Nachrichten laden/)
+    assert.match(panel, /&draft=/)
+    assert.match(panel, /&uid=/)
+    assert.match(panel, /messages\.map\(item =>/)
+    assert.match(client, /params\.get\('draft'\)/)
+    assert.match(client, /setLinkedDraftId\(draft\)/)
+    assert.match(client, /void openDraft\(id\)/)
+})
+
 test('mail filters use student UUID and instrument assignments from backend', () => {
     const client = read('components/mail/MailWorkspace.tsx')
     assert.match(client, /\/core\/mail\/cache\/students\//)
