@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, User, Mail, Phone, Music, Users, Info, Plus, Camera, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
+import { INTERNATIONAL_EMAIL_PATTERN, INTERNATIONAL_EMAIL_HINT } from '@/lib/internationalEmail'
 import { formatPhoneNumber } from '@/lib/utils'
 import ImageCropper from '@/components/ImageCropper'
 import { useTeachers } from '@/hooks/useDashboardData'
@@ -239,7 +240,7 @@ export default function AddStudentPage() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         {tr('emailAddress')} <span className="text-red-500">*</span>
                                     </label>
-                                    <input type="email" name="email" required value={formData.email} onChange={handleChange} className={inputClass} placeholder={tr('exampleEmail')} />
+                                    <input type="text" inputMode="email" autoComplete="email" name="email" required pattern={INTERNATIONAL_EMAIL_PATTERN} title={INTERNATIONAL_EMAIL_HINT} value={formData.email} onChange={handleChange} className={inputClass} placeholder={tr('exampleEmail')} />
                                     <p className="text-xs text-gray-500 mt-1">{tr('usedForLoginCanBeTheStudentSOrParentSEmailForMinors')}</p>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
