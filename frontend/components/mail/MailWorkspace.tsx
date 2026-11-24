@@ -7,8 +7,8 @@ import {
 import { createPortal } from 'react-dom'
 import {
     Archive, CheckCheck, ChevronDown, ChevronRight, FileText, Filter, Forward,
-    Inbox, Mail, MailOpen, Menu, MoreHorizontal, Paperclip, Pencil, RefreshCw, Reply,
-    Search, Send, ShieldAlert, Star, Trash2, Upload, X,
+    File, FileAudio, FileImage, FileVideo, Inbox, Mail, MailOpen, Menu, MoreHorizontal,
+    Paperclip, Pencil, RefreshCw, Reply, Search, Send, ShieldAlert, Star, Trash2, Upload, X,
 } from 'lucide-react'
 import api from '@/services/api'
 import { toast } from 'react-hot-toast'
@@ -25,11 +25,21 @@ interface StudentMailRecipient {
     selectable: boolean
 }
 
+interface StudioMailResource {
+    id: string
+    title: string
+    filename: string
+    size: number | null
+    mime_type: string
+    folder_name: string
+}
+
 interface SendMailResult {
     sent: number
     failed: number
     student_ids_sent: string[]
     manual_sent: boolean
+    additional_sent?: boolean
     copies_failed: number
 }
 type MailAction = 'read' | 'unread' | 'spam' | 'archive' | 'delete' | 'restore'
@@ -84,6 +94,15 @@ const normalizeMessage = (message: InboxApiMessage, folder: FolderId): MailPrevi
     attachments: message.attachments || [],
     has_attachment: Boolean(message.has_attachment),
 })
+
+const attachmentIcon = (name: string, mime = '') => {
+    const ext = name.toLowerCase().split('.').pop() || ''
+    if (mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) return FileImage
+    if (mime.startsWith('audio/') || ['mp3', 'wav', 'm4a', 'flac'].includes(ext)) return FileAudio
+    if (mime.startsWith('video/') || ['mp4', 'mov', 'mkv'].includes(ext)) return FileVideo
+    if (ext === 'pdf' || ['doc', 'docx', 'txt', 'odt'].includes(ext)) return FileText
+    return File
+}
 
 const FOLDERS: { id: FolderId; name: string; icon: typeof Inbox }[] = [
     { id: 'inbox', name: 'Posteingang', icon: Inbox },
@@ -164,10 +183,21 @@ export default function MailWorkspace() {
     const [composing, setComposing] = useState(false)
     const [recipientMode, setRecipientMode] = useState<RecipientMode>('single')
     const [recipient, setRecipient] = useState('')
+    const [replyRecipientName, setReplyRecipientName] = useState('')
+    const [additionalRecipient, setAdditionalRecipient] = useState('')
+    const [showAdditionalRecipient, setShowAdditionalRecipient] = useState(false)
     const [group, setGroup] = useState('')
     const [subject, setSubject] = useState('')
     const [body, setBody] = useState('')
     const [localFiles, setLocalFiles] = useState<File[]>([])
+    const [studioFiles, setStudioFiles] = useState<StudioMailResource[]>([])
+    const [resourcePickerOpen, setResourcePickerOpen] = useState(false)
+    const [resourceQuery, setResourceQuery] = useState('')
+    const [resourceResults, setResourceResults] = useState<StudioMailResource[]>([])
+    const [resourceHasMore, setResourceHasMore] = useState(false)
+    const [resourcesLoading, setResourcesLoading] = useState(false)
+    const [resourcesError, setResourcesError] = useState('')
+    const resourceSearchRef = useRef<HTMLInputElement>(null)
     const [studentRecipients, setStudentRecipients] = useState<StudentMailRecipient[]>([])
     const [recipientsLoading, setRecipientsLoading] = useState(false)
     const [recipientsReloadKey, setRecipientsReloadKey] = useState(0)
@@ -228,6 +258,42 @@ export default function MailWorkspace() {
         document.addEventListener('keydown', onPickerKeyDown)
         return () => document.removeEventListener('keydown', onPickerKeyDown)
     }, [recipientPickerOpen, composing, mailSending])
+
+    useEffect(() => {
+        if (!composing || !resourcePickerOpen) return
+        let active = true
+        setResourcesLoading(true)
+        setResourcesError('')
+        const handle = window.setTimeout(() => {
+            void api.get<{ resources: StudioMailResource[]; has_more: boolean }>(
+                '/core/mail/attachments/resources/',
+                { params: { q: resourceQuery.trim() } },
+            ).then(({ data }) => {
+                if (!active) return
+                setResourceResults(data.resources)
+                setResourceHasMore(data.has_more)
+            }).catch((error: any) => {
+                if (active) setResourcesError(error?.response?.data?.detail ||
+                    'StudioSync-Dateien konnten nicht geladen werden.')
+            }).finally(() => {
+                if (active) setResourcesLoading(false)
+            })
+        }, 200)
+        return () => { active = false; window.clearTimeout(handle) }
+    }, [composing, resourcePickerOpen, resourceQuery])
+
+    useEffect(() => {
+        if (!resourcePickerOpen || !composing) return
+        resourceSearchRef.current?.focus()
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !mailSending) {
+                event.preventDefault()
+                setResourcePickerOpen(false)
+            }
+        }
+        document.addEventListener('keydown', handleEscape)
+        return () => document.removeEventListener('keydown', handleEscape)
+    }, [resourcePickerOpen, composing, mailSending])
 
     const loadFolder = useCallback(async (currentFolder: FolderId, reset = true, offset = 0) => {
         const generation = ++requestGeneration.current
@@ -390,9 +456,13 @@ export default function MailWorkspace() {
         selectedStudents.map((s) => s.email.trim().toLocaleLowerCase('de'))
     )
     const manualTarget = recipientMode === 'single' ? recipient.trim() : ''
-    const distinctRecipientCount = studentAddresses.size + (
-        manualTarget && !studentAddresses.has(manualTarget.toLocaleLowerCase('de')) ? 1 : 0
-    )
+    const extraTarget = recipientMode === 'single' ? additionalRecipient.trim() : ''
+    const recipientAddresses = new Set([
+        ...studentAddresses,
+        ...(manualTarget ? [manualTarget.toLocaleLowerCase('de')] : []),
+        ...(extraTarget ? [extraTarget.toLocaleLowerCase('de')] : []),
+    ])
+    const distinctRecipientCount = recipientAddresses.size
     const visibleStudents = studentRecipients.filter((student) => {
         const q = recipientSearch.trim().toLocaleLowerCase('de')
         return !q || [student.name, student.email, ...student.instruments]
@@ -415,6 +485,19 @@ export default function MailWorkspace() {
         })
     }
 
+    const toggleStudioFile = (resource: StudioMailResource) => {
+        setStudioFiles((current) => {
+            if (current.some((file) => file.id === resource.id)) {
+                return current.filter((file) => file.id !== resource.id)
+            }
+            if (current.length + localFiles.length >= 8) {
+                toast.error('Maximal acht Anhänge pro Nachricht.')
+                return current
+            }
+            return [...current, resource]
+        })
+    }
+
     const sendMail = async () => {
         if (sendBusyRef.current || mailSending || recipientsLoading || recipientsError) return
         if (!distinctRecipientCount || !subject.trim() || !body.trim()) {
@@ -430,6 +513,8 @@ export default function MailWorkspace() {
             const form = new FormData()
             form.append('student_ids', JSON.stringify(selectedStudents.map((s) => s.id)))
             form.append('manual_recipient', manualTarget)
+            form.append('additional_recipient', extraTarget)
+            form.append('resource_ids', JSON.stringify(studioFiles.map((file) => file.id)))
             form.append('subject', subject)
             form.append('body', body)
             for (const file of localFiles) form.append('attachments', file)
@@ -442,6 +527,7 @@ export default function MailWorkspace() {
                 })
             }
             if (data.manual_sent) setRecipient('')
+            if (data.additional_sent) setAdditionalRecipient('')
             if (data.sent > 0 && data.failed === 0) {
                 toast.success(`${data.sent} E-Mail(s) erfolgreich versendet.`)
                 if (data.copies_failed > 0) {
@@ -452,6 +538,8 @@ export default function MailWorkspace() {
                 setSubject('')
                 setBody('')
                 setLocalFiles([])
+                setStudioFiles([])
+                setResourcePickerOpen(false)
                 setSelectedId(null)
                 if (folder === 'sent') {
                     void loadFolder('sent', true)
@@ -532,15 +620,22 @@ export default function MailWorkspace() {
     const compose = (mode: 'new' | 'reply' | 'forward' = 'new') => {
         if (mode === 'new') {
             setRecipient('')
+            setReplyRecipientName('')
             setSubject('')
             setBody('')
             setLocalFiles([])
         } else if (selected) {
             setRecipient(mode === 'reply' ? selected.email : '')
+            setReplyRecipientName(mode === 'reply' ? selected.from : '')
             setSubject((mode === 'reply' ? 'Re: ' : 'Fw: ') + selected.subject)
             setBody(mode === 'forward' ? '\n\n--- Weitergeleitete Nachricht ---\n' + selected.body : '')
             setLocalFiles([])
         }
+        setAdditionalRecipient('')
+        setShowAdditionalRecipient(false)
+        setStudioFiles([])
+        setResourcePickerOpen(false)
+        setResourceQuery('')
         setRecipientMode('single')
         setRecipientOverrides({})
         setRecipientSearch('')
