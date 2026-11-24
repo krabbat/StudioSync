@@ -95,7 +95,7 @@ export default function ICloudCalendarSettings() {
                 <p className="text-xs text-gray-600">
                     Verbindung zum iCloud-Kalender „MUSart Unterricht“. Die Einrichtung prüft
                     Lese- und Schreibzugriff, ohne bestehende Unterrichtstermine zu verändern.
-                    Die eigentliche Termin-Synchronisierung richten wir anschließend ein.
+                    Die Synchronisierung startest du direkt im Terminkalender links neben „Drucken“.
                 </p>
 
                 <div>
