@@ -25,7 +25,7 @@ test('mail filters use student UUID and instrument assignments from backend', ()
     assert.match(client, /option value="">Alle Instrumente</)
     assert.match(client, /saveMailAssociation/)
     assert.match(client, /automati[sS]ch/i)
-    assert.match(client, /studentFilter\(sid\)/)
+    assert.match(client, /setStudentFilter\(sid\)/)
 })
 
 test('drafts have durable server storage including file restore', () => {
