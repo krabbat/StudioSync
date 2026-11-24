@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.urls import reverse
 
-from apps.core.mail_actions import apply_inbox_action
+from apps.core.mail_actions import apply_folder_action, apply_inbox_action
 from apps.core.mail_service import MailFetchError
 
 CONFIG = {
@@ -225,3 +225,44 @@ def test_delete_creates_trash_only_when_user_requests_move():
     run_with_client(client, "delete")
     client.create.assert_called_once_with("Trash")
     client.uid.assert_any_call("MOVE", "12,34", b'"Trash"')
+
+
+@pytest.mark.parametrize(
+    ("folder", "action", "destination"),
+    [
+        ("trash", "restore", "INBOX"),
+        ("archive", "restore", "INBOX"),
+        ("spam", "restore", "INBOX"),
+    ],
+)
+def test_move_back_to_inbox_preserves_message_from_source_folder(
+    folder, action, destination
+):
+    client = mock_imap()
+    with (
+        patch("apps.core.mail_service.assert_public_host"),
+        patch("apps.core.mail_actions.imaplib.IMAP4_SSL", return_value=client),
+    ):
+        result = apply_folder_action(CONFIG, folder, action, ["12", "34"], "99")
+    assert result["updated"] == 2
+    client.uid.assert_any_call("MOVE", "12,34", destination)
+    client.expunge.assert_not_called()
+    assert client.select.call_args.kwargs["readonly"] is False
+    assert client.select.call_args.args[0] != "INBOX"
+
+
+@pytest.mark.django_db
+def test_mail_folder_delete_endpoint_requires_admin_owner(
+    authenticated_client, teacher_authenticated_client, admin_user, studio
+):
+    admin_user.preferences = {"technical": dict(CONFIG)}
+    admin_user.save(update_fields=["preferences"])
+    url = reverse("mail-folder-actions", kwargs={"folder": "inbox"})
+    body = {"action": "delete", "uids": ["12"], "uidvalidity": "99"}
+    assert teacher_authenticated_client.post(url, body, format="json").status_code == 403
+    with patch("apps.core.views.mail.apply_folder_action") as handler:
+        handler.return_value = {"action": "delete", "uids": ["12"], "updated": 1}
+        response = authenticated_client.post(url, body, format="json")
+    assert response.status_code == 200, response.data
+    assert handler.call_args.args[1:] == ("inbox", "delete", ["12"], "99")
+    assert handler.call_args.args[0]["imap_password"] == "server-side-only"
