@@ -105,7 +105,7 @@ def _uidvalidity(client):
     return str(first).strip() if first is not None else None
 
 
-def _parse_metadata(item):
+def _parse_metadata(item, folder='inbox'):
     """IMAP literal pairs contain (response metadata, header bytes)."""
     if not isinstance(item, tuple) or len(item) < 2:
         return None
@@ -122,7 +122,9 @@ def _parse_metadata(item):
     size = int(size_match.group(1)) if size_match else None
 
     message = BytesParser(policy=policy.default).parsebytes(header, headersonly=True)
-    name, address = parseaddr(str(message.get("From", "")))
+    # Sent mail is most useful when the list shows the addressee, not MUSart.
+    correspondent = "To" if folder == "sent" else "From"
+    name, address = parseaddr(str(message.get(correspondent, "")))
     raw_date = str(message.get("Date", ""))
     date = None
     if raw_date:
@@ -173,7 +175,7 @@ def list_folder(config, folder='inbox', offset=0, limit=LIST_PAGE_SIZE):
 
             indexed = {}
             for record in records or []:
-                parsed = _parse_metadata(record)
+                parsed = _parse_metadata(record, folder)
                 if parsed:
                     indexed[parsed["id"]] = parsed
             messages = [indexed[uid] for uid in batch if uid in indexed]
@@ -250,7 +252,7 @@ def get_folder_message(config, folder, uid, expected_uidvalidity=None):
         if status != "OK":
             raise MailFetchError("Die Nachricht konnte nicht gefunden werden.")
         parsed = next((candidate for item in (records or [])
-                       if (candidate := _parse_metadata(item)) is not None), None)
+                       if (candidate := _parse_metadata(item, folder)) is not None), None)
         if not parsed or parsed["id"] != str(uid):
             raise MailFetchError(
                 "Die Nachricht existiert nicht mehr. Bitte erneut abrufen."
