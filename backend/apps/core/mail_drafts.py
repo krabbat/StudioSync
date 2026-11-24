@@ -35,8 +35,8 @@ def _parse_ids(raw, name):
 
 
 def draft_summary(draft, catalog=None):
-    selected = [catalog[sid] for sid in draft.student_ids
-                if catalog and (sid := str(sid)) in catalog]
+    selected = [catalog[str(sid)] for sid in draft.student_ids
+                if catalog and str(sid) in catalog]
     names = [student["name"] for student in selected]
     instruments = sorted({
         name for student in selected for name in student["instruments"]
@@ -131,6 +131,11 @@ def save_draft(studio, owner, config, data, uploads):
 
     student_ids = _parse_ids(data.get("student_ids", "[]"), "Schülerauswahl")
     resource_ids = _parse_ids(data.get("resource_ids", "[]"), "Dateiauswahl")
+    try:
+        student_ids = [str(uuid.UUID(item)) for item in student_ids]
+        resource_ids = [str(uuid.UUID(item)) for item in resource_ids]
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise MailSendError("Ungültige Schüler- oder Dateikennung.") from exc
     known_students = set(str(pk) for pk in Student.objects.filter(
         studio=studio, pk__in=student_ids
     ).values_list("pk", flat=True))
