@@ -83,3 +83,36 @@ def test_guest_name_address_and_notes_are_preserved_in_ical(
     expanded = _expand(raw)
     assert len(expanded) == 1
     assert expanded[0]["description"] == lesson.summary
+
+
+@pytest.mark.django_db
+def test_import_explicit_guest_ical_without_student_mapping(
+    admin_user, studio, teacher,
+):
+    from unittest.mock import MagicMock
+    from apps.lessons.icloud_sync import _import_series
+
+    start = timezone.now() + timedelta(days=5)
+    original = Lesson(
+        studio=studio, teacher=teacher, guest_name="Schnuppergast",
+        guest_address="Zeuthen, Feldstraße 5",
+        scheduled_start=start, scheduled_end=start + timedelta(minutes=30),
+        summary="Probestunde mit Akkordeon",
+    )
+    remote = MagicMock()
+    remote.url = "https://p12-caldav.icloud.com/abc/calendars/unterricht/guest.ics"
+    remote.data = _ical_for_lesson(original)
+    stats = {"imported": 0, "exported": 0, "unassigned": 0, "conflicts": 0}
+
+    _import_series(
+        admin_user, studio,
+        "https://p12-caldav.icloud.com/abc/calendars/unterricht/",
+        remote, stats,
+    )
+
+    assert stats["imported"] == 1
+    assert stats["unassigned"] == 0
+    imported = Lesson.objects.get(guest_name="Schnuppergast")
+    assert imported.student_id is None
+    assert imported.guest_address == "Zeuthen, Feldstraße 5"
+    assert imported.summary == "Probestunde mit Akkordeon"
