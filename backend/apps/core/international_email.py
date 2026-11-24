@@ -6,8 +6,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from rest_framework import serializers
 
-_ATOM = r"A-Za-z0-9!#$%&\u0027*+/=?^_`{|}~\\-äöüÄÖÜßẞ"
-_LOCAL = re.compile(rf"[{_ATOM}]+(?:\\.[{_ATOM}]+)*\\Z")
+_ATOM = r"A-Za-z0-9!#$%&'*+/=?^_`{|}~\-äöüÄÖÜßẞ"
+_LOCAL = re.compile(rf"[{_ATOM}]+(?:\.[{_ATOM}]+)*\Z")
 _ERROR = "Bitte eine gültige E-Mail-Adresse eingeben."
 
 
