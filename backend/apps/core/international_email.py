@@ -39,7 +39,7 @@ class InternationalEmailField(serializers.CharField):
     default_error_messages = {"invalid_email": _ERROR}
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault("max_length", 320)
+        kwargs.setdefault("max_length", 254)
         super().__init__(*args, **kwargs)
 
     def to_internal_value(self, data):
