@@ -148,6 +148,12 @@ def test_real_smtp_sends_only_one_private_mail_to_shared_family_address(
     assert sent.to == ["eltern@example.org"]
     assert sent.bcc == []
     assert sent.subject == "Noten"
+    assert sent.body.startswith("Hier sind die Übungen.\\n\\n-- \\n".replace("\\\\n", "\\n"))
+    assert "Musikunterricht Sartori" in sent.body
+    assert "Peter Müller" in sent.body
+    assert sent.alternatives[0].mimetype == "text/html"
+    assert "Musikunterricht Sartori" in sent.alternatives[0].content
+    assert "https://musart.de/images/yootheme/favicon.png" in sent.alternatives[0].content
     assert sent.attachments[0][0] == "noten.pdf"
     assert sent.extra_headers["Message-ID"]
     append.assert_called_once()
