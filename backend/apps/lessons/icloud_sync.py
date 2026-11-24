@@ -297,7 +297,6 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                     collisions.append(_collision_detail(series, entry, blocking))
                     stats["conflicts"] += 1
                     continue
-            if not blocking:
                 lesson = Lesson(
                     studio=studio, student=series.student, teacher=series.teacher,
                     scheduled_start=start, scheduled_end=end, status="scheduled",
