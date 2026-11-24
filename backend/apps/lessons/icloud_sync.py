@@ -110,8 +110,19 @@ def _expand(content, now=None):
         rid = _key(original)
         override = overrides.get(rid)
         candidate = override or master
-        changed_start = _dt(candidate["DTSTART"].dt) if candidate.get("DTSTART") else original
-        changed_end = _dt(candidate["DTEND"].dt) if candidate.get("DTEND") else changed_start + duration
+        # The master's DTSTART/DTEND define only the FIRST occurrence.
+        # Every following instance uses the RRULE-generated start plus
+        # the master duration, unless that instance has an override.
+        changed_start = (
+            _dt(override["DTSTART"].dt)
+            if override is not None and override.get("DTSTART")
+            else original
+        )
+        changed_end = (
+            _dt(override["DTEND"].dt)
+            if override is not None and override.get("DTEND")
+            else changed_start + duration
+        )
         cancelled = rid in excluded or _raw(candidate.get("STATUS", "")).upper() == "CANCELLED"
         result[rid] = {
             "rid": rid, "start": changed_start, "end": changed_end,
