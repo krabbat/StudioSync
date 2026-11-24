@@ -238,16 +238,24 @@ class MailStudentOverviewView(APIView):
     def get(self, request, student_id):
         config = _mailbox_config(request)
         studio = studio_for_request(request)
-        result = mail_student_overview(
-            studio, request.user, mailbox_account_key(config), str(student_id),
-        )
+        try:
+            offset = int(request.query_params.get("offset", "0"))
+            limit = int(request.query_params.get("limit", "40"))
+            result = mail_student_overview(
+                studio, request.user, mailbox_account_key(config),
+                str(student_id), limit=limit, offset=offset,
+            )
+        except (ValueError, TypeError):
+            return Response({"detail": "Ungültige Seitenauswahl."},
+                            status=status.HTTP_400_BAD_REQUEST)
         if result is None:
             return Response({"detail": "Schüler nicht gefunden."},
                             status=status.HTTP_404_NOT_FOUND)
-        # The profile should populate both sides of the conversation even if
-        # the administrator hasn't opened the Sent folder yet.
+        # Sync the three useful mail sources; drafts live in PostgreSQL
+        # and never need an IMAP request. Already-cached spam/trash messages
+        # are still included if associated with this student.
         syncing = False
-        for folder in ("inbox", "sent"):
+        for folder in ("inbox", "sent", "archive"):
             cached = folder_for_owner(studio, request.user, config, folder)
             schedule_folder_sync(cached)
             cached.refresh_from_db()
