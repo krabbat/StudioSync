@@ -25,7 +25,11 @@ from apps.core.views.mail import (
     MailInboxDetailView,
     MailInboxListView,
 )
-from apps.core.views.mail_outbound import MailRecipientsView, MailSendView
+from apps.core.views.mail_outbound import (
+    MailRecipientsView,
+    MailResourceAttachmentsView,
+    MailSendView,
+)
 from config.routers import OptionalSlashRouter
 
 router = OptionalSlashRouter()
@@ -57,6 +61,11 @@ urlpatterns = (
             r"^mail/send/?$",
             MailSendView.as_view(),
             name="mail-send",
+        ),
+        re_path(
+            r"^mail/attachments/resources/?$",
+            MailResourceAttachmentsView.as_view(),
+            name="mail-attachment-resources",
         ),
         re_path(
             r"^mail/inbox/actions/?$",
