@@ -911,8 +911,8 @@ export default function SchedulePage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {timeSlots.map((hour) => (
-                  <tr key={hour} className="group h-24">
-                    <td className="h-24 p-0 text-xs font-bold text-gray-400 border-r border-gray-100 bg-gray-50/30 sticky left-0 z-10 text-center align-top">
+                  <tr key={hour} className={`group h-24 ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}>
+                    <td className={`h-24 p-0 text-xs font-bold text-gray-500 border-r border-slate-200 sticky left-0 z-10 text-center align-top ${hour % 2 === 0 ? "bg-slate-200/80" : "bg-slate-50"}`}>
                       <div className="relative h-24">
                         <span className="absolute inset-x-0 top-1">{formatGridHour(hour)}</span>
                       </div>
@@ -937,7 +937,7 @@ export default function SchedulePage() {
                               setShowBookingModal(true);
                             }
                           }}
-                          className={`h-24 p-0 border-gray-50 align-top transition-colors hover:bg-gray-50/50 ${dayIdx < 6 ? "border-r" : ""}`}
+                          className={`h-24 p-0 align-top border-b border-slate-200/70 transition-colors hover:bg-indigo-50/40 ${dayIdx < 6 ? "border-r border-slate-200/70" : ""} ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}
                         >
                           <div className="relative h-24 overflow-visible">
                               {slotLessons.map((lesson: any) => (
