@@ -172,3 +172,42 @@ def test_deleting_standalone_event_deletes_apple_event(
     remote.delete.assert_called_once()
     assert not ICloudCalendarSeries.objects.filter(pk=series.pk).exists()
     assert stats["exported"] == 1
+
+
+@pytest.mark.django_db
+def test_deleting_recurring_override_removes_exception_by_identity(
+    admin_user, appointment,
+):
+    """If an instance was rescheduled, its VEVENT override must not survive EXDATE."""
+    start = appointment.scheduled_start
+    cal = Calendar.from_ical(_event(start, recurring=True))
+    override = Event()
+    override.add("uid", "test-deletion@musart.de")
+    override.add("recurrence-id", start)
+    override.add("dtstart", start + timedelta(hours=2))
+    override.add("dtend", start + timedelta(hours=2, minutes=45))
+    override.add("summary", "Rescheduled lesson")
+    cal.add_component(override)
+    raw = cal.to_ical().decode("utf-8")
+
+    series = ICloudCalendarSeries.objects.create(
+        user=admin_user, studio=appointment.studio,
+        calendar_url=CAL_URL, uid="test-deletion@musart.de",
+        ical_data=raw, remote_hash=_hash(raw),
+    )
+    ICloudCalendarOccurrence.objects.create(
+        series=series, recurrence_id=_key(start),
+        synced_signature="previous-state",
+    )
+    remote = MagicMock()
+    remote.data = raw
+    stats = {"exported": 0, "conflicts": 0}
+
+    _push_changes(series, remote, stats)
+
+    changed = Calendar.from_ical(remote.data)
+    events = [part for part in changed.walk() if part.name == "VEVENT"]
+    assert len(events) == 1
+    assert events[0].get("RRULE") is not None
+    assert events[0].get("EXDATE") is not None
+    assert stats["exported"] == 1
