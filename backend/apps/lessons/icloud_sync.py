@@ -437,8 +437,13 @@ def _push_changes(series, remote, stats):
             master.add("exdate", recurrence_day)
             # A recurrence exception for the same original date would supersede EXDATE.
             existing = overrides.get(entry.recurrence_id)
-            if existing in cal.subcomponents:
-                cal.subcomponents.remove(existing)
+            if existing is not None:
+                # Compare by identity: icalendar's equality operator cannot
+                # safely compare VEVENT objects with None.
+                cal.subcomponents[:] = [
+                    component for component in cal.subcomponents
+                    if component is not existing
+                ]
             modified_links.append(entry)
             continue
         if recurring:
