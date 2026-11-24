@@ -2,7 +2,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.urls import reverse
 
 from apps.core.security import merge_preferences, redact_preferences
 from apps.core.views.icloud_calendar import _allowed_calendar_url, ICloudSetupError
