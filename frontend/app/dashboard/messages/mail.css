@@ -590,6 +590,70 @@
     font-size: 11px;
 }
 
+.mail-association {
+    flex-wrap: wrap;
+}
+
+.mail-association-edit {
+    margin-left: auto;
+    border: 1px solid var(--mail-border-color);
+    border-radius: 7px;
+    padding: 5px 9px;
+    background: var(--mail-panel-background);
+    color: var(--mail-text-color);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.mail-association-editor {
+    margin: -8px 0 18px 46px;
+    padding: 13px;
+    border: 1px solid var(--mail-border-color);
+    border-radius: 10px;
+    background: var(--mail-panel-background);
+    font-size: 12px;
+}
+
+.mail-association-editor p {
+    margin: 4px 0 9px;
+    color: var(--mail-muted-color);
+}
+
+.mail-association-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 8px;
+    max-height: 170px;
+    overflow: auto;
+}
+
+.mail-association-options label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+}
+
+.mail-association-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.mail-association-controls button {
+    border: 1px solid var(--mail-border-color);
+    border-radius: 7px;
+    padding: 7px 10px;
+    background: var(--mail-panel-background);
+    color: var(--mail-text-color);
+    cursor: pointer;
+}
+
+.mail-association-controls button:disabled {
+    opacity: .5;
+}
+
 .mail-body-text {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
