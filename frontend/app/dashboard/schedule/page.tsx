@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from 'next-intl'
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import {
   useLessons,
@@ -127,8 +127,16 @@ export default function SchedulePage() {
   const { studios } = useStudios();
 
   const currentStudio = studios?.[0];
-  const businessStart = currentStudio?.settings?.business_start_hour ?? 8;
-  const businessEnd = currentStudio?.settings?.business_end_hour ?? 21;
+  // MUSart calendar hours: 13:00 to 22:00; do not alter studio settings.
+  const businessStart = 13;
+  const businessEnd = 22;
+
+  // Resolve the teacher by name rather than relying on a fixed database ID.
+  const preferredTeacherId = teachers.find((teacher: any) =>
+    [teacher.first_name, teacher.last_name].filter(Boolean)
+      .join(" ").trim().toLocaleLowerCase("de-DE") === "peter sartori"
+  )?.id || (currentUser?.role === "teacher"
+    ? currentUser?.teacher_profile?.id || "" : "");
 
   const isOvernight = businessEnd < businessStart;
   const [bookingDefaults, setBookingDefaults] = useState({
@@ -264,7 +272,7 @@ export default function SchedulePage() {
 
   const [newBooking, setNewBooking] = useState<LessonBooking>({
     student: "",
-    teacher: "",
+    teacher: preferredTeacherId,
     band: "",
     room: "",
     date: "",
@@ -278,6 +286,39 @@ export default function SchedulePage() {
   });
 
   const [bookingMode, setBookingMode] = useState<"individual" | "band" | "event">("individual");
+  const teacherManuallyChanged = useRef(false);
+  const durationManuallyChanged = useRef(false);
+
+  // Teachers load asynchronously. Apply this default only for new events.
+  useEffect(() => {
+    if (showBookingModal && !editingLessonId && preferredTeacherId &&
+        !teacherManuallyChanged.current) {
+      setNewBooking((previous) => previous.teacher
+        ? previous : { ...previous, teacher: preferredTeacherId });
+    }
+  }, [showBookingModal, editingLessonId, preferredTeacherId]);
+
+  // Reuse the contract endpoint already used by the student's Vertrag tab.
+  // Delayed responses must never override manual duration changes or edits.
+  useEffect(() => {
+    if (!showBookingModal || editingLessonId || bookingMode !== "individual" ||
+        !newBooking.student) return;
+    let active = true;
+    const studentId = newBooking.student;
+    void api.get<{ contract: { lesson_minutes: number } | null }>(
+      "/students/" + encodeURIComponent(studentId) + "/contract/"
+    ).then(({ data }) => {
+      if (!active || durationManuallyChanged.current) return;
+      const minutes = data.contract?.lesson_minutes;
+      if (minutes === 30 || minutes === 45 || minutes === 60) {
+        setNewBooking((previous) => previous.student === studentId
+          ? { ...previous, duration: minutes } : previous);
+      }
+    }).catch(() => {
+      // No contract: retain the existing 60-minute fallback.
+    });
+    return () => { active = false; };
+  }, [showBookingModal, editingLessonId, bookingMode, newBooking.student]);
   const bookingStudent = students.find((student: any) => student.id === newBooking.student);
   const bookingCityLine = [bookingStudent?.postal_code, bookingStudent?.city].filter(Boolean).join(" ");
   const bookingAddress = [bookingStudent?.address_line1, bookingCityLine].filter(Boolean).join(", ");
@@ -285,9 +326,11 @@ export default function SchedulePage() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const resetBooking = () => {
+    teacherManuallyChanged.current = false;
+    durationManuallyChanged.current = false;
     setNewBooking({
       student: "",
-      teacher: "",
+      teacher: preferredTeacherId,
       band: "",
       room: "",
       date: "",
