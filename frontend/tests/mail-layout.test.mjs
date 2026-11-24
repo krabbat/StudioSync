@@ -45,11 +45,11 @@ test('mail design uses shared template tokens instead of a separate theme', () =
     assert.match(css, /var\(--mail-panel-background\)/)
 })
 
-test('real inbox is requested from IMAP and has a working refresh button', () => {
+test('real inbox is backed by PostgreSQL with a working background refresh button', () => {
     const jsx = source('components/mail/MailWorkspace.tsx')
     assert.doesNotMatch(jsx, /SAMPLE_MESSAGES|example\.invalid|Vorschau · Beispieldaten/)
     assert.match(jsx, /api\.get<InboxPage>/)
-    assert.match(jsx, /\/core\/mail\/folders\/\$\{currentFolder\}/)
+    assert.match(jsx, /\/core\/mail\/cache\/folders\//)
     assert.match(jsx, /api\.get<InboxApiMessage & \{ body: string \}>/)
     assert.match(jsx, /aria-label="Mails abrufen"/)
     assert.match(jsx, /void refreshFolder\(\)/)
