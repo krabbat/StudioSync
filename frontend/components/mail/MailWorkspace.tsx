@@ -499,7 +499,8 @@ export default function MailWorkspace() {
     }
 
     const sendMail = async () => {
-        if (sendBusyRef.current || mailSending || recipientsLoading || recipientsError) return
+        if (sendBusyRef.current || mailSending ||
+            (recipientMode !== 'single' && (recipientsLoading || recipientsError))) return
         if (!distinctRecipientCount || !subject.trim() || !body.trim()) {
             toast.error('Bitte Empfänger, Betreff und Nachrichtentext angeben.')
             return
@@ -579,6 +580,7 @@ export default function MailWorkspace() {
         setDetailError('')
         setComposing(false)
         setRecipientPickerOpen(false)
+        setResourcePickerOpen(false)
         setFolderMenuOpen(false)
         setSelectedMailIds([])
     }
@@ -923,7 +925,11 @@ export default function MailWorkspace() {
                         <div className="mail-toolbar mail-reader-toolbar">
                             <div className="mail-reader-title"><Pencil size={18} /> Neue Nachricht</div>
                             <button type="button" className="mail-icon"
-                                onClick={() => { setRecipientPickerOpen(false); setComposing(false) }}
+                                onClick={() => {
+                                    setRecipientPickerOpen(false)
+                                    setResourcePickerOpen(false)
+                                    setComposing(false)
+                                }}
                                 aria-label="Editor schließen" title="Editor ausblenden, Eingaben in dieser Ansicht erhalten">
                                 <X size={19} />
                             </button>
@@ -1042,7 +1048,8 @@ export default function MailWorkspace() {
                             <button type="button" className="mail-secondary-button" disabled
                                 title="Dauerhafte Entwürfe folgen mit dem Mail-Backend">Entwurf speichern</button>
                             <button type="button" className="mail-send-button"
-                                disabled={mailSending || recipientsLoading || !!recipientsError ||
+                                disabled={mailSending ||
+                                    (recipientMode !== 'single' && (recipientsLoading || !!recipientsError)) ||
                                     !distinctRecipientCount || !subject.trim() || !body.trim()}
                                 onClick={() => void sendMail()}
                                 title="Ausgewählte Empfänger über SMTP anschreiben">
