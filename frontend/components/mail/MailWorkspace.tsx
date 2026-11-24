@@ -781,8 +781,9 @@ export default function MailWorkspace() {
                             </button>
                         </div>
                         <div className="mail-compose-scroll">
-                            <div className="mail-preview-warning">
-                                Oberflächenvorschau: Noch kein Versand und keine dauerhafte Entwurfsspeicherung.
+                            <div className="mail-compose-note">
+                                Jede ausgewählte E-Mail-Adresse erhält eine eigene Nachricht.
+                                Entwürfe werden noch nicht dauerhaft gespeichert.
                             </div>
                             <div className="mail-compose-line">
                                 <span>Empfänger</span>
@@ -790,34 +791,99 @@ export default function MailWorkspace() {
                                     {([
                                         ['single', 'Einzeln'],
                                         ['all', 'Alle'],
-                                        ['group', 'Gruppen'],
+                                        ['group', 'Gruppe'],
                                     ] as [RecipientMode, string][]).map(([id, label]) => (
                                         <button key={id} type="button"
+                                            disabled={mailSending}
                                             className={recipientMode === id ? 'is-active' : ''}
-                                            onClick={() => setRecipientMode(id)}>{label}</button>
+                                            onClick={() => switchRecipientMode(id)}>{label}</button>
                                     ))}
                                 </div>
                             </div>
-                            {recipientMode === 'single' && (
-                                <div className="mail-compose-line">
-                                    <label htmlFor="mail-to">An</label>
-                                    <input id="mail-to" type="email" value={recipient}
-                                        onChange={(e) => setRecipient(e.target.value)}
-                                        placeholder="E-Mail-Adresse oder später Schüler auswählen" />
-                                </div>
-                            )}
                             {recipientMode === 'group' && (
                                 <div className="mail-compose-line">
-                                    <label htmlFor="mail-group">Gruppe</label>
-                                    <select id="mail-group" value={group} onChange={(e) => setGroup(e.target.value)}>
-                                        {['Klavier', 'Gitarre', 'Akkordeon', 'Geige', 'Saxophon', 'Blockflöte', 'Querflöte'].map(
-                                            (name) => <option key={name}>{name}</option>
-                                        )}
+                                    <label htmlFor="mail-group">Instrument</label>
+                                    <select id="mail-group" value={effectiveGroup}
+                                        disabled={mailSending || recipientsLoading}
+                                        onChange={(e) => { setGroup(e.target.value); setRecipientOverrides({}) }}>
+                                        {instrumentGroups.map((name) => (
+                                            <option key={name} value={name}>{name}</option>
+                                        ))}
                                     </select>
                                 </div>
                             )}
-                            {recipientMode === 'all' && <p className="mail-compose-hint">Empfänger: alle aktiven Schüler (Auswahl wird angebunden).</p>}
-                            {recipientMode === 'group' && <p className="mail-compose-hint">Instrumentengruppe: {group} (Empfängerliste wird angebunden).</p>}
+                            {recipientMode === 'single' && (
+                                <div className="mail-compose-line">
+                                    <label htmlFor="mail-to">Weitere Adresse</label>
+                                    <input id="mail-to" type="email" value={recipient}
+                                        disabled={mailSending}
+                                        onChange={(e) => setRecipient(e.target.value)}
+                                        placeholder="Optional: direkte E-Mail-Adresse" />
+                                </div>
+                            )}
+                            <div className="mail-recipient-panel">
+                                <div className="mail-recipient-panel-header">
+                                    <strong>Aktive Schüler</strong>
+                                    <span>{selectedStudents.length} von {studentRecipients.length} gewählt
+                                        {' · '}{distinctRecipientCount} E-Mail-Adresse(n)</span>
+                                </div>
+                                <input className="mail-recipient-search" type="search"
+                                    placeholder="Schüler oder Instrument suchen …"
+                                    aria-label="Schüler in der Empfängerliste suchen"
+                                    value={recipientSearch}
+                                    disabled={mailSending}
+                                    onChange={(e) => setRecipientSearch(e.target.value)} />
+                                {recipientsLoading && (
+                                    <p className="mail-compose-hint">Aktive Schüler werden geladen …</p>
+                                )}
+                                {recipientsError && (
+                                    <div className="mail-fetch-error" role="alert">
+                                        {recipientsError}
+                                        <button type="button" onClick={() => {
+                                            setComposing(false)
+                                            setTimeout(() => setComposing(true), 0)
+                                        }}>Erneut versuchen</button>
+                                    </div>
+                                )}
+                                {!recipientsLoading && !recipientsError && (
+                                    <div className="mail-recipient-grid" role="group"
+                                        aria-label="Aktive Schüler als E-Mail-Empfänger auswählen">
+                                        {visibleStudents.map((student) => (
+                                            <label className="mail-recipient-card" key={student.id}
+                                                title={student.selectable ? student.email : 'Keine gültige Kontaktadresse'}>
+                                                <input type="checkbox"
+                                                    checked={isRecipientSelected(student)}
+                                                    disabled={!student.selectable || mailSending}
+                                                    onChange={(e) => setRecipientOverrides((current) => ({
+                                                        ...current, [student.id]: e.target.checked,
+                                                    }))} />
+                                                <span className="mail-recipient-info">
+                                                    <strong>{student.name}</strong>
+                                                    <small>{student.email || 'Keine gültige E-Mail-Adresse'}
+                                                        {student.contact_type === 'Elternkontakt' ? ' · Elternkontakt' : ''}
+                                                    </small>
+                                                    {student.instruments.length > 0 && (
+                                                        <small>{student.instruments.join(', ')}</small>
+                                                    )}
+                                                </span>
+                                            </label>
+                                        ))}
+                                        {visibleStudents.length === 0 && (
+                                            <p className="mail-compose-hint">Keine passenden aktiven Schüler gefunden.</p>
+                                        )}
+                                    </div>
+                                )}
+                                {recipientMode === 'all' && (
+                                    <p className="mail-compose-hint">
+                                        Alle Schüler mit E-Mail-Adresse sind vorausgewählt. Einzelne Haken können entfernt werden.
+                                    </p>
+                                )}
+                                {recipientMode === 'group' && (
+                                    <p className="mail-compose-hint">
+                                        Schüler mit dem Instrument {effectiveGroup || '–'} sind vorausgewählt. Die Auswahl lässt sich ändern.
+                                    </p>
+                                )}
+                            </div>
                             <div className="mail-compose-line">
                                 <label htmlFor="mail-subject">Betreff</label>
                                 <input id="mail-subject" type="text" value={subject}
@@ -845,7 +911,7 @@ export default function MailWorkspace() {
                                 e.target.value = ''
                             }} />
                             <button type="button" className="mail-secondary-button" onClick={() => fileInputRef.current?.click()}
-                                title="Dateien lokal für die Vorschau auswählen">
+                                title="Dateien zur E-Mail hinzufügen">
                                 <Upload size={17} /> Datei auswählen
                             </button>
                             <button type="button" className="mail-secondary-button" disabled
@@ -855,9 +921,12 @@ export default function MailWorkspace() {
                             <div className="mail-compose-spacer" />
                             <button type="button" className="mail-secondary-button" disabled
                                 title="Dauerhafte Entwürfe folgen mit dem Mail-Backend">Entwurf speichern</button>
-                            <button type="button" className="mail-send-button" disabled
-                                title="SMTP-Versand wird in der nächsten Phase angebunden">
-                                <Send size={16} /> Senden
+                            <button type="button" className="mail-send-button"
+                                disabled={mailSending || recipientsLoading || !!recipientsError ||
+                                    !distinctRecipientCount || !subject.trim() || !body.trim()}
+                                onClick={() => void sendMail()}
+                                title="Ausgewählte Empfänger über SMTP anschreiben">
+                                <Send size={16} /> {mailSending ? 'Sendet …' : `Senden (${distinctRecipientCount})`}
                             </button>
                         </div>
                     </>
