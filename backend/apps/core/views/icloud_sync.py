@@ -10,8 +10,10 @@ from rest_framework.response import Response
 from apps.core.models import Student, Teacher
 from apps.core.views.icloud_calendar import _AdminICloudView, ICloudSetupError
 from apps.lessons.icloud_sync import (
-    LOCAL_TZ, _default_teacher, create_icloud_series, sync_icloud_user,
+    LOCAL_TZ, _default_teacher, _raw, _hash, _lesson_signature,
+    create_icloud_series, sync_icloud_user,
 )
+from apps.core.views.icloud_calendar import _credentials, _connect, _discover, _allowed_calendar_url
 from apps.lessons.models import ICloudCalendarSeries
 
 LOG = logging.getLogger(__name__)
@@ -137,3 +139,51 @@ class ICloudSeriesCreateView(_AdminICloudView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         return Response(stats, status=status.HTTP_201_CREATED)
+
+
+class ICloudSeriesResolveView(_AdminICloudView):
+    """Explicit owner choice for concurrent edits: Apple or StudioSync wins."""
+
+    def post(self, request, series_id):
+        studio = _studio(request)
+        series = ICloudCalendarSeries.objects.filter(
+            id=series_id, studio=studio, user=request.user
+        ).first()
+        if not series:
+            return Response({"detail": "Terminserie nicht gefunden."}, status=404)
+        prefer = str(request.data.get("prefer") or "")
+        if prefer not in ("apple", "studiosync"):
+            return Response({"detail": "Bitte Apple oder StudioSync als Quelle auswählen."}, status=400)
+        try:
+            target = _allowed_calendar_url(series.calendar_url)
+            username, password = _credentials(request.user)
+            with _connect(username, password) as client:
+                if target not in {item["url"] for item in _discover(client)}:
+                    raise ICloudSetupError("Der iCloud-Kalender wurde nicht gefunden.")
+                calendar = client.calendar(url=target)
+                remote = next((
+                    item for item in calendar.events()
+                    if str(item.url) == series.remote_url
+                ), None)
+                if remote is None:
+                    raise ICloudSetupError("Der iCloud-Termin ist nicht mehr vorhanden.")
+                remote.load()
+                if prefer == "apple":
+                    # Clear local-dirty markers so an Apple edit can be imported.
+                    for link in series.occurrences.select_related("lesson"):
+                        if link.lesson:
+                            link.synced_signature = _lesson_signature(link.lesson)
+                            link.save(update_fields=["synced_signature", "updated_at"])
+                else:
+                    # Acknowledge remote revisions and push the tracked local edits.
+                    series.ical_data = _raw(remote.data)
+                    series.remote_hash = _hash(series.ical_data)
+                series.last_error = ""
+                series.save(update_fields=["ical_data", "remote_hash", "last_error", "updated_at"])
+            stats = sync_icloud_user(request.user)
+            return Response({**stats, **_series_payload(request.user)})
+        except ICloudSetupError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        except Exception:
+            LOG.exception("Resolving iCloud conflict failed")
+            return Response({"detail": "Kalenderkonflikt konnte nicht aufgelöst werden."}, status=502)
