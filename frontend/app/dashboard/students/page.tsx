@@ -346,7 +346,7 @@ export default function StudentsPage() {
                                         </div>
                                     </td>
                                     <td className="px-8 py-6 text-right">
-                                        <div className={`flex items-center justify-end gap-2 transition-opacity ${assignmentTeacher ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}>
+                                        <div className="flex items-center justify-end gap-2 opacity-100">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
