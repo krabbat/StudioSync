@@ -172,6 +172,9 @@ export default function MailWorkspace() {
     const [recipientsReloadKey, setRecipientsReloadKey] = useState(0)
     const [recipientsError, setRecipientsError] = useState('')
     const [recipientSearch, setRecipientSearch] = useState('')
+    const [recipientPickerOpen, setRecipientPickerOpen] = useState(false)
+    const recipientDialogRef = useRef<HTMLDivElement>(null)
+    const recipientSearchRef = useRef<HTMLInputElement>(null)
     const [recipientOverrides, setRecipientOverrides] = useState<Record<string, boolean>>({})
     const [mailSending, setMailSending] = useState(false)
     const sendBusyRef = useRef(false)
@@ -196,6 +199,34 @@ export default function MailWorkspace() {
             })
         return () => { active = false }
     }, [composing, recipientsReloadKey])
+
+    useEffect(() => {
+        if (!recipientPickerOpen || !composing) return
+        recipientSearchRef.current?.focus()
+        const onPickerKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault()
+                if (!mailSending) setRecipientPickerOpen(false)
+                return
+            }
+            if (event.key !== 'Tab') return
+            const focusables = recipientDialogRef.current?.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), input:not([disabled]), select:not([disabled])'
+            )
+            if (!focusables || focusables.length === 0) return
+            const first = focusables[0]
+            const last = focusables[focusables.length - 1]
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault()
+                last.focus()
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault()
+                first.focus()
+            }
+        }
+        document.addEventListener('keydown', onPickerKeyDown)
+        return () => document.removeEventListener('keydown', onPickerKeyDown)
+    }, [recipientPickerOpen, composing, mailSending])
 
     const loadFolder = useCallback(async (currentFolder: FolderId, reset = true, offset = 0) => {
         const generation = ++requestGeneration.current
@@ -373,6 +404,16 @@ export default function MailWorkspace() {
         setRecipientSearch('')
     }
 
+    const setVisibleRecipientSelection = (checked: boolean) => {
+        setRecipientOverrides((previous) => {
+            const next = { ...previous }
+            for (const student of visibleStudents) {
+                if (student.selectable) next[student.id] = checked
+            }
+            return next
+        })
+    }
+
     const sendMail = async () => {
         if (sendBusyRef.current || mailSending || recipientsLoading || recipientsError) return
         if (!distinctRecipientCount || !subject.trim() || !body.trim()) {
@@ -406,6 +447,7 @@ export default function MailWorkspace() {
                     toast.error(`${data.copies_failed} Kopie(n) konnten nicht im Gesendet-Ordner gespeichert werden.`)
                 }
                 setComposing(false)
+                setRecipientPickerOpen(false)
                 setSubject('')
                 setBody('')
                 setLocalFiles([])
@@ -447,12 +489,14 @@ export default function MailWorkspace() {
         setDetailLoading(false)
         setDetailError('')
         setComposing(false)
+        setRecipientPickerOpen(false)
         setFolderMenuOpen(false)
         setSelectedMailIds([])
     }
     const selectMessage = async (message: MailPreview) => {
         setSelectedId(message.id)
         setComposing(false)
+        setRecipientPickerOpen(false)
         setDetailError('')
         const generation = ++detailGeneration.current
         if (message.bodyLoaded) {
@@ -499,6 +543,7 @@ export default function MailWorkspace() {
         setRecipientMode('single')
         setRecipientOverrides({})
         setRecipientSearch('')
+        setRecipientPickerOpen(false)
         setComposing(true)
         setFolderMenuOpen(false)
     }
