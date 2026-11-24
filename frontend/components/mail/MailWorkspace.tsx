@@ -986,7 +986,7 @@ export default function MailWorkspace() {
                             <div className="mail-reader-from">
                                 <div className="mail-sender-avatar">{selected.from.slice(0, 1)}</div>
                                 <div className="mail-sender-details">
-                                    <strong>{selected.from}</strong>
+                                    <strong>{folder === 'sent' ? 'An: ' + selected.from : selected.from}</strong>
                                     <span>{selected.email}</span>
                                 </div>
                                 <span className="mail-reader-date">{dateLabel(selected.date)} · {timeLabel(selected.date)}</span>
