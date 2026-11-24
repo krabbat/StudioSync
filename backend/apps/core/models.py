@@ -684,6 +684,7 @@ class MailFolderCache(models.Model):
     requested_count = models.PositiveIntegerField(default=200)
     last_synced_at = models.DateTimeField(null=True, blank=True)
     sync_started_at = models.DateTimeField(null=True, blank=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
     sync_error = models.CharField(max_length=240, blank=True)
 
     class Meta:
