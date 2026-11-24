@@ -94,6 +94,7 @@ def test_incremental_sync_downloads_only_new_headers_and_keeps_saved_body(
         folder_cache=folder, uid=10, sender_name="Alte Familie",
         email="old@example.org", subject="Alt", date="",
         body="Schon gespeicherter Inhalt", body_loaded=True,
+        contact_addresses=["old@example.org"],
     )
 
     header = (
