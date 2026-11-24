@@ -369,6 +369,7 @@ def _push_changes(series, remote, stats):
             if override is None:
                 override = Event()
                 override.add("uid", series.uid)
+                override.add("summary", series.title or "MUSart Unterricht")
                 override.add("recurrence-id", datetime.fromisoformat(entry.recurrence_id).astimezone(LOCAL_TZ))
                 cal.add_component(override)
             target = override
