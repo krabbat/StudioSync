@@ -51,6 +51,13 @@ def _connect_mock(remote):
     client = MagicMock()
     client.principal.return_value.calendars.return_value = [calendar]
     client.calendar.return_value.events.return_value = [remote]
+    # A local lesson that is moved away from a conflict can be exported to iCloud.
+    # Fake that server creation with a valid event rather than an empty MagicMock.
+    def create_event(content):
+        result = _remote(content)
+        result.url = CALENDAR_URL + "export-" + str(len(content)) + ".ics"
+        return result
+    client.calendar.return_value.save_event.side_effect = create_event
     context = MagicMock()
     context.__enter__.return_value = client
     return context
