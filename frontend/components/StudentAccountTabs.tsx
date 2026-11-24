@@ -1,9 +1,9 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { CalendarDays, CreditCard, FileText, UserRound } from 'lucide-react'
+import { CalendarDays, CreditCard, FileText, Mail, UserRound } from 'lucide-react'
 
-export type AccountSection = 'personal' | 'contract' | 'lessons' | 'billing'
+export type AccountSection = 'personal' | 'contract' | 'lessons' | 'billing' | 'communication'
 
 export default function StudentAccountTabs({
     section, onChange, allowed = ['personal', 'contract', 'lessons']
@@ -18,6 +18,7 @@ export default function StudentAccountTabs({
         { id: 'contract' as const, label: t('contract'), icon: FileText },
         { id: 'lessons' as const, label: t('lessons'), icon: CalendarDays },
         { id: 'billing' as const, label: t('billing'), icon: CreditCard },
+        { id: 'communication' as const, label: 'Kommunikation', icon: Mail },
     ].filter(item => allowed.includes(item.id))
 
     return (
