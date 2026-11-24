@@ -17,9 +17,9 @@ class LessonListSerializer(serializers.ModelSerializer):
     band_name = serializers.SerializerMethodField()
 
     def get_student_address(self, obj):
-        """Use the student's current address instead of a school room."""
+        """Use the student or special appointment's actual address."""
         if not obj.student_id:
-            return ""
+            return obj.guest_address or ""
         pupil = obj.student
         city_line = " ".join(part for part in (pupil.postal_code, pupil.city) if part)
         return ", ".join(part for part in (pupil.address_line1, city_line) if part)
@@ -27,7 +27,7 @@ class LessonListSerializer(serializers.ModelSerializer):
     def get_student_name(self, obj):
         if obj.student_id:
             return obj.student.user.get_full_name()
-        return None
+        return obj.guest_name or None
 
     def get_student_instrument(self, obj):
         if obj.student_id:
@@ -42,6 +42,14 @@ class LessonListSerializer(serializers.ModelSerializer):
     lesson_plan_title = serializers.CharField(source="lesson_plan.title", read_only=True)
     duration_minutes = serializers.IntegerField(read_only=True)
     student_profile_id = serializers.SerializerMethodField()
+    is_recurring = serializers.SerializerMethodField()
+
+    def get_is_recurring(self, obj):
+        link = getattr(obj, "icloud_occurrence", None)
+        if link is None:
+            return False
+        content = link.series.ical_data or ""
+        return "RRULE:" in content or "RDATE:" in content
 
     def get_student_profile_id(self, obj):
         """Return the student profile UUID as a plain string for frontend matching."""
@@ -56,6 +64,9 @@ class LessonListSerializer(serializers.ModelSerializer):
             "student",
             "student_name",
             "student_profile_id",
+            "guest_name",
+            "guest_address",
+            "is_recurring",
             "teacher",
             "teacher_name",
             "student_instrument",
@@ -177,6 +188,8 @@ class LessonCreateSerializer(serializers.ModelSerializer):
             "studio",
             "teacher",
             "student",
+            "guest_name",
+            "guest_address",
             "band",
             "room",
             "lesson_type",
@@ -198,10 +211,22 @@ class LessonCreateSerializer(serializers.ModelSerializer):
         student = _lesson_value(data, instance, "student")
         band = _lesson_value(data, instance, "band")
         room = _lesson_value(data, instance, "room")
-        if not student and not band and not room:
+        guest_name = (_lesson_value(data, instance, "guest_name") or "").strip()
+        if guest_name and (student or band):
             raise serializers.ValidationError(
-                "Either a student, band, or room must be selected for the lesson."
+                {"guest_name": "Ein Sondertermin darf keinem Schüler oder Ensemble gleichzeitig zugeordnet werden."}
             )
+        if not student and not band and not room and not guest_name:
+            raise serializers.ValidationError(
+                "Bitte einen Schüler, ein Ensemble oder einen Namen für den Sondertermin eintragen."
+            )
+        if guest_name:
+            request = self.context.get("request")
+            if request is not None and request.user.role not in ("admin", "teacher"):
+                raise serializers.ValidationError(
+                    {"guest_name": "Sondertermine dürfen nur durch Lehrkräfte oder Administratoren angelegt werden."}
+                )
+            data["guest_name"] = guest_name
 
         start = _lesson_value(data, instance, "scheduled_start")
         end = _lesson_value(data, instance, "scheduled_end")
