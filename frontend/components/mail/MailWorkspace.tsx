@@ -8,10 +8,11 @@ import { createPortal } from 'react-dom'
 import {
     Archive, CheckCheck, ChevronDown, ChevronRight, FileText, Filter, Forward,
     File as FileIcon, FileAudio, FileImage, FileVideo, Inbox, Mail, MailOpen, Menu, MoreHorizontal,
-    Paperclip, Pencil, RefreshCw, Reply, Search, Send, ShieldAlert, Star, Trash2, Upload, X,
+    Paperclip, Pencil, RefreshCw, Reply, Search, Send, Share2, ShieldAlert, Star, Trash2, Upload, X,
 } from 'lucide-react'
 import api from '@/services/api'
 import { toast } from 'react-hot-toast'
+import { shareFilesOrDownload } from '@/lib/shareFile'
 
 type FolderId = 'inbox' | 'sent' | 'drafts' | 'outbox' | 'archive' | 'spam' | 'trash'
 type RecipientMode = 'single' | 'all' | 'group'
@@ -281,6 +282,22 @@ export default function MailWorkspace() {
         }
         const uid = params.get('uid')
         if (uid && /^[1-9][0-9]{0,19}$/.test(uid)) setLinkedMessageUid(uid)
+        if (params.get('compose') === '1') {
+            setComposing(true)
+            setRecipientMode('single')
+            if (sid) setRecipientOverrides({ [sid]: true })
+            const resourceId = params.get('resource')
+            if (resourceId && /^[a-f0-9-]{36}$/i.test(resourceId)) {
+                void api.get<{ resources: StudioMailResource[] }>(
+                    '/core/mail/attachments/resources/',
+                    { params: { id: resourceId } },
+                ).then(({ data }) => {
+                    if (active && data.resources.length) setStudioFiles(data.resources)
+                }).catch(() => {
+                    if (active) toast.error('Anhang aus StudioSync konnte nicht geladen werden.')
+                })
+            }
+        }
         return () => { active = false }
     }, [])
 
@@ -866,6 +883,33 @@ export default function MailWorkspace() {
         }
     }
 
+    const shareComposedMail = async () => {
+        if (!subject.trim() && !body.trim() && !localFiles.length && !studioFiles.length) {
+            toast.error('Bitte zuerst Nachricht oder Datei auswählen.')
+            return
+        }
+        try {
+            const files: File[] = [...localFiles]
+            for (const resource of studioFiles) {
+                const { data: blob } = await api.get<Blob>(
+                    '/core/mail/attachments/resources/' + resource.id + '/download/',
+                    { responseType: 'blob' },
+                )
+                files.push(new File([blob], resource.filename,
+                    { type: resource.mime_type || blob.type || 'application/octet-stream' }))
+            }
+            const outcome = await shareFilesOrDownload(files, subject, body)
+            if (outcome === 'downloaded') {
+                toast(files.length
+                    ? 'Dateien heruntergeladen. In WhatsApp manuell anhängen.'
+                    : 'WhatsApp wurde für die Textnachricht geöffnet.')
+            }
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail ||
+                'Teilen war nicht möglich.')
+        }
+    }
+
     const saveDraft = async () => {
         if (draftSaving || mailSending || recipientsLoading) return
         setDraftSaving(true)
@@ -1414,6 +1458,12 @@ export default function MailWorkspace() {
                                 onClick={() => { setResourceQuery(''); setResourcePickerOpen(true) }}
                                 title="Vorhandene StudioSync-Datei anhängen">
                                 <FileText size={17} /> Aus StudioSync
+                            </button>
+                            <button type="button" className="mail-secondary-button"
+                                disabled={mailSending || draftSaving}
+                                onClick={() => void shareComposedMail()}
+                                title="Nachricht oder Anhänge über das Teilen-Menü versenden (z. B. WhatsApp)">
+                                <Share2 size={17} /> Teilen
                             </button>
                             <div className="mail-compose-spacer" />
                             <button type="button" className="mail-secondary-button"
