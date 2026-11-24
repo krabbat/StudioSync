@@ -10,7 +10,7 @@ import logging
 import smtplib
 import ssl
 from collections import OrderedDict
-from email.utils import formataddr
+from email.utils import formataddr, make_msgid
 
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage, get_connection
@@ -69,7 +69,8 @@ def active_student_recipients(studio):
     for student in students:
         address, contact_type = _recipient_address(student)
         instruments = []
-        for value in [student.instrument, *(student.instruments or [])]:
+        extra = student.instruments if isinstance(student.instruments, list) else []
+        for value in [student.instrument, *extra]:
             if isinstance(value, str):
                 name = value.strip()
                 if name and name.casefold() not in {
@@ -174,8 +175,8 @@ def _collect_attachments(files):
     return attachments
 
 
-def _save_sent_copy(config, message):
-    """Append a copy to the existing server 'Sent' folder after SMTP accepts it."""
+def _open_sent_folder(config):
+    """Open one IMAP session for all copies in this dispatch."""
     host, port, username, password, mode = _configuration(config)
     client = None
     try:
@@ -187,23 +188,35 @@ def _save_sent_copy(config, message):
             client.starttls(ssl_context=tls)
         client.login(username, password)
         mailbox = resolve_folder(client, "sent")
-        status, _ = client.append(
-            mailbox, r"(\Seen)", None, message.message().as_bytes()
-        )
-        if status != "OK":
-            raise MailSendError("Kopie im Gesendet-Ordner nicht bestätigt.")
+        return client, mailbox
     except (
         MailFolderError, OSError, ValueError, ssl.SSLError,
         imaplib.IMAP4.error, TimeoutError,
     ) as exc:
-        LOG.warning("Saving mail copy to Sent failed (%s)", type(exc).__name__)
-        raise MailSendError("Kopie konnte nicht im Gesendet-Ordner gespeichert werden.") from exc
-    finally:
         if client is not None:
             try:
                 client.logout()
             except (imaplib.IMAP4.error, OSError):
                 pass
+        LOG.warning("Opening Sent folder failed (%s)", type(exc).__name__)
+        raise MailSendError(
+            "Das Gesendet-Postfach konnte nicht zum Speichern geöffnet werden."
+        ) from exc
+
+
+def _save_sent_copy(client, mailbox, message):
+    """Append a copy with the same Message-ID once SMTP accepts the mail."""
+    try:
+        status, _ = client.append(
+            mailbox, r"(\Seen)", None, message.message().as_bytes()
+        )
+        if status != "OK":
+            raise MailSendError("Der Server hat die Kopie nicht bestätigt.")
+    except (imaplib.IMAP4.error, OSError, TimeoutError) as exc:
+        LOG.warning("Saving Sent copy failed (%s)", type(exc).__name__)
+        raise MailSendError(
+            "Kopie konnte nicht im Gesendet-Ordner gespeichert werden."
+        ) from exc
 
 
 def send_student_mail(
@@ -238,6 +251,9 @@ def send_student_mail(
     sent = []
     failed = []
     copies_failed = 0
+    sent_client = None
+    sent_mailbox = None
+    sent_copy_unavailable = False
 
     try:
         connection.open()
@@ -248,6 +264,7 @@ def send_student_mail(
                 from_email=formataddr((studio.name, settings["sender"])),
                 to=[recipient["email"]],
                 connection=connection,
+                headers={"Message-ID": make_msgid()},
             )
             for filename, data, mime in attachments:
                 email.attach(filename, data, mime)
@@ -260,10 +277,16 @@ def send_student_mail(
                 failed.append(recipient)
                 continue
             sent.append(recipient)
-            try:
-                _save_sent_copy(config, email)
-            except MailSendError:
+            if sent_copy_unavailable:
                 copies_failed += 1
+            else:
+                try:
+                    if sent_client is None:
+                        sent_client, sent_mailbox = _open_sent_folder(config)
+                    _save_sent_copy(sent_client, sent_mailbox, email)
+                except MailSendError:
+                    copies_failed += 1
+                    sent_copy_unavailable = True
     except (smtplib.SMTPException, OSError, TimeoutError) as exc:
         LOG.warning("SMTP connection failed (%s)", type(exc).__name__)
         # A connection failure before/after some sends must be reported without
@@ -275,6 +298,11 @@ def send_student_mail(
             connection.close()
         except (smtplib.SMTPException, OSError):
             pass
+        if sent_client is not None:
+            try:
+                sent_client.logout()
+            except (imaplib.IMAP4.error, OSError):
+                pass
 
     return {
         "sent": len(sent),
