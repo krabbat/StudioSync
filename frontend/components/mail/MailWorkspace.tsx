@@ -49,10 +49,6 @@ interface MailPreview {
     folder: FolderId
     from: string
     email: string
-    reply_target_email?: string
-    reply_target_name?: string
-    from_email?: string
-    to_email?: string
     subject: string
     preview: string
     body: string
@@ -70,10 +66,6 @@ interface InboxApiMessage {
     id: string
     from: string
     email: string
-    reply_target_email?: string
-    reply_target_name?: string
-    from_email?: string
-    to_email?: string
     subject: string
     date: string | null
     unread: boolean
@@ -507,8 +499,7 @@ export default function MailWorkspace() {
     }
 
     const sendMail = async () => {
-        if (sendBusyRef.current || mailSending ||
-            (recipientMode !== 'single' && (recipientsLoading || recipientsError))) return
+        if (sendBusyRef.current || mailSending || recipientsLoading || recipientsError) return
         if (!distinctRecipientCount || !subject.trim() || !body.trim()) {
             toast.error('Bitte Empfänger, Betreff und Nachrichtentext angeben.')
             return
@@ -588,7 +579,6 @@ export default function MailWorkspace() {
         setDetailError('')
         setComposing(false)
         setRecipientPickerOpen(false)
-        setResourcePickerOpen(false)
         setFolderMenuOpen(false)
         setSelectedMailIds([])
     }
@@ -615,10 +605,6 @@ export default function MailWorkspace() {
             setMessages((items) => items.map((item) => item.id === message.id
                 ? { ...item, body: response.data.body, preview: response.data.preview,
                     attachments: response.data.attachments, has_attachment: response.data.has_attachment,
-                    reply_target_email: response.data.reply_target_email,
-                    reply_target_name: response.data.reply_target_name,
-                    from_email: response.data.from_email,
-                    to_email: response.data.to_email,
                     bodyLoaded: true } : item))
             // A message displayed in the preview is now read on the server.
             if (message.unread && !mailActionBusy) {
@@ -639,16 +625,8 @@ export default function MailWorkspace() {
             setBody('')
             setLocalFiles([])
         } else if (selected) {
-            // Always answer the real header-derived target, NOT the address
-            // used for the inbox/sent list display.
-            const replyAddress = selected.reply_target_email || ''
-            if (mode === 'reply' && !replyAddress) {
-                toast.error('Keine Antwortadresse in der Originalmail gefunden.')
-                return
-            }
-            setRecipient(mode === 'reply' ? replyAddress : '')
-            setReplyRecipientName(mode === 'reply'
-                ? (selected.reply_target_name || replyAddress) : '')
+            setRecipient(mode === 'reply' ? selected.email : '')
+            setReplyRecipientName(mode === 'reply' ? selected.from : '')
             setSubject((mode === 'reply' ? 'Re: ' : 'Fw: ') + selected.subject)
             setBody(mode === 'forward' ? '\n\n--- Weitergeleitete Nachricht ---\n' + selected.body : '')
             setLocalFiles([])
@@ -945,11 +923,7 @@ export default function MailWorkspace() {
                         <div className="mail-toolbar mail-reader-toolbar">
                             <div className="mail-reader-title"><Pencil size={18} /> Neue Nachricht</div>
                             <button type="button" className="mail-icon"
-                                onClick={() => {
-                                    setRecipientPickerOpen(false)
-                                    setResourcePickerOpen(false)
-                                    setComposing(false)
-                                }}
+                                onClick={() => { setRecipientPickerOpen(false); setComposing(false) }}
                                 aria-label="Editor schließen" title="Editor ausblenden, Eingaben in dieser Ansicht erhalten">
                                 <X size={19} />
                             </button>
@@ -971,9 +945,7 @@ export default function MailWorkspace() {
                                         ))}
                                         {manualTarget && (
                                             <span className="mail-compose-to-chip" title={manualTarget}>
-                                                {replyRecipientName && replyRecipientName !== manualTarget
-                                                    ? `${replyRecipientName} · ${manualTarget}`
-                                                    : manualTarget}
+                                                {replyRecipientName || manualTarget}
                                             </span>
                                         )}
                                         {extraTarget && (
@@ -1070,8 +1042,7 @@ export default function MailWorkspace() {
                             <button type="button" className="mail-secondary-button" disabled
                                 title="Dauerhafte Entwürfe folgen mit dem Mail-Backend">Entwurf speichern</button>
                             <button type="button" className="mail-send-button"
-                                disabled={mailSending ||
-                                    (recipientMode !== 'single' && (recipientsLoading || !!recipientsError)) ||
+                                disabled={mailSending || recipientsLoading || !!recipientsError ||
                                     !distinctRecipientCount || !subject.trim() || !body.trim()}
                                 onClick={() => void sendMail()}
                                 title="Ausgewählte Empfänger über SMTP anschreiben">
