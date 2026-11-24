@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useResources } from '@/hooks/useDashboardData'
 import api from '@/services/api'
@@ -34,9 +35,12 @@ import {
     AlertCircle,
     CloudUpload,
     Target,
+    Share2,
+    Mail,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { downloadAuthenticatedFile } from '@/lib/utils'
+import { shareProtectedResource, shareFilesOrDownload } from '@/lib/shareFile'
 
 // ─────────────────────────────────────────────
 // Types
@@ -142,6 +146,7 @@ function ResourceIcon({ type, size = 'w-5 h-5' }: { type: ResourceType; size?: s
 
 export default function ResourcesPage() {
   const t = useTranslations('Resources')
+    const router = useRouter()
     const { resources, loading, refetch } = useResources()
 
     // Folder state
@@ -346,6 +351,31 @@ export default function ResourcesPage() {
             toast.success(t('msgDownloadStarted'))
         } catch {
             toast.error(t('msgDownloadFailed'))
+        }
+    }
+
+    const handleShare = async (resource: Resource) => {
+        try {
+            if (resource.resource_type === 'link') {
+                const result = await shareFilesOrDownload([], resource.title,
+                    resource.external_url || '')
+                if (result === 'downloaded') toast('Teile den geöffneten Link in WhatsApp.')
+                return
+            }
+            if (!resource.file_url) {
+                toast.error('Datei nicht verfügbar.')
+                return
+            }
+            const filename = resource.file?.split('/').pop() ||
+                resource.file_url.split('/').pop()?.split('?')[0] || resource.title
+            const result = await shareProtectedResource(
+                resource.file_url, filename, resource.title,
+            )
+            if (result === 'downloaded') {
+                toast('Datei heruntergeladen. Für WhatsApp bitte manuell anhängen.')
+            }
+        } catch {
+            toast.error('Datei konnte nicht geteilt werden.')
         }
     }
 
@@ -664,6 +694,21 @@ export default function ResourcesPage() {
                                         >
                                             {resource.resource_type === 'link' ? <ExternalLink className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
                                             {resource.resource_type === 'link' ? 'Open' : 'Download'}
+                                        </Button>
+                                        <Button variant="ghost" size="icon"
+                                            aria-label={resource.title + ' per Mail versenden'}
+                                            title="Per Mail über StudioSync versenden"
+                                            onClick={() => router.push(
+                                                '/dashboard/messages?compose=1&resource=' +
+                                                    encodeURIComponent(resource.id)
+                                            )}>
+                                            <Mail className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon"
+                                            aria-label={resource.title + ' über WhatsApp teilen'}
+                                            title="Über das Teilen-Menü versenden (z. B. WhatsApp)"
+                                            onClick={() => void handleShare(resource)}>
+                                            <Share2 className="w-4 h-4" />
                                         </Button>
                                         <Button
                                             variant="ghost"
