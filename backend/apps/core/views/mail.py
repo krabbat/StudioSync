@@ -8,7 +8,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.mail_actions import apply_folder_action, apply_inbox_action
+from apps.core.mail_associations import (
+    student_catalog, mail_student_overview, enrich_cached_message,
+)
 from apps.core.mail_cache import (
+    mailbox_account_key,
     cached_folder_page,
     cached_message_detail,
     folder_for_owner,
@@ -208,6 +212,70 @@ class MailCachedFolderDetailView(APIView):
             return Response(
                 {"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY
             )
+
+
+
+class MailStudentCatalogView(APIView):
+    """All students (including former students) for mail filters and linking."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        _mailbox_config(request)
+        catalog, _ = student_catalog(studio_for_request(request))
+        return Response({"students": [
+            {"id": item["id"], "name": item["name"],
+             "instruments": item["instruments"]}
+            for item in catalog.values()
+        ]})
+
+
+class MailStudentOverviewView(APIView):
+    """Brief account timeline; the full reader stays in the mail workspace."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, student_id):
+        config = _mailbox_config(request)
+        result = mail_student_overview(
+            studio_for_request(request), request.user, mailbox_account_key(config),
+            str(student_id),
+        )
+        if result is None:
+            return Response({"detail": "Schüler nicht gefunden."},
+                            status=status.HTTP_404_NOT_FOUND)
+        return Response(result)
+
+
+class MailMessageAssociationView(APIView):
+    """Admin override for a single cached message, including multiple siblings."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, folder, uid):
+        config = _mailbox_config(request)
+        studio = studio_for_request(request)
+        cache = folder_for_owner(studio, request.user, config, folder)
+        row = cache.messages.filter(uid=int(uid)).first()
+        if row is None:
+            return Response({"detail": "Mail nicht im Cache gefunden."},
+                            status=status.HTTP_404_NOT_FOUND)
+        if request.data.get("uidvalidity") != cache.uidvalidity:
+            return Response({"detail": "Postfachstand verändert. Bitte neu abrufen."},
+                            status=status.HTTP_409_CONFLICT)
+        catalog, by_address = student_catalog(studio)
+        if request.data.get("automatic") is True:
+            row.manual_student_ids = None
+        else:
+            student_ids = request.data.get("student_ids")
+            if (not isinstance(student_ids, list) or len(student_ids) > 100
+                    or any(not isinstance(sid, str) or sid not in catalog
+                           for sid in student_ids)):
+                return Response({"detail": "Ungültige Schülerauswahl."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            row.manual_student_ids = sorted(set(student_ids))
+        row.save(update_fields=["manual_student_ids"])
+        return Response(enrich_cached_message(row, catalog, by_address))
 
 
 class MailFolderActionView(APIView):
