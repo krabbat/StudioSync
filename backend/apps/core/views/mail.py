@@ -237,13 +237,23 @@ class MailStudentOverviewView(APIView):
 
     def get(self, request, student_id):
         config = _mailbox_config(request)
+        studio = studio_for_request(request)
         result = mail_student_overview(
-            studio_for_request(request), request.user, mailbox_account_key(config),
-            str(student_id),
+            studio, request.user, mailbox_account_key(config), str(student_id),
         )
         if result is None:
             return Response({"detail": "Schüler nicht gefunden."},
                             status=status.HTTP_404_NOT_FOUND)
+        # The profile should populate both sides of the conversation even if
+        # the administrator hasn't opened the Sent folder yet.
+        syncing = False
+        for folder in ("inbox", "sent"):
+            cached = folder_for_owner(studio, request.user, config, folder)
+            schedule_folder_sync(cached)
+            cached.refresh_from_db()
+            if cached.sync_started_at is not None:
+                syncing = True
+        result["syncing"] = syncing
         return Response(result)
 
 
