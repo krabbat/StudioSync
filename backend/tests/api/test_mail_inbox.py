@@ -186,3 +186,51 @@ def test_sent_folder_displays_recipient_instead_of_studio_sender():
     assert sent["email"] == "familie@example.org"
     assert incoming["from"] == "MUSart"
     assert incoming["email"] == "musikunterricht@musart.de"
+
+
+def test_reply_target_is_real_incoming_sender_not_teacher_destination():
+    headers = (
+        b"From: Familie Beispiel <familie@example.org>\r\n"
+        b"To: Musiklehrer <musikunterricht@musart.de>\r\n"
+        b"Subject: Unterricht am Dienstag\r\n\r\n"
+    )
+    record = (b"1 (UID 17 FLAGS (\\Seen) RFC822.SIZE 220)", headers)
+    parsed = _parse_metadata(
+        record, "inbox", ("musikunterricht@musart.de",)
+    )
+    assert parsed["email"] == "familie@example.org"
+    assert parsed["reply_target_email"] == "familie@example.org"
+    assert parsed["reply_target_name"] == "Familie Beispiel"
+    assert parsed["from_email"] == "familie@example.org"
+    assert parsed["to_email"] == "musikunterricht@musart.de"
+
+
+def test_explicit_reply_to_preferred_over_sender_and_teacher_address():
+    headers = (
+        b"From: Schulportal <info@schulportal.example.org>\r\n"
+        b"Reply-To: Eltern <eltern@example.org>\r\n"
+        b"To: MUSart <musikunterricht@musart.de>\r\n"
+        b"Subject: Rueckfrage\r\n\r\n"
+    )
+    record = (b"1 (UID 18 FLAGS () RFC822.SIZE 240)", headers)
+    parsed = _parse_metadata(
+        record, "inbox", ("musikunterricht@musart.de",)
+    )
+    assert parsed["reply_target_email"] == "eltern@example.org"
+    assert parsed["reply_target_name"] == "Eltern"
+    assert parsed["from_email"] == "info@schulportal.example.org"
+
+
+def test_own_sent_mail_moved_to_archive_replies_to_original_addressee():
+    headers = (
+        b"From: MUSart <musikunterricht@musart.de>\r\n"
+        b"To: Familie <familie@example.org>\r\n"
+        b"Subject: Material\r\n\r\n"
+    )
+    record = (b"1 (UID 19 FLAGS (\\Seen) RFC822.SIZE 230)", headers)
+    for folder in ("sent", "archive", "inbox"):
+        parsed = _parse_metadata(
+            record, folder, ("musikunterricht@musart.de",)
+        )
+        assert parsed["reply_target_email"] == "familie@example.org"
+        assert parsed["to_email"] == "familie@example.org"
