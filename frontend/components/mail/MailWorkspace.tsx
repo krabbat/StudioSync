@@ -11,6 +11,7 @@ import {
     Paperclip, Pencil, RefreshCw, Reply, Search, Send, Share2, ShieldAlert, Star, Trash2, Upload, X,
 } from 'lucide-react'
 import api from '@/services/api'
+import { INTERNATIONAL_EMAIL_PATTERN, INTERNATIONAL_EMAIL_HINT } from '@/lib/internationalEmail'
 import { toast } from 'react-hot-toast'
 import { shareFilesOrDownload } from '@/lib/shareFile'
 
@@ -1556,7 +1557,7 @@ export default function MailWorkspace() {
                                             <>
                                                 <div className="mail-recipient-dialog-field">
                                                     <label htmlFor="mail-to">Direkte Adresse</label>
-                                                    <input id="mail-to" type="email" value={recipient}
+                                                    <input id="mail-to" type="text" inputMode="email" pattern={INTERNATIONAL_EMAIL_PATTERN} title={INTERNATIONAL_EMAIL_HINT} value={recipient}
                                                         disabled={mailSending}
                                                         onChange={(e) => {
                                                             setRecipient(e.target.value)
@@ -1573,7 +1574,7 @@ export default function MailWorkspace() {
                                                 ) : (
                                                     <div className="mail-recipient-dialog-field">
                                                         <label htmlFor="mail-extra">Weitere Adresse</label>
-                                                        <input id="mail-extra" type="email"
+                                                        <input id="mail-extra" type="text" inputMode="email" pattern={INTERNATIONAL_EMAIL_PATTERN} title={INTERNATIONAL_EMAIL_HINT}
                                                             value={additionalRecipient} disabled={mailSending}
                                                             placeholder="Nur bei Bedarf"
                                                             onChange={(e) => setAdditionalRecipient(e.target.value)} />
