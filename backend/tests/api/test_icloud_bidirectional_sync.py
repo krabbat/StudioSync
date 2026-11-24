@@ -224,3 +224,44 @@ def test_old_collision_error_does_not_block_studiosync_move(
     assert series.last_error == ""
     assert second["exported"] == 1
     assert second["conflicts"] == 0
+
+
+@pytest.mark.django_db
+def test_local_cancellation_reason_does_not_recolour_another_icloud_lesson(
+    admin_user, studio, student, teacher,
+):
+    """Cancelling one linked occurrence must not modify a sibling's status."""
+    admin_user.preferences = {"technical": {
+        "icloud_username": "user@icloud.com",
+        "icloud_app_password": "secret",
+        "icloud_calendar_url": CALENDAR_URL,
+    }}
+    admin_user.save(update_fields=["preferences"])
+    start = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(days=3)
+    remote = _remote(_ical(start, count=2))
+    with patch("apps.lessons.icloud_sync._connect", return_value=_connect_mock(remote)):
+        first = sync_icloud_user(admin_user)
+        assert first["imported"] == 2
+
+        edited, untouched = list(
+            Lesson.objects.filter(studio=studio).order_by("scheduled_start")
+        )
+        reason = "Schüler musste den Unterricht wegen Krankheit absagen."
+        Lesson.objects.filter(pk=edited.pk).update(
+            status="cancelled", cancellation_reason=reason,
+        )
+        second = sync_icloud_user(admin_user)
+        assert second["exported"] == 1
+        assert second["conflicts"] == 0
+
+        # A later automatic sync must preserve both the reason and the
+        # neighbouring lesson's original status/colour.
+        third = sync_icloud_user(admin_user)
+        assert third["conflicts"] == 0
+        edited.refresh_from_db()
+        untouched.refresh_from_db()
+
+    assert edited.status == "cancelled"
+    assert edited.cancellation_reason == reason
+    assert untouched.status == "scheduled"
+    assert untouched.cancellation_reason == ""
