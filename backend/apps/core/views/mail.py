@@ -251,15 +251,23 @@ class MailStudentOverviewView(APIView):
         if result is None:
             return Response({"detail": "Schüler nicht gefunden."},
                             status=status.HTTP_404_NOT_FOUND)
-        # Sync the three useful mail sources; drafts live in PostgreSQL
-        # and never need an IMAP request. Already-cached spam/trash messages
-        # are still included if associated with this student.
+        # The student history needs all old headers, not just the newest
+        # 200 loaded by the regular mail reader. Expand the target in the
+        # background using the server_total discovered on the first sync.
+        # Each job still fetches only a bounded number of missing headers.
         syncing = False
         for folder in ("inbox", "sent", "archive"):
             cached = folder_for_owner(studio, request.user, config, folder)
-            schedule_folder_sync(cached)
+            requested = max(200, cached.server_total)
+            schedule_folder_sync(cached, requested_count=requested)
             cached.refresh_from_db()
-            if cached.sync_started_at is not None:
+            if cached.sync_error:
+                continue
+            incomplete = bool(
+                cached.last_synced_at and cached.server_total
+                and cached.messages.count() < cached.server_total
+            )
+            if cached.sync_started_at is not None or incomplete:
                 syncing = True
         result["syncing"] = syncing
         return Response(result)
