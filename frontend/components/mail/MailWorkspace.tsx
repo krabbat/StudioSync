@@ -226,7 +226,8 @@ export default function MailWorkspace() {
         messages, folder, query, studentFilter, instrumentFilter, dateFrom, dateTo, unreadOnly, attachmentOnly,
     ])
 
-    const selected = visible.find((m) => m.id === selectedId)
+    // Keep the opened message in the reader when auto-read hides it from an Unread filter.
+    const selected = messages.find((m) => m.id === selectedId && m.folder === folder)
     const visibleIds = visible.map((m) => m.id)
     const selectedVisibleIds = visibleIds.filter((id) => selectedMailIds.includes(id))
     const allVisibleSelected = visible.length > 0 && selectedVisibleIds.length === visible.length
