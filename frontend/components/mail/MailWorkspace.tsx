@@ -82,6 +82,10 @@ interface InboxPage {
     offset: number
     limit: number
     uidvalidity: string | null
+    syncing?: boolean
+    synced?: boolean
+    sync_error?: string
+    last_synced_at?: string | null
 }
 
 const normalizeMessage = (message: InboxApiMessage, folder: FolderId): MailPreview => ({
@@ -178,6 +182,8 @@ export default function MailWorkspace() {
     const [hasMore, setHasMore] = useState(false)
     const [uidvalidity, setUidvalidity] = useState<string | null>(null)
     const [lastFetched, setLastFetched] = useState<Date | null>(null)
+    const [cacheSyncing, setCacheSyncing] = useState(false)
+    const [pendingPageOffset, setPendingPageOffset] = useState<number | null>(null)
     const requestGeneration = useRef(0)
     const [selectedMailIds, setSelectedMailIds] = useState<string[]>([])
     const [composing, setComposing] = useState(false)
