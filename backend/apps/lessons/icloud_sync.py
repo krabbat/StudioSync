@@ -273,8 +273,15 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             except ValueError:
                 pass
         series.teacher = teacher or _default_teacher(studio)
-    guest_name = _raw(master.get("X-STUDIOSYNC-GUEST-NAME", "")).strip()[:200]
-    guest_address = _raw(master.get("X-STUDIOSYNC-GUEST-ADDRESS", "")).strip()[:500]
+    guest_marker = _raw(master.get("X-STUDIOSYNC-GUEST-NAME", "")).strip()
+    guest_name = (
+        _raw(master.get("SUMMARY", guest_marker)).strip()[:200]
+        if guest_marker else ""
+    )
+    guest_address = (
+        _raw(master.get("LOCATION", "")).strip()
+        or _raw(master.get("X-STUDIOSYNC-GUEST-ADDRESS", "")).strip()
+    )[:500]
     if guest_name:
         series.student = None
     elif not series.student_id:
