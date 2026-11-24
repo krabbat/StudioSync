@@ -58,7 +58,8 @@ class LessonViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         queryset = Lesson.objects.select_related(
-            "student__user", "teacher__user", "studio", "band"
+            "student__user", "teacher__user", "studio", "band",
+            "icloud_occurrence__series",
         ).filter(studio__in=studios_for_request(self.request))
 
         if user.role == "admin":
@@ -163,12 +164,38 @@ class LessonViewSet(viewsets.ModelViewSet):
         """
         self._reject_student_mutation()
         lesson = self.get_object()
+        scope = request.query_params.get("scope", "this")
+        if scope not in ("this", "future"):
+            return Response(
+                {"detail": "Ungültige Löschoption."}, status=status.HTTP_400_BAD_REQUEST,
+            )
         if lesson.is_paid or lesson.status in ("completed", "in_progress", "no_show"):
             return Response(
                 {"detail": "Bereits erteilte, laufende oder bezahlte Unterrichtsstunden "
                  "können nicht gelöscht werden. Bitte den Unterrichtsstatus bearbeiten."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        if scope == "future":
+            from apps.lessons.icloud_sync import end_icloud_series_from_lesson
+            from apps.core.views.icloud_calendar import ICloudSetupError
+            try:
+                count = end_icloud_series_from_lesson(lesson)
+                return Response({
+                    "detail": f"Terminserie ab diesem Zeitpunkt beendet ({count} verknüpfte Termine).",
+                    "icloud_synced": True,
+                }, status=status.HTTP_200_OK)
+            except ICloudSetupError as exc:
+                return Response(
+                    {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST,
+                )
+            except Exception:
+                logger.exception("Deleting future iCloud recurrence occurrences failed")
+                return Response(
+                    {"detail": "Die Terminserie konnte nicht beendet werden. "
+                     "Es wurden keine Unterrichtstermine gelöscht."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
 
         # Remember the owner before deleting. Teachers may delete their own
         # upcoming lessons, but the iCloud credentials belong to the admin.
