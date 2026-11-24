@@ -6,6 +6,7 @@ import { Mail, Lock, Loader2, AlertCircle, ArrowRight, Music2 } from 'lucide-rea
 import Link from 'next/link'
 import { Logo } from '@/components/Logo'
 import {useTranslations} from 'next-intl'
+import { INTERNATIONAL_EMAIL_PATTERN, INTERNATIONAL_EMAIL_HINT } from '@/lib/internationalEmail'
 
 const A = {
     bg: '#faf7f2',
@@ -184,7 +185,7 @@ export default function LoginPage() {
                                         <Mail className="h-4 w-4" style={{ color: A.faint }} />
                                     </div>
                                     <input
-                                        id="email" name="email" type="email" autoComplete="email" required
+                                        id="email" name="email" type="text" inputMode="email" pattern={INTERNATIONAL_EMAIL_PATTERN} title={INTERNATIONAL_EMAIL_HINT} autoComplete="email" required
                                         value={email} onChange={e => setEmail(e.target.value)}
                                         className={inp}
                                         style={{ paddingLeft: '2.375rem', paddingRight: '0.875rem', backgroundColor: A.bg, borderColor: A.border, color: A.text }}
