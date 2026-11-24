@@ -266,8 +266,16 @@ def _sync_folder_from_imap(cache, config):
                 cache.messages.filter(uid__in=wanted)
             }
         missing = [uid for uid in wanted if uid not in existing][:MAX_NEW_HEADERS_PER_JOB]
+        # Existing snapshots predate the association feature. Backfill their
+        # full correspondent headers once without discarding saved mail bodies.
+        budget = MAX_NEW_HEADERS_PER_JOB - len(missing)
+        backfill = [
+            uid for uid in wanted if uid in existing
+            and not existing[uid].contact_addresses
+        ][:budget]
+        header_uids = missing + backfill
         metadata = []
-        for batch in _chunks(missing):
+        for batch in _chunks(header_uids):
             status, records = client.uid(
                 "FETCH", ",".join(str(uid) for uid in batch),
                 "(UID FLAGS RFC822.SIZE BODY.PEEK[HEADER])",
@@ -303,6 +311,18 @@ def _sync_folder_from_imap(cache, config):
             if vanished:
                 current.messages.filter(uid__in=vanished).delete()
 
+        # Backfill only participant addresses for historical cached rows.
+        # Do not modify their already downloaded body or manual assignment.
+        backfill_addresses = {
+            int(item["id"]): item.get("contact_addresses", [])
+            for item in metadata if int(item["id"]) in existing
+        }
+        if backfill_addresses:
+            changed = list(current.messages.filter(uid__in=backfill_addresses))
+            for row in changed:
+                row.contact_addresses = backfill_addresses[row.uid]
+            MailMessageCache.objects.bulk_update(changed, ["contact_addresses"], batch_size=100)
+
         current.messages.bulk_create([
             MailMessageCache(
                 folder_cache=current, uid=int(item["id"]),
@@ -316,7 +336,7 @@ def _sync_folder_from_imap(cache, config):
                 size=item.get("size"), preview=item["preview"],
                 contact_addresses=item.get("contact_addresses", []),
                 attachments=item["attachments"],
-            ) for item in metadata
+            ) for item in metadata if int(item["id"]) not in existing
         ], ignore_conflicts=True, batch_size=100)
         if flags:
             records = list(current.messages.filter(uid__in=flags))
