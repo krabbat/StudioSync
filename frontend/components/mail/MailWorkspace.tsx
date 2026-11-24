@@ -206,6 +206,7 @@ export default function MailWorkspace() {
     const [associationSaving, setAssociationSaving] = useState(false)
     const [linkedMessageUid, setLinkedMessageUid] = useState('')
     const [linkedMessageFolder, setLinkedMessageFolder] = useState<FolderId | null>(null)
+    const [linkedDraftId, setLinkedDraftId] = useState('')
     const [instrumentFilter, setInstrumentFilter] = useState('')
     const [dateFrom, setDateFrom] = useState('')
     const [dateTo, setDateTo] = useState('')
@@ -284,6 +285,11 @@ export default function MailWorkspace() {
         }
         const uid = params.get('uid')
         if (uid && /^[1-9][0-9]{0,19}$/.test(uid)) setLinkedMessageUid(uid)
+        const draft = params.get('draft')
+        if (targetFolder === 'drafts' && draft &&
+            /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(draft)) {
+            setLinkedDraftId(draft)
+        }
         if (params.get('compose') === '1') {
             setComposing(true)
             setRecipientMode('single')
@@ -986,6 +992,15 @@ export default function MailWorkspace() {
             setDraftLoading(false)
         }
     }
+
+    useEffect(() => {
+        if (folder !== 'drafts' || !linkedDraftId) return
+        const id = linkedDraftId
+        setLinkedDraftId('')
+        void openDraft(id)
+        // Opens only once when navigating from the student communication tab.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [folder, linkedDraftId])
 
     const deleteDraft = async (id: string) => {
         if (!window.confirm('Diesen gespeicherten Entwurf endgültig löschen?')) return
