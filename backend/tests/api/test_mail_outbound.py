@@ -426,3 +426,41 @@ def test_sending_saved_file_uses_real_attachment_payload(
         [], studio=studio, resource_ids=[str(saved_studiosync_pdf.pk)]
     )
     assert attached[0][1] == b"%PDF-1.4 Beispiel"
+
+
+@pytest.mark.django_db
+def test_smtp_dispatch_attaches_saved_studiosync_pdf_to_each_private_mail(
+    studio, saved_studiosync_pdf
+):
+    connection = MagicMock()
+    connection.send_messages.return_value = 1
+    with (
+        patch("apps.core.mail_outbound.assert_public_host"),
+        patch("apps.core.mail_outbound.get_connection", return_value=connection),
+        patch(
+            "apps.core.mail_outbound._open_sent_folder",
+            return_value=(MagicMock(), b'"Sent"'),
+        ),
+        patch("apps.core.mail_outbound._save_sent_copy"),
+    ):
+        result = send_student_mail(
+            studio=studio, config=SETTINGS, student_ids=[],
+            manual_recipient="family@example.org",
+            additional_recipient="teacher@example.org",
+            subject="Noten", body="Übung für nächste Woche",
+            uploads=[], resource_ids=[str(saved_studiosync_pdf.pk)],
+        )
+
+    assert result["sent"] == 2
+    assert result["failed"] == 0
+    assert result["manual_sent"] is True
+    assert result["additional_sent"] is True
+    assert connection.send_messages.call_count == 2
+    destinations = []
+    for invocation in connection.send_messages.call_args_list:
+        message = invocation.args[0][0]
+        destinations.extend(message.to)
+        assert len(message.to) == 1
+        assert message.attachments[0][0].endswith("klavierblatt.pdf")
+        assert message.attachments[0][1] == b"%PDF-1.4 Beispiel"
+    assert set(destinations) == {"family@example.org", "teacher@example.org"}
