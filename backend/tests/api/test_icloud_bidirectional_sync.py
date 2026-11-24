@@ -1,5 +1,5 @@
 """CalDAV regression coverage: recurring import, matching, idempotence and edits."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
