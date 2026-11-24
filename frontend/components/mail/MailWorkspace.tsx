@@ -4,6 +4,7 @@ import {
     useCallback, useEffect, useMemo, useRef, useState,
     type CSSProperties, type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { createPortal } from 'react-dom'
 import {
     Archive, CheckCheck, ChevronDown, ChevronRight, FileText, Filter, Forward,
     Inbox, Mail, MailOpen, Menu, MoreHorizontal, Paperclip, Pencil, RefreshCw, Reply,
@@ -915,7 +916,7 @@ export default function MailWorkspace() {
                                 <Send size={16} /> {mailSending ? 'Sendet …' : `Senden (${distinctRecipientCount})`}
                             </button>
                         </div>
-                        {recipientPickerOpen && (
+                        {recipientPickerOpen && createPortal((
                             <div className="mail-recipient-overlay">
                                 <button type="button" className="mail-recipient-backdrop"
                                     aria-label="Empfängerauswahl schließen"
@@ -1055,7 +1056,7 @@ export default function MailWorkspace() {
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        ), document.body)}
                     </>
                 ) : selected ? (
                     <>
