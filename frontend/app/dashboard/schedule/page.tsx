@@ -683,13 +683,6 @@ export default function SchedulePage() {
               {use24Hour ? "24h" : "12h"} <span className="text-[9px] text-gray-400 font-bold ml-1">{shortTimeZone}</span>
             </span>
           </Button>
-          {currentUser?.role === 'admin' && currentUser?.preferences?.technical?.icloud_calendar_url && (
-            <Button type="button" variant="outline" onClick={() => void syncAppleNow()}
-              disabled={icloudBusy} className="gap-2 w-full" title="Bidirektional mit iCloud synchronisieren">
-              <RefreshCw className={`w-4 h-4 ${icloudBusy ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">iCloud-Abgleich</span>
-            </Button>
-          )}
           <Button
             variant="outline"
             onClick={() => setShowSubscribeModal(true)}
@@ -698,6 +691,13 @@ export default function SchedulePage() {
             <Link className="w-4 h-4" />
             <span className="hidden sm:inline">{tr('subscribe')}</span>
           </Button>
+          {currentUser?.role === 'admin' && currentUser?.preferences?.technical?.icloud_calendar_url && (
+            <Button type="button" variant="outline" onClick={() => void syncAppleNow()}
+              disabled={icloudBusy} className="gap-2 w-full" title="Bidirektional mit iCloud synchronisieren">
+              <RefreshCw className={`w-4 h-4 ${icloudBusy ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">iCloud-Abgleich</span>
+            </Button>
+          )}
           <Button
             variant="default" // Changed from outline with inline style
             onClick={handlePrint}
