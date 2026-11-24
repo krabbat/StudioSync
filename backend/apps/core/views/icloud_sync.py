@@ -129,6 +129,7 @@ class ICloudSeriesCreateView(_AdminICloudView):
             stats = create_icloud_series(
                 request.user, student=student, teacher=teacher, start=start,
                 end=end, frequency=str(request.data.get("frequency", "")), until=until,
+                summary=str(request.data.get("summary") or ""),
             )
         except ICloudSetupError as exc:
             return Response({"detail": str(exc)}, status=400)
