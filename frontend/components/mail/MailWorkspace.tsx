@@ -696,6 +696,14 @@ export default function MailWorkspace() {
             if (data.manual_sent) setRecipient('')
             if (data.additional_sent) setAdditionalRecipient('')
             if (data.sent > 0 && data.failed === 0) {
+                if (draftId) {
+                    try {
+                        await api.delete('/core/mail/drafts/' + draftId + '/')
+                    } catch {
+                        toast.error('Mail versendet, gespeicherter Entwurf konnte nicht gelöscht werden.')
+                    }
+                    setDraftId(null)
+                }
                 toast.success(`${data.sent} E-Mail(s) erfolgreich versendet.`)
                 if (data.copies_failed > 0) {
                     toast.error(`${data.copies_failed} Kopie(n) konnten nicht im Gesendet-Ordner gespeichert werden.`)
@@ -1114,7 +1122,7 @@ export default function MailWorkspace() {
                             checked={allVisibleSelected}
                             ref={(element) => { if (element) element.indeterminate = partiallySelected }}
                             onChange={toggleAllVisible}
-                            disabled={visible.length === 0 || mailActionBusy}
+                            disabled={visible.length === 0 || mailActionBusy || folder === 'drafts'}
                             aria-label="Alle sichtbaren Nachrichten auswählen"
                         />
                         <span>{selectedVisibleIds.length > 0
@@ -1123,7 +1131,7 @@ export default function MailWorkspace() {
                     </label>
                     <span>{folder === 'outbox' ? '0' : `${messages.length} / ${total}`} Mails</span>
                 </div>
-                {selectedVisibleIds.length > 0 && (
+                {folder !== 'drafts' && selectedVisibleIds.length > 0 && (
                     <div className="mail-bulk-toolbar" role="toolbar"
                         aria-label="Aktionen für ausgewählte Nachrichten">
                         <button type="button" disabled={mailActionBusy}
@@ -1204,16 +1212,18 @@ export default function MailWorkspace() {
                                         selectedMailIds.includes(message.id) ? 'is-checked' : '',
                                         message.unread ? 'is-unread' : '',
                                     ].filter(Boolean).join(' ')}>
-                                    <label className="mail-message-select" title="Nachricht für mehrere Aktionen auswählen">
+                                    {folder !== 'drafts' && <label className="mail-message-select"
+                                        title="Nachricht für mehrere Aktionen auswählen">
                                         <input type="checkbox"
                                             checked={selectedMailIds.includes(message.id)}
                                             disabled={mailActionBusy}
                                             onChange={() => toggleMessageSelection(message.id)}
                                             aria-label={`${message.from}: ${message.subject} auswählen`} />
-                                    </label>
+                                    </label>}
                                     <button type="button" className="mail-message-content"
                                         disabled={mailActionBusy}
-                                        onClick={() => selectMessage(message)}>
+                                        onClick={() => folder === 'drafts'
+                                            ? void openDraft(message.id) : void selectMessage(message)}>
                                         <div className="mail-message-topline">
                                             <span className="mail-message-sender">
                                                 {message.unread && <span className="mail-unread-dot" />}
@@ -1232,6 +1242,14 @@ export default function MailWorkspace() {
                                             </div>
                                         </div>
                                     </button>
+                                    {folder === 'drafts' && (
+                                        <button type="button" className="mail-icon"
+                                            aria-label={'Entwurf ' + message.subject + ' löschen'}
+                                            title="Entwurf löschen"
+                                            onClick={() => void deleteDraft(message.id)}>
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )
@@ -1398,8 +1416,12 @@ export default function MailWorkspace() {
                                 <FileText size={17} /> Aus StudioSync
                             </button>
                             <div className="mail-compose-spacer" />
-                            <button type="button" className="mail-secondary-button" disabled
-                                title="Dauerhafte Entwürfe folgen mit dem Mail-Backend">Entwurf speichern</button>
+                            <button type="button" className="mail-secondary-button"
+                                disabled={draftSaving || mailSending || recipientsLoading}
+                                onClick={() => void saveDraft()}
+                                title="Entwurf mit Anlagen in PostgreSQL speichern">
+                                {draftSaving ? 'Speichert …' : 'Entwurf speichern'}
+                            </button>
                             <button type="button" className="mail-send-button"
                                 disabled={mailSending || recipientsLoading || !!recipientsError ||
                                     !distinctRecipientCount || !subject.trim() || !body.trim()}
