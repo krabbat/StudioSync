@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.security import assert_public_host
-from apps.core.mail_outbound import _open_sent_folder, _save_sent_copy, MailSendError
+from apps.core.mail_outbound import _open_sent_folder, _save_sent_copy
 from apps.core.mail_cache import invalidate_sent_folder
 import logging
 
