@@ -978,6 +978,20 @@ export default function MailWorkspace() {
                             </div>
                             <textarea className="mail-compose-body" aria-label="Nachrichtentext" value={body}
                                 placeholder="Nachricht verfassen …" onChange={(e) => setBody(e.target.value)} />
+                            <div className="mail-compose-signature"
+                                aria-label="Automatische MUSart E-Mail-Signatur">
+                                <img src="https://musart.de/images/yootheme/favicon.png"
+                                    alt="MUSart-Logo" width={48} height={48} />
+                                <div className="mail-compose-signature-details">
+                                    <strong>Musikunterricht Sartori</strong>
+                                    <span>Peter Müller</span>
+                                    <a href="https://musart.de" target="_blank"
+                                        rel="noopener noreferrer">https://musart.de</a>
+                                    <a href="mailto:musikunterricht@musart.de">
+                                        musikunterricht@musart.de
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                         {(localFiles.length > 0 || studioFiles.length > 0) && (
                             <div className="mail-compose-attachments-strip"
