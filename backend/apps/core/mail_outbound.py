@@ -6,6 +6,9 @@ receive exactly one copy. The SMTP credentials never leave the backend.
 """
 
 import imaplib
+from email.headerregistry import Address
+from email.message import EmailMessage as StandardEmailMessage
+from email.policy import SMTPUTF8
 import logging
 import mimetypes
 import os
@@ -17,7 +20,8 @@ from email.utils import formataddr, make_msgid
 
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives, get_connection
-from django.core.validators import validate_email
+
+from apps.core.international_email import validate_international_email
 
 from apps.core.mail_folders import MailFolderError, resolve_folder
 from apps.core.mail_signature import (
@@ -47,10 +51,9 @@ def _valid_email(value):
     if not address:
         return ""
     try:
-        validate_email(address)
+        return validate_international_email(address)
     except ValidationError:
         return ""
-    return address
 
 
 def _recipient_address(student):
@@ -155,13 +158,13 @@ def _resolve_addresses(studio, student_ids, manual_recipient, additional_recipie
     unique = OrderedDict()
     for uid in ids:
         address = available[uid]["email"]
-        key = address.casefold()
+        key = address.lower()
         entry = unique.setdefault(key, {"email": address, "student_ids": []})
         entry["student_ids"].append(uid)
     if manual:
-        unique.setdefault(manual.casefold(), {"email": manual, "student_ids": []})
+        unique.setdefault(manual.lower(), {"email": manual, "student_ids": []})
     if additional:
-        unique.setdefault(additional.casefold(), {
+        unique.setdefault(additional.lower(), {
             "email": additional, "student_ids": [],
         })
     if not unique:
@@ -312,11 +315,12 @@ def _open_sent_folder(config):
         ) from exc
 
 
-def _save_sent_copy(client, mailbox, message):
+def _save_sent_copy(client, mailbox, message, raw_message=None):
     """Append a copy with the same Message-ID once SMTP accepts the mail."""
     try:
         status, _ = client.append(
-            mailbox, r"(\Seen)", None, message.message().as_bytes()
+            mailbox, r"(\Seen)", None,
+            raw_message if raw_message is not None else message.message().as_bytes()
         )
         if status != "OK":
             raise MailSendError("Der Server hat die Kopie nicht bestätigt.")
@@ -325,6 +329,21 @@ def _save_sent_copy(client, mailbox, message):
         raise MailSendError(
             "Kopie konnte nicht im Gesendet-Ordner gespeichert werden."
         ) from exc
+
+
+def _smtp_utf8_bytes(*, sender, recipient, studio_name, subject, plain, html, attachments, message_id):
+    """Build RFC 6532 headers for real international mailbox addresses."""
+    msg = StandardEmailMessage(policy=SMTPUTF8)
+    msg["Subject"] = subject
+    msg["From"] = Address(display_name=studio_name, addr_spec=sender)
+    msg["To"] = Address(addr_spec=recipient)
+    msg["Message-ID"] = message_id
+    msg.set_content(plain)
+    msg.add_alternative(html, subtype="html")
+    for filename, data, mime in attachments:
+        maintype, subtype = mime.split("/", 1)
+        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
+    return msg.as_bytes()
 
 
 def send_student_mail(
@@ -380,11 +399,39 @@ def send_student_mail(
             email.attach_alternative(html_mail_with_signature(content), "text/html")
             for filename, data, mime in attachments:
                 email.attach(filename, data, mime)
+            raw_message = None
             try:
-                delivered = email.send(fail_silently=False)
-                if delivered != 1:
-                    raise smtplib.SMTPException("SMTP rejected the message")
-            except (smtplib.SMTPException, OSError, TimeoutError) as exc:
+                needs_utf8 = (
+                    not recipient["email"].split("@", 1)[0].isascii()
+                    or not settings["sender"].split("@", 1)[0].isascii()
+                )
+                if needs_utf8:
+                    smtp = connection.connection
+                    if smtp is None or not smtp.has_extn("smtputf8"):
+                        raise smtplib.SMTPNotSupportedError(
+                            "SMTPUTF8 wird vom Mailserver nicht unterstützt."
+                        )
+                    raw_message = _smtp_utf8_bytes(
+                        sender=settings["sender"],
+                        recipient=recipient["email"],
+                        studio_name=studio.name,
+                        subject=title,
+                        plain=plain_mail_with_signature(content),
+                        html=html_mail_with_signature(content),
+                        attachments=attachments,
+                        message_id=email.extra_headers["Message-ID"],
+                    )
+                    refused = smtp.sendmail(
+                        settings["sender"], [recipient["email"]], raw_message,
+                        mail_options=("SMTPUTF8", "BODY=8BITMIME"),
+                    )
+                    if refused:
+                        raise smtplib.SMTPRecipientsRefused(refused)
+                else:
+                    delivered = email.send(fail_silently=False)
+                    if delivered != 1:
+                        raise smtplib.SMTPException("SMTP rejected the message")
+            except (smtplib.SMTPException, OSError, TimeoutError, UnicodeError, ValueError) as exc:
                 LOG.warning("SMTP recipient send failed (%s)", type(exc).__name__)
                 failed.append(recipient)
                 continue
@@ -395,7 +442,7 @@ def send_student_mail(
                 try:
                     if sent_client is None:
                         sent_client, sent_mailbox = _open_sent_folder(config)
-                    _save_sent_copy(sent_client, sent_mailbox, email)
+                    _save_sent_copy(sent_client, sent_mailbox, email, raw_message)
                 except MailSendError:
                     copies_failed += 1
                     sent_copy_unavailable = True
