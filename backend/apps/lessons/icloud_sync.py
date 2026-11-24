@@ -748,7 +748,7 @@ def end_icloud_series_from_lesson(lesson):
     return len(future_links)
 
 
-def create_icloud_series(user, *, student, teacher, start, end, frequency, until=None):
+def create_icloud_series(user, *, student, teacher, start, end, frequency, until=None, summary=""):
     """Create a real VEVENT recurrence in Apple and import its instances."""
     if frequency not in {"weekly", "biweekly", "monthly"}:
         raise ICloudSetupError("Ungültige Wiederholungsregel.")
@@ -768,6 +768,8 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
     event.add("dtstart", start.astimezone(LOCAL_TZ))
     event.add("dtend", end.astimezone(LOCAL_TZ))
     event.add("summary", student.user.get_full_name())
+    if summary:
+        event.add("description", str(summary)[:5000])
     event.add("X-STUDIOSYNC-STUDENT-ID", str(student.id))
     event.add("X-STUDIOSYNC-TEACHER-ID", str(teacher.id))
     values = {"freq": "monthly" if frequency == "monthly" else "weekly"}
