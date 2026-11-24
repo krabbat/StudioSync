@@ -598,6 +598,8 @@ export default function SchedulePage() {
         lesson_type: newBooking.lesson_type,
         status: newBooking.status,
         summary: newBooking.summary,
+        guest_name: bookingMode === "special" ? newBooking.guest_name.trim() : "",
+        guest_address: bookingMode === "special" ? newBooking.guest_address.trim() : "",
         studio: currentUser?.studio?.id || studios?.[0]?.id,
       };
 
@@ -1294,7 +1296,9 @@ export default function SchedulePage() {
           <form id="booking-form" onSubmit={handleBooking} noValidate className="space-y-6">
             {/* Booking Mode Selector */}
             <div className="flex p-1 bg-gray-50 rounded-2xl border border-gray-100 mb-2">
-              {(["individual", "band", "event", "special"] as const).map((mode) => (
+              {(["individual", "band", "event", "special"] as const)
+                .filter((mode) => mode !== "special" || ['admin', 'teacher'].includes(currentUser?.role || ''))
+                .map((mode) => (
                 <Button
                   key={mode}
                   type="button"
