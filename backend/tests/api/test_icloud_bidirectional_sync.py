@@ -132,3 +132,88 @@ def test_local_single_occurrence_change_is_pushed_as_exception(
     assert exceptions[0]["DTSTART"].dt == second.scheduled_start.astimezone(
         exceptions[0]["DTSTART"].dt.tzinfo
     )
+
+
+@pytest.mark.django_db
+def test_collision_names_exact_blocking_lesson_and_clears_after_rebooking(
+    admin_user, studio, student, teacher
+):
+    """A weekly import must identify the OTHER student and the actual time."""
+    from apps.core.models import Student, User
+
+    admin_user.preferences = {"technical": {
+        "icloud_username": "user@icloud.com",
+        "icloud_app_password": "secret",
+        "icloud_calendar_url": CALENDAR_URL,
+    }}
+    admin_user.save(update_fields=["preferences"])
+
+    # A different pupil of the same teacher already occupies the iCloud slot.
+    other_user = User.objects.create_user(
+        email="other@test.com", password=None,
+        role="student", first_name="Lina", last_name="Becker",
+    )
+    other_student = Student.objects.create(
+        user=other_user, studio=studio, primary_teacher=teacher, instrument="Gitarre"
+    )
+    start = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(days=3)
+    blocker = Lesson(
+        studio=studio, teacher=teacher, student=other_student,
+        scheduled_start=start, scheduled_end=start + timedelta(minutes=45),
+        lesson_type="private", status="scheduled",
+    )
+    Lesson.objects.bulk_create([blocker])  # no notification signal
+    remote = _remote(_ical(start, count=1))
+
+    with patch("apps.lessons.icloud_sync._connect", return_value=_connect_mock(remote)):
+        first = sync_icloud_user(admin_user)
+        series = ICloudCalendarSeries.objects.get()
+        assert first["conflicts"] == 1
+        assert "Terminkollision:" in series.last_error
+        assert "Lina Becker" in series.last_error
+        assert start.astimezone(timezone.get_current_timezone()).strftime("%d.%m.%Y") in series.last_error
+        assert "Lehrkraft bereits belegt" in series.last_error
+
+        # The original blocker is moved to a different time.
+        Lesson.objects.filter(pk=blocker.pk).update(
+            scheduled_start=start + timedelta(hours=3),
+            scheduled_end=start + timedelta(hours=3, minutes=45),
+        )
+        second = sync_icloud_user(admin_user)
+
+    series.refresh_from_db()
+    assert second["conflicts"] == 0
+    assert second["imported"] == 1
+    assert series.last_error == ""
+    assert Lesson.objects.filter(student=student, scheduled_start=start).count() == 1
+
+
+@pytest.mark.django_db
+def test_old_collision_error_does_not_block_studiosync_move(
+    admin_user, studio, student, teacher
+):
+    """A local move must export even after an earlier stored collision warning."""
+    admin_user.preferences = {"technical": {
+        "icloud_username": "user@icloud.com",
+        "icloud_app_password": "secret",
+        "icloud_calendar_url": CALENDAR_URL,
+    }}
+    admin_user.save(update_fields=["preferences"])
+    start = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(days=3)
+    remote = _remote(_ical(start, count=2))
+    with patch("apps.lessons.icloud_sync._connect", return_value=_connect_mock(remote)):
+        first = sync_icloud_user(admin_user)
+        assert first["imported"] == 2
+
+        lesson = Lesson.objects.filter(student=student).order_by("scheduled_start").first()
+        Lesson.objects.filter(pk=lesson.pk).update(
+            scheduled_start=lesson.scheduled_start + timedelta(hours=2),
+            scheduled_end=lesson.scheduled_end + timedelta(hours=2),
+        )
+        ICloudCalendarSeries.objects.update(last_error="Terminkollision: veralteter Hinweis")
+        second = sync_icloud_user(admin_user)
+
+    series = ICloudCalendarSeries.objects.get()
+    assert series.last_error == ""
+    assert second["exported"] == 1
+    assert second["conflicts"] == 0
