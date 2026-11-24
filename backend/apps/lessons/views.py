@@ -2,23 +2,20 @@
 Lesson API views
 """
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from django.db.models import Q
 from django.utils import timezone
 
-from rest_framework import filters, serializers, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
 
 from apps.core.tenancy import studios_for_request
 from apps.lessons.models import Lesson, LessonPlan, StudentGoal
-
-logger = logging.getLogger(__name__)
 from apps.lessons.serializers import (
     LessonCreateSerializer,
     LessonDetailSerializer,
@@ -26,6 +23,8 @@ from apps.lessons.serializers import (
     LessonPlanSerializer,
     StudentGoalSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class LessonViewSet(viewsets.ModelViewSet):
