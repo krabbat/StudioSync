@@ -232,6 +232,10 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             series=series, recurrence_id=rid
         )
         lesson = link.lesson
+        if not lesson and link.synced_signature:
+            # A previously linked StudioSync lesson was deleted locally.
+            # Do not recreate it on the next pull; export a cancelled exception.
+            continue
         if not lesson and not entry["cancelled"]:
             # Attach an existing local lesson before creating a new one.
             matching = Lesson.objects.filter(
@@ -324,15 +328,25 @@ def _push_changes(series, remote, stats):
     recurring = bool(master.get("RRULE"))
     modified_links = []
     for entry in series.occurrences.select_related("lesson"):
-        if not entry.lesson:
-            continue
         lesson = entry.lesson
-        if _lesson_signature(lesson) == entry.synced_signature:
+        removed = lesson is None and entry.synced_signature and entry.synced_signature != "deleted"
+        if lesson is None and not removed:
             continue
-        if lesson.status in COMPLETED_STATUSES:
+        if lesson is not None and _lesson_signature(lesson) == entry.synced_signature:
+            continue
+        if lesson is not None and lesson.status in COMPLETED_STATUSES:
             # Calendar never controls the teaching/accounting classification.
             entry.synced_signature = _lesson_signature(lesson)
             entry.save(update_fields=["synced_signature", "updated_at"])
+            continue
+        if removed and recurring:
+            recurrence_day = datetime.fromisoformat(entry.recurrence_id).astimezone(LOCAL_TZ)
+            master.add("exdate", recurrence_day)
+            # A recurrence exception for the same original date would supersede EXDATE.
+            existing = overrides.get(entry.recurrence_id)
+            if existing in cal.subcomponents:
+                cal.subcomponents.remove(existing)
+            modified_links.append(entry)
             continue
         if recurring:
             override = overrides.get(entry.recurrence_id)
@@ -344,10 +358,17 @@ def _push_changes(series, remote, stats):
             target = override
         else:
             target = master
-        _set_property(target, "DTSTART", lesson.scheduled_start.astimezone(LOCAL_TZ))
-        _set_property(target, "DTEND", lesson.scheduled_end.astimezone(LOCAL_TZ))
-        _set_property(target, "LOCATION", lesson.location or "")
-        _set_property(target, "STATUS", "CANCELLED" if lesson.status == "cancelled" else "CONFIRMED")
+        if removed:
+            _set_property(target, "STATUS", "CANCELLED")
+        else:
+            if lesson.student_id != series.student_id:
+                _set_error(series, "Schülerwechsel bitte über die Serienzuordnung vornehmen.")
+                stats["conflicts"] += 1
+                return
+            _set_property(target, "DTSTART", lesson.scheduled_start.astimezone(LOCAL_TZ))
+            _set_property(target, "DTEND", lesson.scheduled_end.astimezone(LOCAL_TZ))
+            _set_property(target, "LOCATION", lesson.location or "")
+            _set_property(target, "STATUS", "CANCELLED" if lesson.status == "cancelled" else "CONFIRMED")
         _set_property(target, "DTSTAMP", timezone.now())
         modified_links.append(entry)
 
@@ -362,15 +383,14 @@ def _push_changes(series, remote, stats):
     series.last_error = ""
     series.save(update_fields=["ical_data", "remote_hash", "last_synced_at", "last_error", "updated_at"])
     for link in modified_links:
-        link.synced_signature = _lesson_signature(link.lesson)
+        link.synced_signature = _lesson_signature(link.lesson) if link.lesson else "deleted"
         link.save(update_fields=["synced_signature", "updated_at"])
         stats["exported"] += 1
 
 
 def sync_icloud_user(user):
     """Run one pull-then-push, idempotent round trip; returns per-direction counts."""
-    from apps.core.tenancy import studios_for_request
-    cfg = _settings(user)
+        cfg = _settings(user)
     calendar_url = _allowed_calendar_url(cfg.get("icloud_calendar_url") or "")
     username, password = _credentials(user)
     studio = user.owned_studios.order_by("id").first()
@@ -407,9 +427,17 @@ def sync_icloud_user(user):
         for series in all_series:
             remote = remote_items.get(series.uid)
             if remote is None:
-                # Never silently recreate a deleted remote event.
-                _set_error(series, "Terminserie in iCloud nicht mehr vorhanden.")
-                stats["conflicts"] += 1
+                # Require two successful polls before processing a remote deletion.
+                if series.last_error != "Terminserie in iCloud fehlt; Löschung wird geprüft.":
+                    _set_error(series, "Terminserie in iCloud fehlt; Löschung wird geprüft.")
+                    continue
+                for link in series.occurrences.select_related("lesson"):
+                    if link.lesson and link.lesson.status not in COMPLETED_STATUSES:
+                        Lesson.objects.filter(pk=link.lesson_id).update(status="cancelled")
+                        link.lesson.status = "cancelled"
+                        link.synced_signature = _lesson_signature(link.lesson)
+                        link.save(update_fields=["synced_signature", "updated_at"])
+                _set_error(series, "Terminserie wurde in iCloud gelöscht; zukünftige Einheiten abgesagt.")
                 continue
             if series.last_error:
                 continue
