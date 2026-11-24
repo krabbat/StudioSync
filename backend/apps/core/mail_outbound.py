@@ -177,9 +177,9 @@ def _collect_attachments(files):
 
 def _open_sent_folder(config):
     """Open one IMAP session for all copies in this dispatch."""
-    host, port, username, password, mode = _configuration(config)
     client = None
     try:
+        host, port, username, password, mode = _configuration(config)
         tls = ssl.create_default_context()
         if mode == "ssl":
             client = imaplib.IMAP4_SSL(host, port, ssl_context=tls, timeout=12)
