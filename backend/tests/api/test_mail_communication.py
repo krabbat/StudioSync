@@ -1,5 +1,6 @@
 """Student correspondence, shared-parent matching and durable private drafts."""
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +15,7 @@ from apps.core.mail_drafts import (
     draft_queryset, get_draft, list_drafts, save_draft,
 )
 from apps.core.mail_service import _parse_metadata
-from apps.core.models import Family, MailMessageCache, Student, User
+from apps.core.models import Family, MailDraft, MailMessageCache, Student, User
 
 SETTINGS = {
     "imap_host": "mail.example.org",
@@ -175,3 +176,99 @@ def test_draft_attachment_response_is_authenticated_and_not_in_draft_json(
     assert response.status_code == 200
     assert response.content == b"PRIVATE-DRAFT-BYTES"
     assert response["Cache-Control"] == "private, no-store"
+
+
+@pytest.mark.django_db
+def test_student_communication_lists_all_received_sent_archived_and_drafts_with_pages(
+    studio, admin_user, family_students,
+):
+    student, sibling = family_students
+    inbox = folder_for_owner(studio, admin_user, SETTINGS, "inbox")
+    sent = folder_for_owner(studio, admin_user, SETTINGS, "sent")
+    archive = folder_for_owner(studio, admin_user, SETTINGS, "archive")
+    starting_at = datetime(2026, 11, 24, 8, 0, tzinfo=timezone.utc)
+
+    MailMessageCache.objects.bulk_create([
+        MailMessageCache(
+            folder_cache=inbox, uid=index + 1, sender_name="Eltern",
+            email="parent@example.org", subject=f"Anfrage {index + 1}",
+            contact_addresses=["parent@example.org"],
+            date=(starting_at + timedelta(minutes=index)).isoformat(),
+        ) for index in range(45)
+    ])
+    MailMessageCache.objects.create(
+        folder_cache=sent, uid=101, sender_name="Eltern",
+        email="parent@example.org", subject="Antwort",
+        contact_addresses=["parent@example.org"],
+        date=(starting_at + timedelta(minutes=60)).isoformat(),
+    )
+    # An archived message can have only the old single-address cache field.
+    MailMessageCache.objects.create(
+        folder_cache=archive, uid=102, sender_name="Eltern",
+        email="parent@example.org", subject="Alte Anfrage",
+        date=(starting_at - timedelta(days=1)).isoformat(),
+    )
+    MailMessageCache.objects.create(
+        folder_cache=inbox, uid=103, sender_name="Fremd",
+        email="unrelated@example.org", subject="Andere Familie",
+        contact_addresses=["unrelated@example.org"],
+    )
+    MailDraft.objects.create(
+        studio=studio, owner=admin_user, account_key=inbox.account_key,
+        student_ids=[str(student.pk)], subject="Entwurf für Schüler",
+        body="Noch nicht gesendet",
+    )
+    MailDraft.objects.create(
+        studio=studio, owner=admin_user, account_key=inbox.account_key,
+        recipient="parent@example.org",
+        subject="Entwurf an Eltern",
+    )
+
+    first = mail_student_overview(
+        studio, admin_user, inbox.account_key, str(student.pk),
+        offset=0, limit=40,
+    )
+    second = mail_student_overview(
+        studio, admin_user, inbox.account_key, str(student.pk),
+        offset=40, limit=40,
+    )
+    assert first["total"] == 49
+    assert first["counts"] == {"received": 46, "sent": 1, "draft": 2}
+    assert first["has_more"] is True
+    assert second["has_more"] is False
+    assert len(first["messages"]) == 40
+    assert len(second["messages"]) == 9
+    combined = first["messages"] + second["messages"]
+    assert len({(item["folder"], item["uid"]) for item in combined}) == 49
+    assert {item["category"] for item in combined} == {"received", "sent", "draft"}
+    assert sum(item["category"] == "draft" for item in combined) == 2
+    assert all(item["uid"] for item in combined)
+    assert all(combined[i]["date"] >= combined[i + 1]["date"]
+               for i in range(len(combined) - 1))
+    # The shared parent's address intentionally associates a second student.
+    sibling_page = mail_student_overview(
+        studio, admin_user, inbox.account_key, str(sibling.pk),
+    )
+    assert sibling_page["total"] >= 48
+
+
+@pytest.mark.django_db
+def test_communication_endpoint_pages_are_owner_only_and_validate_bounds(
+    studio, admin_user, family_students, authenticated_client,
+    teacher_authenticated_client,
+):
+    student, _ = family_students
+    admin_user.preferences = {"technical": SETTINGS}
+    admin_user.save(update_fields=["preferences"])
+    url = reverse("mail-student-overview", kwargs={"student_id": student.pk})
+    assert teacher_authenticated_client.get(url).status_code == 403
+    assert authenticated_client.get(url + "?offset=-1").status_code == 400
+    assert authenticated_client.get(url + "?limit=101").status_code == 400
+    with patch("apps.core.mail_cache.async_task") as queued:
+        result = authenticated_client.get(url + "?offset=0&limit=40")
+    assert result.status_code == 200
+    assert result.data["total"] == 0
+    assert result.data["counts"] == {"received": 0, "sent": 0, "draft": 0}
+    assert result.data["has_more"] is False
+    # Inbox, Sent, Archive queue refresh without exposing credentials.
+    assert queued.call_count == 3
