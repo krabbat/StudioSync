@@ -91,6 +91,9 @@ interface LessonBooking {
   online_meeting_url: string;
   status: string;
   cancellation_reason: string;
+  summary: string;
+  guest_name: string;
+  guest_address: string;
   recurrence: "none" | "weekly" | "biweekly" | "monthly";
   recurrence_until: string;
 }
@@ -294,11 +297,14 @@ export default function SchedulePage() {
     online_meeting_url: "",
     status: "scheduled",
     cancellation_reason: "",
+    summary: "",
+    guest_name: "",
+    guest_address: "",
     recurrence: "none",
     recurrence_until: "",
   });
 
-  const [bookingMode, setBookingMode] = useState<"individual" | "band" | "event">("individual");
+  const [bookingMode, setBookingMode] = useState<"individual" | "band" | "event" | "special">("individual");
   const teacherManuallyChanged = useRef(false);
   const durationManuallyChanged = useRef(false);
 
@@ -354,6 +360,9 @@ export default function SchedulePage() {
       online_meeting_url: "",
       status: "scheduled",
       cancellation_reason: "",
+    summary: "",
+    guest_name: "",
+    guest_address: "",
     recurrence: "none",
     recurrence_until: "",
     });
@@ -375,12 +384,16 @@ export default function SchedulePage() {
       online_meeting_url: lesson.online_meeting_url || "",
       status: lesson.status || "scheduled",
       cancellation_reason: lesson.cancellation_reason || "",
+      summary: lesson.summary || "",
+      guest_name: lesson.guest_name || "",
+      guest_address: lesson.guest_address || "",
       recurrence: "none",
       recurrence_until: "",
     });
     setEditingLessonId(lesson.id);
 
-    if (lesson.band) setBookingMode("band");
+    if (lesson.guest_name) setBookingMode("special");
+    else if (lesson.band) setBookingMode("band");
     else if (lesson.lesson_type === "workshop" || lesson.lesson_type === "recital")
       setBookingMode("event");
     else setBookingMode("individual");
@@ -552,6 +565,10 @@ export default function SchedulePage() {
       toast.error(tr('messagePleaseSelectATime'));
       return;
     }
+    if (currentUser?.role !== "student" && bookingMode === "special" && !newBooking.guest_name.trim()) {
+      toast.error('Bitte einen Namen für den Sondertermin eintragen.');
+      return;
+    }
     if (currentUser?.role !== "student" && bookingMode === "individual" && !newBooking.student) {
       toast.error(tr('messagePleaseSelectAStudent'));
       return;
@@ -572,6 +589,7 @@ export default function SchedulePage() {
         scheduled_end: endDateTime.toISOString(),
         lesson_type: newBooking.lesson_type,
         status: newBooking.status,
+        summary: newBooking.summary,
         studio: currentUser?.studio?.id || studios?.[0]?.id,
       };
 
@@ -585,7 +603,13 @@ export default function SchedulePage() {
       } else {
         payload.teacher = newBooking.teacher || currentUser?.teacher_profile?.id;
 
-        if (bookingMode === "band" && newBooking.band) {
+        if (bookingMode === "special") {
+          payload.guest_name = newBooking.guest_name.trim();
+          payload.guest_address = newBooking.guest_address.trim();
+          payload.student = null;
+          payload.band = null;
+          payload.room = null;
+        } else if (bookingMode === "band" && newBooking.band) {
           payload.band = newBooking.band;
           payload.student = null;
         } else if (bookingMode === "individual" && newBooking.student) {
@@ -1262,7 +1286,7 @@ export default function SchedulePage() {
           <form id="booking-form" onSubmit={handleBooking} noValidate className="space-y-6">
             {/* Booking Mode Selector */}
             <div className="flex p-1 bg-gray-50 rounded-2xl border border-gray-100 mb-2">
-              {(["individual", "band", "event"] as const).map((mode) => (
+              {(["individual", "band", "event", "special"] as const).map((mode) => (
                 <Button
                   key={mode}
                   type="button"
@@ -1274,6 +1298,10 @@ export default function SchedulePage() {
                       setNewBooking((prev) => ({ ...prev, lesson_type: "private" }));
                     if (mode === "event")
                       setNewBooking((prev) => ({ ...prev, lesson_type: "workshop" }));
+                    if (mode === "special")
+                      setNewBooking((prev) => ({
+                        ...prev, lesson_type: "private", student: "", band: "", room: "", recurrence: "none",
+                      }));
                   }}
                   variant={bookingMode === mode ? "default" : "ghost"}
                   size="sm"
@@ -1287,7 +1315,7 @@ export default function SchedulePage() {
                       : undefined
                   }
                 >
-                  {mode === "individual" ? tr("modeIndividual") : mode === "band" ? tr("modeBand") : tr("modeEvent")}
+                  {mode === "individual" ? tr("modeIndividual") : mode === "band" ? tr("modeBand") : mode === "special" ? "Sondertermin" : tr("modeEvent")}
                 </Button>
               ))}
             </div>
@@ -1327,12 +1355,22 @@ export default function SchedulePage() {
                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
                       {bookingMode === "band"
                         ? tr("bandGroup")
+                        : bookingMode === "special" ? "Name"
                         : bookingMode === "individual"
                           ? tr("student")
                           : tr("targetOptional")}
                     </label>
 
-                    {bookingMode === "band" ? (
+                    {bookingMode === "special" ? (
+                      <input
+                        type="text"
+                        required
+                        placeholder="Vorname und Nachname"
+                        value={newBooking.guest_name}
+                        onChange={(e) => setNewBooking({ ...newBooking, guest_name: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700"
+                      />
+                    ) : bookingMode === "band" ? (
                       <select
                         required
                         value={newBooking.band}
@@ -1354,8 +1392,14 @@ export default function SchedulePage() {
                         value={newBooking.student}
                         onChange={(e) => {
                            durationManuallyChanged.current = false;
+                           const nextStudent = students.find((s: any) => s.id === e.target.value);
+                           const oldStudent = students.find((s: any) => s.id === newBooking.student);
+                           const previousInstrument = oldStudent?.instrument || "";
+                           const keepNotes = newBooking.summary.trim() && newBooking.summary !== previousInstrument;
                            setNewBooking({ ...newBooking, student: e.target.value,
-                             band: "", duration: 60 });
+                             band: "", duration: 60,
+                             summary: keepNotes ? newBooking.summary : nextStudent?.instrument || "",
+                           });
                          }}
                         className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                       >
@@ -1430,9 +1474,19 @@ export default function SchedulePage() {
                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
                   {tr('teachingAddress')}
                 </label>
-                <div className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold text-gray-700 min-h-[48px]">
-                  {bookingAddress || tr('addressMissing')}
-                </div>
+                {bookingMode === "special" ? (
+                  <input
+                    type="text"
+                    placeholder="Straße, Hausnummer, PLZ, Ort"
+                    value={newBooking.guest_address}
+                    onChange={(e) => setNewBooking({ ...newBooking, guest_address: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-medium text-gray-700"
+                  />
+                ) : (
+                  <div className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold text-gray-700 min-h-[48px]">
+                    {bookingAddress || tr('addressMissing')}
+                  </div>
+                )}
                 <label className="flex gap-2 items-center text-sm font-medium text-gray-600">
                   <input type="checkbox" checked={newBooking.is_online}
                     onChange={(e) => setNewBooking({ ...newBooking, is_online: e.target.checked })} />
@@ -1531,6 +1585,19 @@ export default function SchedulePage() {
                   <option value="other">{tr('otherEvent')}</option>
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                Notizen / Terminbeschreibung
+              </label>
+              <textarea
+                rows={3}
+                placeholder="z. B. Probestunde, Ersatztermin, Unterrichtsmaterial oder weitere Hinweise"
+                value={newBooking.summary}
+                onChange={(e) => setNewBooking({ ...newBooking, summary: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent rounded-xl font-medium text-gray-700 outline-none focus:bg-white focus:border-primary resize-y"
+              />
             </div>
 
             {!editingLessonId && currentUser?.role === 'admin' && bookingMode === 'individual' &&
