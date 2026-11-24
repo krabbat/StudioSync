@@ -335,8 +335,14 @@ def _smtp_utf8_bytes(*, sender, recipient, studio_name, subject, plain, html, at
     """Build RFC 6532 headers for real international mailbox addresses."""
     msg = StandardEmailMessage(policy=SMTPUTF8)
     msg["Subject"] = subject
-    msg["From"] = Address(display_name=studio_name, addr_spec=sender)
-    msg["To"] = Address(addr_spec=recipient)
+    sender_local, sender_domain = sender.rsplit("@", 1)
+    target_local, target_domain = recipient.rsplit("@", 1)
+    # Python 3.12's addr_spec parser rejects SMTPUTF8 local parts;
+    # explicit username/domain construction correctly preserves them.
+    msg["From"] = Address(
+        display_name=studio_name, username=sender_local, domain=sender_domain
+    )
+    msg["To"] = Address(username=target_local, domain=target_domain)
     msg["Message-ID"] = message_id
     msg.set_content(plain)
     msg.add_alternative(html, subtype="html")
