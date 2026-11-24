@@ -213,7 +213,14 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
     series.last_synced_at = timezone.now()
     series.last_error = ""
     if not series.teacher_id:
-        series.teacher = _default_teacher(studio)
+        teacher_id = _raw(master.get("X-STUDIOSYNC-TEACHER-ID", "")).strip()
+        teacher = None
+        if teacher_id:
+            try:
+                teacher = Teacher.objects.filter(pk=uuid.UUID(teacher_id), studio=studio).first()
+            except ValueError:
+                pass
+        series.teacher = teacher or _default_teacher(studio)
     if not series.student_id:
         series.student = _resolve_student(series, master)
     series.save()
@@ -311,6 +318,7 @@ def _ical_for_lesson(lesson):
         event.add("description", lesson.summary)
     if lesson.student_id:
         event.add("X-STUDIOSYNC-STUDENT-ID", str(lesson.student_id))
+    event.add("X-STUDIOSYNC-TEACHER-ID", str(lesson.teacher_id))
     if lesson.status == "cancelled":
         event.add("status", "CANCELLED")
     ical.add_component(event)
@@ -543,6 +551,7 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
     event.add("dtend", end.astimezone(LOCAL_TZ))
     event.add("summary", student.user.get_full_name())
     event.add("X-STUDIOSYNC-STUDENT-ID", str(student.id))
+    event.add("X-STUDIOSYNC-TEACHER-ID", str(teacher.id))
     values = {"freq": "monthly" if frequency == "monthly" else "weekly"}
     if frequency == "biweekly":
         values["interval"] = 2
