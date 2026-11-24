@@ -24,7 +24,7 @@ test('student communication overview includes received, sent and drafts without 
     assert.match(panel, /sent: 'Gesendet'/)
     assert.match(panel, /draft: 'Entwurf'/)
     assert.match(panel, /PAGE_SIZE = 40/)
-    assert.match(panel, /offset: messages\.length/)
+    assert.match(panel, /offset: nextOffset/)
     assert.match(panel, /setHasMore\(data\.has_more\)/)
     assert.match(panel, /Weitere Nachrichten laden/)
     assert.match(panel, /&draft=/)
@@ -33,6 +33,9 @@ test('student communication overview includes received, sent and drafts without 
     assert.match(client, /params\.get\('draft'\)/)
     assert.match(client, /setLinkedDraftId\(draft\)/)
     assert.match(client, /void openDraft\(id\)/)
+    assert.match(client, /loadedMailFolder !== folder/)
+    assert.match(panel, /setNextOffset\(data\.offset \+ data\.messages\.length\)/)
+    assert.match(panel, /new Set\(existing\.map\(item => item\.folder \+ ':' \+ item\.uid\)\)/)
 })
 
 test('mail filters use student UUID and instrument assignments from backend', () => {
