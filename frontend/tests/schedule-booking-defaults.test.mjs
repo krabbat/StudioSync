@@ -11,6 +11,10 @@ test('MUSart calendar displays 13:00 to 22:00 without rewriting studio settings'
     assert.match(page, /const businessEnd = 22;/)
     assert.match(page, /time: bookingDefaults\.time/)
     assert.match(page, /businessStart\.toString\(\)\.padStart\(2, "0"\)/)
+    assert.match(page, /length: businessEnd - businessStart \}/)
+    assert.doesNotMatch(page, /businessEnd - businessStart \+ 1/)
+    assert.match(page, /formatGridHour\(businessEnd\)/)
+    assert.match(page, /editingLessonId && newBooking\.time && !timeOptions\.includes\(newBooking\.time\)/)
     assert.doesNotMatch(page, /currentStudio\?\.settings\?\.business_start_hour \?\? 8/)
 })
 
