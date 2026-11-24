@@ -25,6 +25,12 @@ interface StudentMailRecipient {
     selectable: boolean
 }
 
+interface MailStudent {
+    id: string
+    name: string
+    instruments: string[]
+}
+
 interface StudioMailResource {
     id: string
     title: string
@@ -55,6 +61,10 @@ interface MailPreview {
     date: string
     student: string
     instrument: string
+    instruments: string[]
+    student_ids: string[]
+    student_names: string[]
+    assignment_manual: boolean
     unread: boolean
     starred: boolean
     attachments: string[]
@@ -67,6 +77,12 @@ interface InboxApiMessage {
     from: string
     email: string
     subject: string
+    student?: string
+    instrument?: string
+    instruments?: string[]
+    student_ids?: string[]
+    student_names?: string[]
+    assignment_manual?: boolean
     date: string | null
     unread: boolean
     starred: boolean
@@ -94,8 +110,12 @@ const normalizeMessage = (message: InboxApiMessage, folder: FolderId): MailPrevi
     folder,
     date: message.date || '',
     body: '',
-    student: '',
-    instrument: '',
+    student: message.student || '',
+    instrument: message.instrument || '',
+    instruments: message.instruments || [],
+    student_ids: message.student_ids || [],
+    student_names: message.student_names || [],
+    assignment_manual: Boolean(message.assignment_manual),
     attachments: message.attachments || [],
     has_attachment: Boolean(message.has_attachment),
 })
@@ -166,6 +186,11 @@ export default function MailWorkspace() {
     const [filterOpen, setFilterOpen] = useState(false)
     const [query, setQuery] = useState('')
     const [studentFilter, setStudentFilter] = useState('')
+    const [mailStudents, setMailStudents] = useState<MailStudent[]>([])
+    const [associationEditorOpen, setAssociationEditorOpen] = useState(false)
+    const [associationSelection, setAssociationSelection] = useState<string[]>([])
+    const [associationSaving, setAssociationSaving] = useState(false)
+    const [linkedMessageUid, setLinkedMessageUid] = useState('')
     const [instrumentFilter, setInstrumentFilter] = useState('')
     const [dateFrom, setDateFrom] = useState('')
     const [dateTo, setDateTo] = useState('')
@@ -218,6 +243,30 @@ export default function MailWorkspace() {
     const [mailSending, setMailSending] = useState(false)
     const sendBusyRef = useRef(false)
     const detailGeneration = useRef(0)
+
+    useEffect(() => {
+        let active = true
+        void api.get<{ students: MailStudent[] }>('/core/mail/cache/students/')
+            .then(({ data }) => {
+                if (active) setMailStudents(data.students)
+            }).catch(() => {
+                if (active) setMailStudents([])
+            })
+        // Deep links from an individual student profile share one mail workspace.
+        const params = new URLSearchParams(window.location.search)
+        const sid = params.get('student')
+        if (sid) {
+            setStudentFilter(sid)
+            setFilterOpen(true)
+        }
+        const targetFolder = params.get('folder')
+        if (targetFolder && FOLDERS.some(item => item.id === targetFolder)) {
+            setFolder(targetFolder as FolderId)
+        }
+        const uid = params.get('uid')
+        if (uid && /^[1-9][0-9]{0,19}$/.test(uid)) setLinkedMessageUid(uid)
+        return () => { active = false }
+    }, [])
 
     useEffect(() => {
         if (!composing) return
@@ -455,8 +504,8 @@ export default function MailWorkspace() {
             const text = [m.from, m.email, m.subject, m.preview, m.body, m.student].join(' ').toLowerCase()
             if (!text.includes(query.toLowerCase())) return false
         }
-        if (studentFilter && m.student !== studentFilter) return false
-        if (instrumentFilter && m.instrument !== instrumentFilter) return false
+        if (studentFilter && !m.student_ids.includes(studentFilter)) return false
+        if (instrumentFilter && !m.instruments.includes(instrumentFilter)) return false
         if (dateFrom && (!localDateKey(m.date) || localDateKey(m.date) < dateFrom)) return false
         if (dateTo && (!localDateKey(m.date) || localDateKey(m.date) > dateTo)) return false
         if (unreadOnly && !m.unread) return false
@@ -685,6 +734,7 @@ export default function MailWorkspace() {
     }
     const selectMessage = async (message: MailPreview) => {
         setSelectedId(message.id)
+        setAssociationEditorOpen(false)
         setComposing(false)
         setRecipientPickerOpen(false)
         setDetailError('')
@@ -706,6 +756,12 @@ export default function MailWorkspace() {
             setMessages((items) => items.map((item) => item.id === message.id
                 ? { ...item, body: response.data.body, preview: response.data.preview,
                     attachments: response.data.attachments, has_attachment: response.data.has_attachment,
+                    student: response.data.student || item.student,
+                    instrument: response.data.instrument || item.instrument,
+                    student_ids: response.data.student_ids || item.student_ids,
+                    student_names: response.data.student_names || item.student_names,
+                    instruments: response.data.instruments || item.instruments,
+                    assignment_manual: response.data.assignment_manual ?? item.assignment_manual,
                     bodyLoaded: true } : item))
             // A message displayed in the preview is now read on the server.
             if (message.unread && !mailActionBusy) {
