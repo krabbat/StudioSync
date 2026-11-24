@@ -76,8 +76,8 @@ def test_opened_body_reads_database_without_imap(studio, admin_user):
 
 def test_imap_flags_parsing_accepts_either_server_field_order():
     values = _parse_flags([
-        b"1 (UID 11 FLAGS (\Seen \Flagged))",
-        b"2 (FLAGS (\Answered) UID 12)",
+        b"1 (UID 11 FLAGS (\\Seen \\Flagged))",
+        b"2 (FLAGS (\\Answered) UID 12)",
     ])
     assert values[11] == (False, True, False)
     assert values[12] == (True, False, True)
@@ -115,7 +115,7 @@ def test_incremental_sync_downloads_only_new_headers_and_keeps_saved_body(
             assert args[0] == "11"  # never download uid 10's header again
             return "OK", [(b"1 (UID 11 FLAGS () RFC822.SIZE 260)", header)]
         assert args[0] == "10"
-        return "OK", [b"1 (FLAGS (\Seen) UID 10)"]
+        return "OK", [b"1 (FLAGS (\\Seen) UID 10)"]
 
     client.uid.side_effect = uid
     with patch("apps.core.mail_cache._readonly_folder", return_value=nullcontext(client)):
