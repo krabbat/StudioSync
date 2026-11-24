@@ -774,6 +774,69 @@ export default function MailWorkspace() {
             if (detailGeneration.current === generation) setDetailLoading(false)
         }
     }
+    useEffect(() => {
+        if (!linkedMessageUid || folder === 'outbox' || folder === 'drafts') return
+        let active = true
+        const existing = messages.find((item) =>
+            item.id === linkedMessageUid && item.folder === folder)
+        if (existing) {
+            setLinkedMessageUid('')
+            void selectMessage(existing)
+        } else {
+            // A deep-linked message can be older than the first cached page.
+            void api.get<InboxApiMessage & { body: string }>(
+                `/core/mail/cache/folders/${folder}/${linkedMessageUid}/`,
+            ).then(({ data }) => {
+                if (!active) return
+                const opened = {
+                    ...normalizeMessage(data, folder), body: data.body,
+                    bodyLoaded: true,
+                }
+                setMessages((items) => items.some((item) =>
+                    item.id === opened.id && item.folder === folder)
+                    ? items : [opened, ...items])
+                setSelectedId(opened.id)
+                setLinkedMessageUid('')
+            }).catch(() => {
+                if (active) setLinkedMessageUid('')
+            })
+        }
+        return () => { active = false }
+        // Deliberately reacts only when a new URL-selected UID or folder arrives.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [linkedMessageUid, folder])
+
+    const editMailAssociation = () => {
+        if (!selected) return
+        setAssociationSelection(selected.student_ids)
+        setAssociationEditorOpen(true)
+    }
+
+    const saveMailAssociation = async (automatic = false) => {
+        if (!selected || associationSaving || !uidvalidity) return
+        setAssociationSaving(true)
+        try {
+            const { data } = await api.post<{
+                student: string; instrument: string; student_ids: string[];
+                student_names: string[]; instruments: string[]; assignment_manual: boolean
+            }>(
+                `/core/mail/cache/folders/${folder}/${selected.id}/students/`,
+                { uidvalidity, automatic, student_ids: associationSelection },
+            )
+            setMessages((items) => items.map((item) =>
+                item.id === selected.id && item.folder === folder
+                    ? { ...item, ...data } : item))
+            setAssociationEditorOpen(false)
+            toast.success(automatic ? 'Automatische Zuordnung wiederhergestellt.' :
+                'Schülerzuordnung gespeichert.')
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail ||
+                'Die Schülerzuordnung konnte nicht gespeichert werden.')
+        } finally {
+            setAssociationSaving(false)
+        }
+    }
+
     const compose = (mode: 'new' | 'reply' | 'forward' = 'new') => {
         if (mode === 'new') {
             setRecipient('')
@@ -900,13 +963,20 @@ export default function MailWorkspace() {
                     <div className="mail-filters">
                         <div className="mail-filter-fields">
                             <label>Schüler
-                                <select value={studentFilter} disabled title="Schülerzuordnung folgt im nächsten Schritt">
-                                    <option value="">Zuordnung folgt</option>
+                                <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
+                                    <option value="">Alle Schüler</option>
+                                    {mailStudents.map((student) => (
+                                        <option key={student.id} value={student.id}>{student.name}</option>
+                                    ))}
                                 </select>
                             </label>
                             <label>Instrument
-                                <select value={instrumentFilter} disabled title="Instrumentzuordnung folgt im nächsten Schritt">
-                                    <option value="">Zuordnung folgt</option>
+                                <select value={instrumentFilter} onChange={(event) => setInstrumentFilter(event.target.value)}>
+                                    <option value="">Alle Instrumente</option>
+                                    {Array.from(new Set(mailStudents.flatMap(student => student.instruments)))
+                                        .sort((a, b) => a.localeCompare(b, 'de')).map((name) => (
+                                            <option key={name} value={name}>{name}</option>
+                                        ))}
                                 </select>
                             </label>
                             <label>Von
@@ -1531,9 +1601,40 @@ export default function MailWorkspace() {
                                 {selected.student ? (
                                     <><span>{selected.student}</span><ChevronRight size={13} /><span>{selected.instrument}</span></>
                                 ) : (
-                                    <span>Nicht zugeordnet · Schülerzuordnung folgt</span>
+                                    <span>Nicht zugeordnet</span>
                                 )}
+                                {selected.assignment_manual && <small>Manuell</small>}
+                                <button type="button" className="mail-association-edit"
+                                    onClick={editMailAssociation}>Zuordnen</button>
                             </div>
+                            {associationEditorOpen && (
+                                <div className="mail-association-editor">
+                                    <strong>Schüler zuordnen</strong>
+                                    <p>Eine Familienadresse kann mehreren Kindern gehören.</p>
+                                    <div className="mail-association-options">
+                                        {mailStudents.map((student) => (
+                                            <label key={student.id}>
+                                                <input type="checkbox"
+                                                    checked={associationSelection.includes(student.id)}
+                                                    disabled={associationSaving}
+                                                    onChange={(event) => setAssociationSelection((items) =>
+                                                        event.target.checked
+                                                            ? [...items, student.id]
+                                                            : items.filter(id => id !== student.id))} />
+                                                {student.name}
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="mail-association-controls">
+                                        <button type="button" disabled={associationSaving}
+                                            onClick={() => void saveMailAssociation(false)}>Speichern</button>
+                                        <button type="button" disabled={associationSaving}
+                                            onClick={() => void saveMailAssociation(true)}>Automatisch</button>
+                                        <button type="button" disabled={associationSaving}
+                                            onClick={() => setAssociationEditorOpen(false)}>Schließen</button>
+                                    </div>
+                                </div>
+                            )}
                             {detailLoading ? <div className="mail-body-text">Nachricht wird geladen …</div> :
                                 detailError ? <div className="mail-fetch-error" role="alert">{detailError}</div> :
                                 <div className="mail-body-text">{selected.body || 'Zum Lesen öffnen'}</div>}
