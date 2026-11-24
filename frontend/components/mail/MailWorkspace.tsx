@@ -83,6 +83,7 @@ interface InboxPage {
     limit: number
     uidvalidity: string | null
     syncing?: boolean
+    cached_ids?: string[]
     synced?: boolean
     sync_error?: string
     last_synced_at?: string | null
@@ -361,10 +362,12 @@ export default function MailWorkspace() {
                     if (generationChanged || !silent) return fresh.map(keepBody)
                     // Silent background refresh must not hide paginated rows.
                     const fetchedIds = new Set(fresh.map((item) => item.id))
+                    const liveIds = new Set(response.data.cached_ids || [])
                     return [
                         ...fresh.map(keepBody),
                         ...previous.filter((item) =>
-                            item.folder === currentFolder && !fetchedIds.has(item.id)
+                            item.folder === currentFolder &&
+                            liveIds.has(item.id) && !fetchedIds.has(item.id)
                         ),
                     ]
                 }
