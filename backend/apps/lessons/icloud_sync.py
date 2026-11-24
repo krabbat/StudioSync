@@ -236,6 +236,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         defaults={"studio": studio, "remote_url": remote_url}
     )
     remote_hash = _hash(raw)
+    remote_is_unchanged = not made and remote_hash == series.remote_hash
     dirty = [
         entry for entry in series.occurrences.select_related("lesson")
         if entry.lesson and entry.synced_signature and
@@ -290,6 +291,15 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             series=series, recurrence_id=rid
         )
         lesson = link.lesson
+        if (
+            remote_is_unchanged
+            and lesson is not None
+            and link.synced_signature
+            and link.synced_signature == _lesson_signature(lesson)
+        ):
+            # Both copies already agree: don't rewrite an unrelated lesson's
+            # status, cancellation details or timestamps on every full sync.
+            continue
         if not lesson and link.synced_signature:
             # A previously linked StudioSync lesson was deleted locally.
             # Do not recreate it on the next pull; export a cancelled exception.
