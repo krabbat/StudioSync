@@ -324,6 +324,8 @@ def _set_property(event, key, value):
 
 
 def _push_changes(series, remote, stats):
+    # Recheck the remote revision immediately before writing local edits.
+    remote.load()
     raw = _raw(remote.data)
     if _hash(raw) != series.remote_hash:
         _set_error(series, "Konflikt: iCloud wurde nach dem letzten Abgleich verändert.")
