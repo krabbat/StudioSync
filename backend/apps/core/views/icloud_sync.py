@@ -1,7 +1,6 @@
 """Authenticated setup-independent endpoints for manual iCloud synchronization."""
 from datetime import datetime, time, timezone as utc_timezone
 import logging
-from uuid import UUID
 
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
@@ -27,8 +26,10 @@ def _series_payload(user):
     students = Student.objects.filter(studio=studio).select_related("user").order_by(
         "user__last_name", "user__first_name"
     )
+    cfg = user.preferences.get("technical", {}) if isinstance(user.preferences, dict) else {}
+    target = cfg.get("icloud_calendar_url", "")
     series = ICloudCalendarSeries.objects.filter(
-        user=user, studio=studio
+        user=user, studio=studio, calendar_url=target
     ).select_related("student__user", "teacher__user").order_by("title")
     return {
         "students": [
