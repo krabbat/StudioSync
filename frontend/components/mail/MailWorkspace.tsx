@@ -349,7 +349,7 @@ export default function MailWorkspace() {
                 // Keep already opened bodies when refreshing cached headers.
                 const oldMessages = new Map(previous
                     .filter((item) => item.folder === currentFolder)
-                    .map((item) => [item.id, item]))
+                    .map((item): [string, MailPreview] => [item.id, item]))
                 const keepBody = (item: MailPreview) => {
                     const old = oldMessages.get(item.id)
                     return old?.bodyLoaded ? {
