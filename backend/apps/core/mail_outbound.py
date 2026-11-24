@@ -17,7 +17,7 @@ from django.core.mail import EmailMessage, get_connection
 from django.core.validators import validate_email
 
 from apps.core.mail_folders import MailFolderError, resolve_folder
-from apps.core.mail_service import _configuration
+from apps.core.mail_service import MailFetchError, _configuration
 from apps.core.models import Student
 from apps.core.security import assert_public_host
 
@@ -190,7 +190,7 @@ def _open_sent_folder(config):
         mailbox = resolve_folder(client, "sent")
         return client, mailbox
     except (
-        MailFolderError, OSError, ValueError, ssl.SSLError,
+        MailFetchError, MailFolderError, OSError, ValueError, ssl.SSLError,
         imaplib.IMAP4.error, TimeoutError,
     ) as exc:
         if client is not None:
