@@ -4,7 +4,7 @@ One iCloud VEVENT UID maps to a series and one RECURRENCE-ID maps to one
 lesson. This module never sends lesson notification emails on import, since
 bulk_create/QuerySet.update bypass the standard post_save signal.
 """
-from datetime import date, datetime, timedelta, timezone as utc_timezone
+from datetime import datetime, timedelta, timezone as utc_timezone
 from hashlib import sha256
 from zoneinfo import ZoneInfo
 import json
