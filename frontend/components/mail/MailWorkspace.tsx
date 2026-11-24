@@ -205,6 +205,7 @@ export default function MailWorkspace() {
     const [associationSelection, setAssociationSelection] = useState<string[]>([])
     const [associationSaving, setAssociationSaving] = useState(false)
     const [linkedMessageUid, setLinkedMessageUid] = useState('')
+    const [linkedMessageFolder, setLinkedMessageFolder] = useState<FolderId | null>(null)
     const [instrumentFilter, setInstrumentFilter] = useState('')
     const [dateFrom, setDateFrom] = useState('')
     const [dateTo, setDateTo] = useState('')
@@ -279,6 +280,7 @@ export default function MailWorkspace() {
         const targetFolder = params.get('folder')
         if (targetFolder && FOLDERS.some(item => item.id === targetFolder)) {
             setFolder(targetFolder as FolderId)
+            setLinkedMessageFolder(targetFolder as FolderId)
         }
         const uid = params.get('uid')
         if (uid && /^[1-9][0-9]{0,19}$/.test(uid)) setLinkedMessageUid(uid)
@@ -821,7 +823,8 @@ export default function MailWorkspace() {
         }
     }
     useEffect(() => {
-        if (!linkedMessageUid || folder === 'outbox' || folder === 'drafts') return
+        if (!linkedMessageUid || folder === 'outbox' || folder === 'drafts' ||
+            (linkedMessageFolder && linkedMessageFolder !== folder)) return
         let active = true
         const existing = messages.find((item) =>
             item.id === linkedMessageUid && item.folder === folder)
@@ -850,7 +853,7 @@ export default function MailWorkspace() {
         return () => { active = false }
         // Deliberately reacts only when a new URL-selected UID or folder arrives.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [linkedMessageUid, folder])
+    }, [linkedMessageUid, linkedMessageFolder, folder])
 
     const editMailAssociation = () => {
         if (!selected) return
