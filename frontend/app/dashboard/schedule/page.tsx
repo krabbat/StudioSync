@@ -102,6 +102,7 @@ export default function SchedulePage() {
   const [use24Hour, setUse24Hour] = useState(locale === "de");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [icloudBusy, setIcloudBusy] = useState(false);
+  const [icloudIssues, setIcloudIssues] = useState<{ title: string; error: string }[]>([]);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -494,9 +495,12 @@ export default function SchedulePage() {
     try {
       const { data } = await api.post('/core/calendar/icloud/sync/');
       refetchLessons();
+      setIcloudIssues((data.series || [])
+        .filter((row: any) => Boolean(row.error) && row.error !== 'Schüler zuordnen')
+        .map((row: any) => ({ title: row.title, error: row.error })));
       toast.success('iCloud abgeglichen: ' + data.imported + ' importiert, ' + data.exported + ' exportiert.');
       if (data.unassigned) toast('Nicht zugeordnete Serien: ' + data.unassigned + '. Bitte unter Einstellungen → Technik zuordnen.');
-      if (data.conflicts) toast.error('Kalenderkonflikte: ' + data.conflicts + '. Details unter Einstellungen → Technik.');
+      if (data.conflicts) toast.error('Kalenderkonflikte: ' + data.conflicts + '. Die Einzelheiten stehen unter der Kalenderleiste.');
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'iCloud-Abgleich fehlgeschlagen.');
     } finally {
@@ -720,6 +724,24 @@ export default function SchedulePage() {
           )}
         </div>
       </header>
+
+      {icloudIssues.length > 0 && (
+        <section role="alert" className="no-print rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 className="font-bold">iCloud-Kalender: Konflikte und Hinweise</h2>
+            <button type="button" onClick={() => setIcloudIssues([])}
+              className="rounded-lg border border-amber-300 px-2 py-1 text-xs font-semibold">
+              Schließen
+            </button>
+          </div>
+          {icloudIssues.map((item, index) => (
+            <div key={index} className="mt-2 rounded-lg bg-white/75 p-3">
+              <strong>{item.title}</strong>
+              <p className="mt-1 whitespace-pre-line">{item.error}</p>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* View & Color Toggles */}
       <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-2 no-print">
