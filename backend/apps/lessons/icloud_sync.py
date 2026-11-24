@@ -59,10 +59,12 @@ def _lesson_signature(lesson):
         lesson.scheduled_start.astimezone(utc_timezone.utc).isoformat(),
         lesson.scheduled_end.astimezone(utc_timezone.utc).isoformat(),
         lesson.status, lesson.location or "", lesson.summary or "",
-        lesson.guest_name or "", lesson.guest_address or "",
-        str(lesson.student_id or ""),
-        str(lesson.teacher_id),
+        str(lesson.student_id or ""), str(lesson.teacher_id),
     ]
+    # Preserve existing signatures for regular students so introducing guest
+    # fields does not make every old appointment look locally modified.
+    if lesson.guest_name or lesson.guest_address:
+        values.extend([lesson.guest_name or "", lesson.guest_address or ""])
     return _hash(json.dumps(values, ensure_ascii=False))
 
 
