@@ -16,6 +16,7 @@ from html import unescape
 
 from django.utils.html import strip_tags
 
+from apps.core.mail_associations import extract_contacts
 from apps.core.mail_folders import MailFolderError, resolve_folder
 from apps.core.security import assert_public_host
 
@@ -138,6 +139,7 @@ def _parse_metadata(item, folder='inbox'):
         "id": matched.group(1).decode("ascii"),
         "from": name or address or "Unbekannter Absender",
         "email": address,
+        "contact_addresses": extract_contacts(message),
         "subject": str(message.get("Subject", "")) or "(Ohne Betreff)",
         "date": date,
         "unread": b"\\seen" not in flags,
