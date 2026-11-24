@@ -25,6 +25,7 @@ from apps.core.views.mail import (
     MailInboxDetailView,
     MailInboxListView,
 )
+from apps.core.views.mail_outbound import MailRecipientsView, MailSendView
 from config.routers import OptionalSlashRouter
 
 router = OptionalSlashRouter()
@@ -47,6 +48,16 @@ urlpatterns = (
         path("analytics/", DashboardAnalyticsView.as_view(), name="dashboard-analytics"),
         path("reports/export/", ReportsExportView.as_view(), name="reports-export"),
         re_path(r"^mail/inbox/?$", MailInboxListView.as_view(), name="mail-inbox-list"),
+        re_path(
+            r"^mail/recipients/?$",
+            MailRecipientsView.as_view(),
+            name="mail-recipients",
+        ),
+        re_path(
+            r"^mail/send/?$",
+            MailSendView.as_view(),
+            name="mail-send",
+        ),
         re_path(
             r"^mail/inbox/actions/?$",
             MailInboxActionView.as_view(),
