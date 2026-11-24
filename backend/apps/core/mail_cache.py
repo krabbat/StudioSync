@@ -35,7 +35,8 @@ LOCK_TIMEOUT_SECONDS = 95
 INITIAL_CACHED_COUNT = 200
 MAX_NEW_HEADERS_PER_JOB = 250
 FETCH_BATCH = 50
-UID_FLAGS = re.compile(rb"\bUID\s+(\d+)\b.*?\bFLAGS\s+\(([^)]*)\)", re.I)
+UID_MARKER = re.compile(rb"\bUID\s+(\d+)\b", re.I)
+FLAGS_MARKER = re.compile(rb"\bFLAGS\s+\(([^)]*)\)", re.I)
 
 
 def mailbox_account_key(config):
@@ -208,10 +209,11 @@ def _parse_flags(records):
         metadata = record[0] if isinstance(record, tuple) else record
         if not isinstance(metadata, bytes):
             continue
-        match = UID_FLAGS.search(metadata)
-        if match:
-            tokens = match.group(2).lower()
-            flags[int(match.group(1))] = (
+        uid_match = UID_MARKER.search(metadata)
+        flags_match = FLAGS_MARKER.search(metadata)
+        if uid_match and flags_match:
+            tokens = flags_match.group(1).lower()
+            flags[int(uid_match.group(1))] = (
                 b"\\seen" not in tokens,
                 b"\\flagged" in tokens,
                 b"\\answered" in tokens,
