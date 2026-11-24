@@ -105,7 +105,7 @@ def _uidvalidity(client):
     return str(first).strip() if first is not None else None
 
 
-def _parse_metadata(item, folder='inbox', own_addresses=()):
+def _parse_metadata(item, folder='inbox'):
     """IMAP literal pairs contain (response metadata, header bytes)."""
     if not isinstance(item, tuple) or len(item) < 2:
         return None
@@ -122,28 +122,9 @@ def _parse_metadata(item, folder='inbox', own_addresses=()):
     size = int(size_match.group(1)) if size_match else None
 
     message = BytesParser(policy=policy.default).parsebytes(header, headersonly=True)
-    # The list correspondent is not necessarily the address to reply to.
-    # Keep the RFC mail headers distinct: Reply-To overrides From on incoming
-    # messages; when reading one's own sent mail, reply to its To address.
-    from_name, from_address = parseaddr(str(message.get("From", "")))
-    to_name, to_address = parseaddr(str(message.get("To", "")))
-    reply_name, reply_address = parseaddr(str(message.get("Reply-To", "")))
-    if folder == "sent":
-        name, address = to_name, to_address
-    else:
-        name, address = from_name, from_address
-
-    own = {str(item).strip().casefold() for item in own_addresses if item}
-    sent_by_us = bool(
-        from_address and from_address.casefold() in own
-        and to_address and to_address.casefold() not in own
-    )
-    if folder == "sent" or sent_by_us:
-        target_name, target_email = to_name, to_address
-    elif reply_address:
-        target_name, target_email = reply_name or from_name, reply_address
-    else:
-        target_name, target_email = from_name, from_address
+    # Sent mail is most useful when the list shows the addressee, not MUSart.
+    correspondent = "To" if folder == "sent" else "From"
+    name, address = parseaddr(str(message.get(correspondent, "")))
     raw_date = str(message.get("Date", ""))
     date = None
     if raw_date:
@@ -157,10 +138,6 @@ def _parse_metadata(item, folder='inbox', own_addresses=()):
         "id": matched.group(1).decode("ascii"),
         "from": name or address or "Unbekannter Absender",
         "email": address,
-        "reply_target_email": target_email,
-        "reply_target_name": target_name or target_email,
-        "from_email": from_address,
-        "to_email": to_address,
         "subject": str(message.get("Subject", "")) or "(Ohne Betreff)",
         "date": date,
         "unread": b"\\seen" not in flags,
@@ -178,10 +155,6 @@ def list_folder(config, folder='inbox', offset=0, limit=LIST_PAGE_SIZE):
     offset = max(0, int(offset))
     limit = max(1, min(MAX_PAGE_SIZE, int(limit)))
     with _readonly_folder(config, folder) as client:
-        own_addresses = (
-            config.get("imap_username"), config.get("smtp_username"),
-            config.get("smtp_from_email"),
-        )
         status, data = client.uid("SEARCH", None, "ALL")
         if status != "OK":
             raise MailFetchError("Die Nachrichtenliste konnte nicht geladen werden.")
@@ -202,7 +175,7 @@ def list_folder(config, folder='inbox', offset=0, limit=LIST_PAGE_SIZE):
 
             indexed = {}
             for record in records or []:
-                parsed = _parse_metadata(record, folder, own_addresses)
+                parsed = _parse_metadata(record, folder)
                 if parsed:
                     indexed[parsed["id"]] = parsed
             messages = [indexed[uid] for uid in batch if uid in indexed]
@@ -267,10 +240,6 @@ def get_folder_message(config, folder, uid, expected_uidvalidity=None):
         raise MailFetchError("Ungültige Nachrichtenkennung.")
 
     with _readonly_folder(config, folder) as client:
-        own_addresses = (
-            config.get("imap_username"), config.get("smtp_username"),
-            config.get("smtp_from_email"),
-        )
         uidvalidity = _uidvalidity(client)
         if expected_uidvalidity and uidvalidity != str(expected_uidvalidity):
             raise MailFetchError(
@@ -283,7 +252,7 @@ def get_folder_message(config, folder, uid, expected_uidvalidity=None):
         if status != "OK":
             raise MailFetchError("Die Nachricht konnte nicht gefunden werden.")
         parsed = next((candidate for item in (records or [])
-                       if (candidate := _parse_metadata(item, folder, own_addresses)) is not None), None)
+                       if (candidate := _parse_metadata(item, folder)) is not None), None)
         if not parsed or parsed["id"] != str(uid):
             raise MailFetchError(
                 "Die Nachricht existiert nicht mehr. Bitte erneut abrufen."
