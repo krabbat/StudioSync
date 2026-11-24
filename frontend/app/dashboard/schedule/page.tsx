@@ -22,6 +22,7 @@ import {
   parseISO,
   isSameDay,
   getHours,
+  getMinutes,
   startOfMonth,
   endOfMonth,
   endOfWeek,
@@ -72,6 +73,10 @@ interface ExternalEvent {
   start_dt: string;
   end_dt: string;
 }
+
+// One hour always occupies exactly 96px in the weekly timetable.
+// The labels and appointment offsets must use this same scale.
+const WEEK_HOUR_HEIGHT = 96;
 
 interface LessonBooking {
   student: string;
@@ -872,9 +877,11 @@ export default function SchedulePage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {timeSlots.map((hour) => (
-                  <tr key={hour} className="group">
-                    <td className="px-2 py-3 sm:px-4 sm:py-4 text-xs font-bold text-gray-400 border-r border-gray-100 bg-gray-50/30 sticky left-0 z-10 text-center">
-                      {formatGridHour(hour)}
+                  <tr key={hour} className="group h-24">
+                    <td className="h-24 p-0 text-xs font-bold text-gray-400 border-r border-gray-100 bg-gray-50/30 sticky left-0 z-10 text-center align-top">
+                      <div className="relative h-24">
+                        <span className="absolute inset-x-0 top-1">{formatGridHour(hour)}</span>
+                      </div>
                     </td>
                     {weekDays.map((day, dayIdx) => {
                       const slotLessons = getLessonsForSlot(dayIdx, hour);
@@ -896,10 +903,9 @@ export default function SchedulePage() {
                               setShowBookingModal(true);
                             }
                           }}
-                          className={`p-0.5 sm:p-1 border-gray-50 h-24 align-top transition-colors hover:bg-gray-50/50 ${dayIdx < 6 ? "border-r" : ""}`}
+                          className={`h-24 p-0 border-gray-50 align-top transition-colors hover:bg-gray-50/50 ${dayIdx < 6 ? "border-r" : ""}`}
                         >
-                          {slotLessons.length > 0 ? (
-                            <div className="space-y-0.5 sm:space-y-1 h-full overflow-y-auto custom-scrollbar">
+                          <div className="relative h-24 overflow-visible">
                               {slotLessons.map((lesson: any) => (
                                 <div
                                   key={lesson.id}
@@ -907,9 +913,14 @@ export default function SchedulePage() {
                                     e.stopPropagation();
                                     handleOpenEditModal(lesson);
                                   }}
-                                  style={getLessonColorStyles(lesson)}
+                                  style={{
+                                    ...getLessonColorStyles(lesson),
+                                    top: (getMinutes(parseISO(lesson.scheduled_start)) / 60) * WEEK_HOUR_HEIGHT,
+                                    height: Math.max(24, (lesson.duration_minutes / 60) * WEEK_HOUR_HEIGHT),
+                                  }}
+                                  title={`${format(parseISO(lesson.scheduled_start), "HH:mm")} – ${format(parseISO(lesson.scheduled_end), "HH:mm")} · ${lesson.student_name || lesson.band_name || "Unterricht"}`}
                                   className={`
-                                    p-1 rounded-lg border-l-[3px] shadow-sm hover:shadow-md transition-all cursor-pointer group/card
+                                    absolute inset-x-1 z-10 overflow-hidden p-1 rounded-lg border-l-[3px] shadow-sm hover:shadow-md transition-all cursor-pointer group/card
                                     ${colorMode === "status" ? (
                                       lesson.status === "scheduled" ? "bg-primary/10 border-primary cursor-pointer hover:bg-primary/20" :
                                         lesson.status === "completed" ? "bg-gray-100 border-gray-400" :
@@ -965,13 +976,15 @@ export default function SchedulePage() {
                                   )}
                                 </div>
                               ))}
-                              {/* External events overlay in week view */}
+                              {/* External events use the same minute scale as lessons. */}
                               {getExternalEventsForSlot(dayIdx, hour).map((evt) => (
                                 <div
                                   key={evt.id}
                                   title={`${evt.feed_name}: ${evt.title}${evt.location ? ` @ ${evt.location}` : ""}`}
-                                  className="p-1 rounded-lg border border-dashed shadow-sm text-[10px] truncate"
+                                  className="absolute inset-x-1 z-20 overflow-hidden p-1 rounded-lg border border-dashed shadow-sm text-[10px] truncate"
                                   style={{
+                                    top: (getMinutes(parseISO(evt.start_dt)) / 60) * WEEK_HOUR_HEIGHT,
+                                    height: Math.max(24, ((parseISO(evt.end_dt).getTime() - parseISO(evt.start_dt).getTime()) / 3600000) * WEEK_HOUR_HEIGHT),
                                     borderColor: evt.feed_color,
                                     color: evt.feed_color,
                                     backgroundColor: evt.feed_color + "18",
@@ -982,7 +995,6 @@ export default function SchedulePage() {
                                 </div>
                               ))}
                             </div>
-                          ) : null}
                         </td>
                       );
                     })}
