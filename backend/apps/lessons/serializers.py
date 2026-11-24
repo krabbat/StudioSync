@@ -49,7 +49,7 @@ class LessonListSerializer(serializers.ModelSerializer):
         if link is None:
             return False
         content = link.series.ical_data or ""
-        return "RRULE:" in content or "RDATE:" in content
+        return "RRULE:" in content
 
     def get_student_profile_id(self, obj):
         """Return the student profile UUID as a plain string for frontend matching."""
