@@ -43,6 +43,7 @@ from apps.core.views.mail_outbound import (
 from apps.core.views.icloud_calendar import ICloudCalendarListView, ICloudCalendarWriteTestView
 from apps.core.views.icloud_sync import (
     ICloudSyncView, ICloudSeriesView, ICloudSeriesAssignView, ICloudSeriesCreateView,
+    ICloudSeriesResolveView,
 )
 from config.routers import OptionalSlashRouter
 
@@ -71,6 +72,7 @@ urlpatterns = (
         re_path(r"^calendar/icloud/series/?$", ICloudSeriesView.as_view(), name="icloud-series"),
         re_path(r"^calendar/icloud/series/create/?$", ICloudSeriesCreateView.as_view(), name="icloud-series-create"),
         re_path(r"^calendar/icloud/series/(?P<series_id>[0-9a-fA-F-]{36})/assign/?$", ICloudSeriesAssignView.as_view(), name="icloud-series-assign"),
+        re_path(r"^calendar/icloud/series/(?P<series_id>[0-9a-fA-F-]{36})/resolve/?$", ICloudSeriesResolveView.as_view(), name="icloud-series-resolve"),
         re_path(r"^mail/inbox/?$", MailInboxListView.as_view(), name="mail-inbox-list"),
         re_path(
             r"^mail/recipients/?$",
