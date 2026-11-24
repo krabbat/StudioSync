@@ -142,9 +142,13 @@ test('composer retains a compact recipient row and moves search to an overlay di
 
 test('reply opens preaddressed and offers an unobtrusive optional extra address', () => {
     const jsx = source('components/mail/MailWorkspace.tsx')
-    assert.match(jsx, /setRecipient\(mode === 'reply' \? selected\.email : ''\)/)
-    assert.match(jsx, /setReplyRecipientName\(mode === 'reply' \? selected\.from : ''\)/)
+    assert.match(jsx, /const replyAddress = selected\.reply_target_email \|\| ''/)
+    assert.match(jsx, /setRecipient\(mode === 'reply' \? replyAddress : ''\)/)
+    assert.match(jsx, /selected\.reply_target_name \|\| replyAddress/)
+    assert.doesNotMatch(jsx, /setRecipient\(mode === 'reply' \? selected\.email : ''\)/)
     assert.match(jsx, /\{replyRecipientName \|\| manualTarget\}/)
+    assert.match(jsx, /reply_target_email: response\.data\.reply_target_email/)
+    assert.match(jsx, /reply_target_name: response\.data\.reply_target_name/)
     assert.match(jsx, /\{extraTarget\}/)
     assert.match(jsx, /\+ Weitere Adresse \(z\. B\. Studio oder Lehrkraft\)/)
     assert.match(jsx, /showAdditionalRecipient/)
