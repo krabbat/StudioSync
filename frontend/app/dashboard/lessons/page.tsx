@@ -6,6 +6,7 @@ import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-f
 import { useUser } from '@/contexts/UserContext'
 import { useLessons, useUsers, useStudents, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
 import ResourceSelector from '@/components/ResourceSelector'
+import LessonDeleteDialog, { type LessonDeleteTarget, type LessonDeleteScope } from '@/components/LessonDeleteDialog'
 import api from '@/services/api'
 import { toast } from 'react-hot-toast'
 import type { LessonPlan, LessonPlanFormData } from '@/types/lessonPlan'
@@ -51,6 +52,10 @@ interface Lesson {
     student_address?: string
     is_online?: boolean
     is_paid: boolean
+    is_recurring?: boolean
+    guest_name?: string
+    guest_address?: string
+    summary?: string
 }
 
 export default function LessonsPage() {
@@ -107,6 +112,7 @@ export default function LessonsPage() {
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
     const [lessonSubmitting, setLessonSubmitting] = useState(false)
     const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null)
+    const [deleteTarget, setDeleteTarget] = useState<LessonDeleteTarget | null>(null)
     const [lessonData, setLessonData] = useState({
         student: '',
         lesson_type: 'private',
@@ -199,21 +205,26 @@ export default function LessonsPage() {
     const startIndex = (currentPage - 1) * itemsPerPage
     const currentItems = filteredLessons.slice(startIndex, startIndex + itemsPerPage)
 
-    const handleDeleteLesson = async (lesson: Lesson) => {
-        const when = format(parseISO(lesson.scheduled_start), 'dd.MM.yyyy HH:mm')
-        const label = lesson.student_name || 'Unterricht'
-        if (!window.confirm(
-            `Soll ${label} am ${when} wirklich dauerhaft gelöscht werden?\nBei einer Terminserie wird nur dieser einzelne Termin entfernt.`
-        )) return
+    const handleDeleteLesson = (lesson: Lesson) => {
+        setDeleteTarget({
+            id: lesson.id,
+            label: `${lesson.student_name || lesson.guest_name || 'Unterricht'} am ${format(parseISO(lesson.scheduled_start), 'dd.MM.yyyy HH:mm')}`,
+            isRecurring: Boolean(lesson.is_recurring),
+        })
+    }
 
-        setDeletingLessonId(lesson.id)
+    const confirmDeleteLesson = async (scope: LessonDeleteScope) => {
+        if (!deleteTarget) return
+        const lessonId = deleteTarget.id
+        setDeletingLessonId(lessonId)
         try {
-            const response = await api.delete(`/lessons/${lesson.id}/`)
+            const response = await api.delete(`/lessons/${lessonId}/`, { params: { scope } })
             toast.success(response.data?.detail || 'Unterrichtstermin gelöscht.')
             if (response.data?.icloud_synced === false) {
                 toast.error('iCloud ist noch nicht aktualisiert. Bitte den Kalenderabgleich prüfen.')
             }
-            setSelectedLessons(previous => previous.filter(id => id !== lesson.id))
+            setSelectedLessons(previous => previous.filter(id => id !== lessonId))
+            setDeleteTarget(null)
             setShowLessonModal(false)
             setEditingLessonId(null)
             setCurrentPage(page => currentItems.length === 1 && page > 1 ? page - 1 : page)
@@ -1027,6 +1038,13 @@ export default function LessonsPage() {
                     </Button>
                 </DialogFooter>
             </Dialog>
+
+            <LessonDeleteDialog
+                target={deleteTarget}
+                busy={deletingLessonId !== null}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={(scope) => void confirmDeleteLesson(scope)}
+            />
 
             {/* Resource Selector Modal */}
             <ResourceSelector
