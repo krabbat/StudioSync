@@ -1,6 +1,11 @@
 """Admin-only SMTP composer endpoints: active student roster and send."""
 
 import json
+import logging
+
+from apps.core.mail_cache import invalidate_sent_folder
+
+LOG = logging.getLogger(__name__)
 
 from rest_framework import permissions, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -89,6 +94,16 @@ class MailSendView(APIView):
                 uploads=request.FILES.getlist("attachments"),
                 resource_ids=resource_ids,
             )
+            if result["sent"] > 0:
+                try:
+                    invalidate_sent_folder(
+                        studio, request.user, _mailbox_config(request)
+                    )
+                except Exception as cache_exc:
+                    # SMTP has already accepted the messages. Never suggest
+                    # retrying a successful dispatch because of cache trouble.
+                    LOG.warning("Sent-cache invalidation failed (%s)",
+                                type(cache_exc).__name__)
         except MailSendError as exc:
             return Response(
                 {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
