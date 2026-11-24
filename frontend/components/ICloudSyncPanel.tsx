@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeftRight, AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
 
@@ -18,7 +18,6 @@ type SyncPayload = {
 export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
     const [rows, setRows] = useState<LinkedSeries[]>([])
     const [students, setStudents] = useState<StudentChoice[]>([])
-    const [busy, setBusy] = useState(false)
     const [assigning, setAssigning] = useState<string | null>(null)
     const [resolving, setResolving] = useState<string | null>(null)
     const [choices, setChoices] = useState<Record<string, string>>({})
@@ -39,21 +38,6 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
     useEffect(() => {
         if (enabled) void list()
     }, [enabled, list])
-
-    const sync = async () => {
-        setBusy(true)
-        try {
-            const { data } = await api.post<SyncPayload>('/core/calendar/icloud/sync/')
-            setLast(data)
-            setRows(data.series || [])
-            setStudents(data.students || [])
-            toast.success('iCloud-Abgleich abgeschlossen.')
-        } catch (error: any) {
-            toast.error(error?.response?.data?.detail || 'Kalender konnten nicht abgeglichen werden.')
-        } finally {
-            setBusy(false)
-        }
-    }
 
     const assign = async (seriesId: string) => {
         const student = choices[seriesId]
@@ -101,15 +85,10 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                 <div>
                     <h4 className="text-sm font-semibold text-gray-900">Bidirektionaler Unterrichtskalender</h4>
                     <p className="mt-1 text-xs text-gray-500">
-                        iCloud und StudioSync abgleichen; wöchentliche Serien und Einzeltermine
-                        werden anhand ihrer dauerhaften Kalenderkennung verknüpft.
+                        Hier werden Schülerzuordnungen und Konflikte verwaltet. Den manuellen Abgleich
+                        startest du im Terminkalender direkt neben „Drucken“.
                     </p>
                 </div>
-                <button type="button" onClick={sync} disabled={!enabled || busy || assigning !== null}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50">
-                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeftRight className="h-4 w-4" />}
-                    Jetzt synchronisieren
-                </button>
             </div>
 
             {last && (
@@ -165,12 +144,12 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                             <p><strong>{item.title}:</strong> {item.error}</p>
                             {item.error.includes('Konflikt:') && (
                                 <div className="flex flex-wrap gap-2">
-                                    <button type="button" disabled={resolving !== null || busy}
+                                    <button type="button" disabled={resolving !== null || assigning !== null}
                                         onClick={() => void resolve(item.id, 'apple')}
                                         className="rounded-md border border-orange-300 bg-white px-3 py-1.5 font-semibold disabled:opacity-50">
                                         Apple übernehmen
                                     </button>
-                                    <button type="button" disabled={resolving !== null || busy}
+                                    <button type="button" disabled={resolving !== null || assigning !== null}
                                         onClick={() => void resolve(item.id, 'studiosync')}
                                         className="rounded-md border border-orange-300 bg-white px-3 py-1.5 font-semibold disabled:opacity-50">
                                         StudioSync übernehmen
