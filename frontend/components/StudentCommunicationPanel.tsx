@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
     ArrowDown, ArrowUpRight, FilePenLine, Mail, MailOpen,
@@ -53,6 +53,9 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
     const [total, setTotal] = useState(0)
     const [counts, setCounts] = useState({ received: 0, sent: 0, draft: 0 })
     const [hasMore, setHasMore] = useState(false)
+    const [nextOffset, setNextOffset] = useState(0)
+    const lastLoadedStudent = useRef<string | null>(null)
+    const generationRef = useRef(0)
     const [loading, setLoading] = useState(true)
     const [loadingMore, setLoadingMore] = useState(false)
     const [error, setError] = useState('')
@@ -62,24 +65,39 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
 
     useEffect(() => {
         let active = true
-        setLoading(true)
+        const generation = ++generationRef.current
+        const newStudent = lastLoadedStudent.current !== studentId
+        if (newStudent) {
+            setMessages([])
+            setTotal(0)
+            setCounts({ received: 0, sent: 0, draft: 0 })
+            setHasMore(false)
+            setNextOffset(0)
+            setSyncing(false)
+            setLoading(true)
+        }
         setError('')
         setPageError('')
         void api.get<MailOverviewPage>(
             `/core/mail/cache/students/${studentId}/overview/`,
             { params: { offset: 0, limit: PAGE_SIZE } },
         ).then(({ data }) => {
-            if (!active) return
+            if (!active || generation !== generationRef.current) return
+            lastLoadedStudent.current = studentId
             setMessages(data.messages)
             setTotal(data.total)
             setCounts(data.counts)
             setHasMore(data.has_more)
+            setNextOffset(data.offset + data.messages.length)
             setSyncing(Boolean(data.syncing))
         }).catch((failure: any) => {
-            if (active) setError(failure?.response?.data?.detail ||
-                'Der Schriftverkehr konnte nicht geladen werden.')
+            if (active && generation === generationRef.current) {
+                setError(failure?.response?.data?.detail ||
+                    'Der Schriftverkehr konnte nicht geladen werden.')
+                setSyncing(false)
+            }
         }).finally(() => {
-            if (active) setLoading(false)
+            if (active && generation === generationRef.current) setLoading(false)
         })
         return () => { active = false }
     }, [studentId, revision])
@@ -87,30 +105,39 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
     useEffect(() => {
         // Refresh the first page while the server populates the mail cache.
         // Once the user pages through old mail, don't reset their progress.
-        if (!syncing || loading || messages.length > PAGE_SIZE) return
+        if (!syncing || loading || loadingMore || messages.length > PAGE_SIZE) return
         const timeout = window.setTimeout(() => setRevision(value => value + 1), 2500)
         return () => window.clearTimeout(timeout)
-    }, [syncing, loading, messages.length, revision])
+    }, [syncing, loading, loadingMore, messages.length, revision])
 
     const loadMore = async () => {
         if (loading || loadingMore || !hasMore) return
+        const generation = generationRef.current
         setLoadingMore(true)
         setPageError('')
         try {
             const { data } = await api.get<MailOverviewPage>(
                 `/core/mail/cache/students/${studentId}/overview/`,
-                { params: { offset: messages.length, limit: PAGE_SIZE } },
+                { params: { offset: nextOffset, limit: PAGE_SIZE } },
             )
-            setMessages(existing => [...existing, ...data.messages])
+            if (generation !== generationRef.current) return
+            setMessages(existing => {
+                const known = new Set(existing.map(item => item.folder + ':' + item.uid))
+                return [...existing, ...data.messages.filter(item =>
+                    !known.has(item.folder + ':' + item.uid))]
+            })
+            setNextOffset(data.offset + data.messages.length)
             setTotal(data.total)
             setCounts(data.counts)
             setHasMore(data.has_more)
             setSyncing(Boolean(data.syncing))
         } catch (failure: any) {
-            setPageError(failure?.response?.data?.detail ||
-                'Weitere Nachrichten konnten nicht geladen werden.')
+            if (generation === generationRef.current) {
+                setPageError(failure?.response?.data?.detail ||
+                    'Weitere Nachrichten konnten nicht geladen werden.')
+            }
         } finally {
-            setLoadingMore(false)
+            if (generation === generationRef.current) setLoadingMore(false)
         }
     }
 
