@@ -7,7 +7,7 @@ import {
 import { createPortal } from 'react-dom'
 import {
     Archive, CheckCheck, ChevronDown, ChevronRight, FileText, Filter, Forward,
-    File, FileAudio, FileImage, FileVideo, Inbox, Mail, MailOpen, Menu, MoreHorizontal,
+    File as FileIcon, FileAudio, FileImage, FileVideo, Inbox, Mail, MailOpen, Menu, MoreHorizontal,
     Paperclip, Pencil, RefreshCw, Reply, Search, Send, ShieldAlert, Star, Trash2, Upload, X,
 } from 'lucide-react'
 import api from '@/services/api'
@@ -101,7 +101,7 @@ const attachmentIcon = (name: string, mime = '') => {
     if (mime.startsWith('audio/') || ['mp3', 'wav', 'm4a', 'flac'].includes(ext)) return FileAudio
     if (mime.startsWith('video/') || ['mp4', 'mov', 'mkv'].includes(ext)) return FileVideo
     if (ext === 'pdf' || ['doc', 'docx', 'txt', 'odt'].includes(ext)) return FileText
-    return File
+    return FileIcon
 }
 
 const FOLDERS: { id: FolderId; name: string; icon: typeof Inbox }[] = [
