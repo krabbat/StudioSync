@@ -14,6 +14,7 @@ import TeachingContractCard from '@/components/TeachingContractCard'
 import StudentAccountTabs, { type AccountSection } from '@/components/StudentAccountTabs'
 import StudentLessonAccountCard from '@/components/StudentLessonAccountCard'
 import StudentBillingDetailsCard from '@/components/StudentBillingDetailsCard'
+import StudentCommunicationPanel from '@/components/StudentCommunicationPanel'
 import { useUser } from '@/contexts/UserContext'
 
 export default function EditStudentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -237,7 +238,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
 
                 <StudentAccountTabs section={section} onChange={setSection}
                     allowed={currentUser?.role === 'admin'
-                        ? ['personal', 'contract', 'lessons', 'billing']
+                        ? ['personal', 'contract', 'lessons', 'billing', 'communication']
                         : ['personal']} />
                 {section === 'personal' ? (
                 <div className="bg-card text-card-foreground rounded-[2.5rem] shadow-xl border border-border p-6 sm:p-10">
@@ -378,6 +379,8 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                         studentEmail={formData.email}
                         studentAddress={savedStudentAddress}
                     />
+                ) : section === 'communication' && currentUser?.role === 'admin' ? (
+                    <StudentCommunicationPanel studentId={studentId} />
                 ) : null}
             </div>
             {cropImage && (
