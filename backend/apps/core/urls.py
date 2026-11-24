@@ -40,6 +40,7 @@ from apps.core.views.mail_outbound import (
     MailResourceDownloadView,
     MailSendView,
 )
+from apps.core.views.icloud_calendar import ICloudCalendarListView, ICloudCalendarWriteTestView
 from config.routers import OptionalSlashRouter
 
 router = OptionalSlashRouter()
@@ -61,6 +62,8 @@ urlpatterns = (
         path("stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
         path("analytics/", DashboardAnalyticsView.as_view(), name="dashboard-analytics"),
         path("reports/export/", ReportsExportView.as_view(), name="reports-export"),
+        re_path(r"^calendar/icloud/calendars/?$", ICloudCalendarListView.as_view(), name="icloud-calendars"),
+        re_path(r"^calendar/icloud/test/?$", ICloudCalendarWriteTestView.as_view(), name="icloud-write-test"),
         re_path(r"^mail/inbox/?$", MailInboxListView.as_view(), name="mail-inbox-list"),
         re_path(
             r"^mail/recipients/?$",
