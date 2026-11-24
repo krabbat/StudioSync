@@ -16,10 +16,14 @@ from collections import OrderedDict
 from email.utils import formataddr, make_msgid
 
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMessage, get_connection
+from django.core.mail import EmailMultiAlternatives, get_connection
 from django.core.validators import validate_email
 
 from apps.core.mail_folders import MailFolderError, resolve_folder
+from apps.core.mail_signature import (
+    html_mail_with_signature,
+    plain_mail_with_signature,
+)
 from apps.core.mail_service import MailFetchError, _configuration
 from apps.core.models import Student
 from apps.resources.models import Resource
@@ -365,14 +369,15 @@ def send_student_mail(
     try:
         connection.open()
         for recipient in recipients:
-            email = EmailMessage(
+            email = EmailMultiAlternatives(
                 subject=title,
-                body=content,
+                body=plain_mail_with_signature(content),
                 from_email=formataddr((studio.name, settings["sender"])),
                 to=[recipient["email"]],
                 connection=connection,
                 headers={"Message-ID": make_msgid()},
             )
+            email.attach_alternative(html_mail_with_signature(content), "text/html")
             for filename, data, mime in attachments:
                 email.attach(filename, data, mime)
             try:
