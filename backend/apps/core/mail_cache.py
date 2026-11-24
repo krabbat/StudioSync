@@ -149,6 +149,11 @@ def cached_folder_page(studio, owner, config, folder, offset=0, limit=LIST_PAGE_
     known_total = cache.server_total if cache.last_synced_at else count
     return {
         "messages": [_serialize_message(item) for item in rows],
+        # Allows clients to retain paginated rows while removing messages
+        # deleted or moved by another device during background refresh.
+        "cached_ids": [
+            str(uid) for uid in cache.messages.values_list("uid", flat=True)[:5000]
+        ],
         "total": max(count, known_total),
         "has_more": offset + len(rows) < max(count, known_total),
         "offset": offset,
