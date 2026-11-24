@@ -5,7 +5,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.urls import reverse
 
-from apps.core.mail_service import MailFetchError, get_inbox_message, list_inbox
+from apps.core.mail_service import (
+    MailFetchError,
+    _parse_metadata,
+    get_inbox_message,
+    list_inbox,
+)
 
 CONFIG = {
     "imap_host": "mail.manitu.de",
@@ -164,3 +169,20 @@ def test_mail_api_returns_safe_error_and_validates_page(authenticated_client, st
         response = authenticated_client.get(reverse("mail-inbox-list"))
     assert response.status_code == 502
     assert response.data["detail"] == "IMAP-Fehler"
+
+
+def test_sent_folder_displays_recipient_instead_of_studio_sender():
+    header = (
+        b"From: MUSart <musikunterricht@musart.de>\r\n"
+        b"To: Beispiel Eltern <familie@example.org>\r\n"
+        b"Subject: Unterrichtsplan\r\n"
+        b"Date: Mon, 23 Nov 2026 09:42:00 +0100\r\n"
+        b"\r\n"
+    )
+    record = (b"1 (UID 35 FLAGS (\\Seen) RFC822.SIZE 250)", header)
+    sent = _parse_metadata(record, "sent")
+    incoming = _parse_metadata(record, "inbox")
+    assert sent["from"] == "Beispiel Eltern"
+    assert sent["email"] == "familie@example.org"
+    assert incoming["from"] == "MUSart"
+    assert incoming["email"] == "musikunterricht@musart.de"
