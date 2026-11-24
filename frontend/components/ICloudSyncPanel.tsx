@@ -20,6 +20,7 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
     const [students, setStudents] = useState<StudentChoice[]>([])
     const [busy, setBusy] = useState(false)
     const [assigning, setAssigning] = useState<string | null>(null)
+    const [resolving, setResolving] = useState<string | null>(null)
     const [choices, setChoices] = useState<Record<string, string>>({})
     const [last, setLast] = useState<SyncPayload | null>(null)
 
@@ -71,6 +72,23 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
             toast.error(error?.response?.data?.detail || 'Zuordnung fehlgeschlagen.')
         } finally {
             setAssigning(null)
+        }
+    }
+
+    const resolve = async (seriesId: string, prefer: 'apple' | 'studiosync') => {
+        setResolving(seriesId)
+        try {
+            const { data } = await api.post<SyncPayload>(
+                '/core/calendar/icloud/series/' + seriesId + '/resolve/', { prefer }
+            )
+            setRows(data.series || [])
+            setStudents(data.students || [])
+            setLast(data)
+            toast.success(prefer === 'apple' ? 'Apple-Termin übernommen.' : 'StudioSync-Termin nach iCloud übertragen.')
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail || 'Kalenderkonflikt konnte nicht gelöst werden.')
+        } finally {
+            setResolving(null)
         }
     }
 
@@ -143,7 +161,23 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                         <AlertTriangle className="h-4 w-4" /> Kalenderkonflikte
                     </p>
                     {problems.map(item => (
-                        <p key={item.id} className="mt-2">{item.title}: {item.error}</p>
+                        <div key={item.id} className="mt-3 space-y-2">
+                            <p><strong>{item.title}:</strong> {item.error}</p>
+                            {item.error.includes('Konflikt:') && (
+                                <div className="flex flex-wrap gap-2">
+                                    <button type="button" disabled={resolving !== null || busy}
+                                        onClick={() => void resolve(item.id, 'apple')}
+                                        className="rounded-md border border-orange-300 bg-white px-3 py-1.5 font-semibold disabled:opacity-50">
+                                        Apple übernehmen
+                                    </button>
+                                    <button type="button" disabled={resolving !== null || busy}
+                                        onClick={() => void resolve(item.id, 'studiosync')}
+                                        className="rounded-md border border-orange-300 bg-white px-3 py-1.5 font-semibold disabled:opacity-50">
+                                        StudioSync übernehmen
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </div>
             )}
