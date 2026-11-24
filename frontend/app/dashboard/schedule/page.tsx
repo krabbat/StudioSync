@@ -11,6 +11,7 @@ import {
   useStudios,
 } from "@/hooks/useDashboardData";
 import api from "@/services/api";
+import LessonDeleteDialog, { type LessonDeleteScope, type LessonDeleteTarget } from "@/components/LessonDeleteDialog";
 import { toast } from "react-hot-toast";
 import {
   format,
@@ -111,6 +112,7 @@ export default function SchedulePage() {
   const [use24Hour, setUse24Hour] = useState(locale === "de");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LessonDeleteTarget | null>(null);
   const [icloudBusy, setIcloudBusy] = useState(false);
   const [icloudIssues, setIcloudIssues] = useState<{ title: string; error: string }[]>([]);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
@@ -528,21 +530,27 @@ export default function SchedulePage() {
     }
   };
 
-  const deleteBooking = async (lessonId: string) => {
+  const requestDeleteBooking = (lessonId: string) => {
     const selected = lessons.find((item: any) => item.id === lessonId);
-    const label = selected
-      ? `${selected.student_name || selected.band_name || 'Unterricht'} am ${format(parseISO(selected.scheduled_start), 'dd.MM.yyyy HH:mm')}`
-      : 'diesen Unterrichtstermin';
-    if (!window.confirm(`Soll ${label} wirklich dauerhaft gelöscht werden?\nBei einer Terminserie wird nur dieser einzelne Termin entfernt.`)) {
-      return;
-    }
+    if (!selected) return;
+    setDeleteTarget({
+      id: lessonId,
+      label: `${selected.student_name || selected.band_name || 'Unterricht'} am ${format(parseISO(selected.scheduled_start), 'dd.MM.yyyy HH:mm')}`,
+      isRecurring: Boolean(selected.is_recurring),
+    });
+  };
+
+  const deleteBooking = async (scope: LessonDeleteScope) => {
+    if (!deleteTarget) return;
+    const lessonId = deleteTarget.id;
     setDeletingLessonId(lessonId);
     try {
-      const response = await api.delete(`/lessons/${lessonId}/`);
+      const response = await api.delete(`/lessons/${lessonId}/`, { params: { scope } });
       toast.success(response.data?.detail || 'Unterrichtstermin gelöscht.');
       if (response.data?.icloud_synced === false) {
         toast.error('iCloud ist noch nicht aktualisiert. Bitte den Kalenderabgleich prüfen.');
       }
+      setDeleteTarget(null);
       setShowBookingModal(false);
       resetBooking();
       await refetchLessons();
@@ -1673,7 +1681,7 @@ export default function SchedulePage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => void deleteBooking(editingLessonId)}
+              onClick={() => requestDeleteBooking(editingLessonId)}
               disabled={bookingLoading || deletingLessonId !== null}
               className="gap-2 border-red-200 text-red-700 hover:bg-red-50"
             >
@@ -1701,6 +1709,13 @@ export default function SchedulePage() {
           </Button>
         </DialogFooter>
       </Dialog>
+
+      <LessonDeleteDialog
+        target={deleteTarget}
+        busy={deletingLessonId !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={(scope) => void deleteBooking(scope)}
+      />
 
       {/* Subscribe Modal */}
       <Dialog open={showSubscribeModal} onOpenChange={setShowSubscribeModal} size="md">
