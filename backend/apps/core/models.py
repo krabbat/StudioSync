@@ -670,3 +670,64 @@ class APIKey(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.prefix}...)"
+
+
+class MailFolderCache(models.Model):
+    """Tenant-scoped IMAP folder snapshot; never stores login credentials."""
+
+    studio = models.ForeignKey(Studio, on_delete=models.CASCADE, related_name="mail_cache_folders")
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mail_cache_folders")
+    account_key = models.CharField(max_length=64)
+    folder = models.CharField(max_length=16)
+    uidvalidity = models.CharField(max_length=24, blank=True)
+    server_total = models.PositiveIntegerField(default=0)
+    requested_count = models.PositiveIntegerField(default=200)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    sync_started_at = models.DateTimeField(null=True, blank=True)
+    sync_error = models.CharField(max_length=240, blank=True)
+
+    class Meta:
+        db_table = "mail_folder_cache"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["studio", "owner", "account_key", "folder"],
+                name="unique_mail_cache_folder_account",
+            ),
+        ]
+
+
+class MailMessageCache(models.Model):
+    """Header + optionally fetched text for one immutable IMAP UID generation."""
+
+    folder_cache = models.ForeignKey(
+        MailFolderCache, on_delete=models.CASCADE, related_name="messages"
+    )
+    uid = models.BigIntegerField()
+    sender_name = models.CharField(max_length=320, blank=True)
+    email = models.CharField(max_length=320, blank=True)
+    subject = models.TextField(blank=True)
+    date = models.CharField(max_length=64, blank=True)
+    unread = models.BooleanField(default=True)
+    starred = models.BooleanField(default=False)
+    answered = models.BooleanField(default=False)
+    has_attachment = models.BooleanField(default=False)
+    size = models.BigIntegerField(null=True, blank=True)
+    preview = models.TextField(blank=True)
+    attachments = models.JSONField(default=list, blank=True)
+    body = models.TextField(blank=True)
+    body_loaded = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "mail_message_cache"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["folder_cache", "uid"],
+                name="unique_mail_cache_message_uid",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["folder_cache", "-uid"],
+                name="mail_cache_folder_uid_desc",
+            ),
+        ]
