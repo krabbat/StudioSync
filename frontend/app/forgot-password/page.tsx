@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { INTERNATIONAL_EMAIL_PATTERN, INTERNATIONAL_EMAIL_HINT } from '@/lib/internationalEmail'
 import { useEffect, useState } from 'react'
 import { Mail, Loader2, AlertCircle, CheckCircle, ArrowLeft, Send } from 'lucide-react'
 import Link from 'next/link'
@@ -144,7 +145,7 @@ export default function ForgotPasswordPage() {
                                         <Mail className="h-4 w-4" style={{ color: A.faint }} />
                                     </div>
                                     <input
-                                        type="email" required
+                                        type="text" inputMode="email" pattern={INTERNATIONAL_EMAIL_PATTERN} title={INTERNATIONAL_EMAIL_HINT} required
                                         value={email} onChange={e => setEmail(e.target.value)}
                                         className="block w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all"
                                         style={{ backgroundColor: A.bg, borderColor: A.border, color: A.text }}
