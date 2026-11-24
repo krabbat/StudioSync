@@ -16,6 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 from django_q.tasks import async_task
 
+from apps.core.mail_associations import student_catalog, enrich_cached_message
 from apps.core.mail_folders import FOLDER_KEYS
 from apps.core.mail_service import (
     LIST_PAGE_SIZE,
@@ -145,10 +146,14 @@ def cached_folder_page(studio, owner, config, folder, offset=0, limit=LIST_PAGE_
         and now - cache.sync_started_at < timedelta(seconds=LOCK_TIMEOUT_SECONDS)
     )
     rows = list(cache.messages.order_by("-uid")[offset:offset + limit])
+    catalog, by_address = student_catalog(studio)
     count = cache.messages.count()
     known_total = cache.server_total if cache.last_synced_at else count
     return {
-        "messages": [_serialize_message(item) for item in rows],
+        "messages": [
+            {**_serialize_message(item), **enrich_cached_message(item, catalog, by_address)}
+            for item in rows
+        ],
         # Allows clients to retain paginated rows while removing messages
         # deleted or moved by another device during background refresh.
         "cached_ids": [
@@ -177,7 +182,11 @@ def cached_message_detail(studio, owner, config, folder, uid, expected_uidvalidi
         raise MailFetchError("Das Postfach wurde verändert. Bitte neu abrufen.")
     record = cache.messages.filter(uid=int(uid)).first()
     if record and record.body_loaded:
-        return _serialize_message(record, include_body=True)
+        catalog, by_address = student_catalog(studio)
+        return {
+            **_serialize_message(record, include_body=True),
+            **enrich_cached_message(record, catalog, by_address),
+        }
 
     # The existing detail loader validates UIDVALIDITY on the live server,
     # including before initial cache synchronization is complete.
@@ -196,6 +205,7 @@ def cached_message_detail(studio, owner, config, folder, uid, expected_uidvalidi
         "has_attachment": result["has_attachment"],
         "size": result.get("size"),
         "preview": result["preview"],
+        "contact_addresses": result.get("contact_addresses", []),
         "attachments": result["attachments"],
         "body": result["body"],
         "body_loaded": True,
@@ -204,8 +214,12 @@ def cached_message_detail(studio, owner, config, folder, uid, expected_uidvalidi
     cache.refresh_from_db()
     if expected_uidvalidity and cache.uidvalidity and cache.uidvalidity != str(expected_uidvalidity):
         raise MailFetchError("Das Postfach wurde verändert. Bitte neu abrufen.")
-    cache.messages.update_or_create(uid=int(uid), defaults=data)
-    return result
+    record, _ = cache.messages.update_or_create(uid=int(uid), defaults=data)
+    catalog, by_address = student_catalog(studio)
+    return {
+        **result,
+        **enrich_cached_message(record, catalog, by_address),
+    }
 
 
 def _parse_flags(records):
@@ -300,6 +314,7 @@ def _sync_folder_from_imap(cache, config):
                 answered=item.get("answered", False),
                 has_attachment=item["has_attachment"],
                 size=item.get("size"), preview=item["preview"],
+                contact_addresses=item.get("contact_addresses", []),
                 attachments=item["attachments"],
             ) for item in metadata
         ], ignore_conflicts=True, batch_size=100)
