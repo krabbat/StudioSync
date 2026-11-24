@@ -60,8 +60,10 @@ class MailSendView(APIView):
                 if isinstance(raw_resources, str) else raw_resources
             )
         except (TypeError, ValueError):
-            ids = None
-            resource_ids = None
+            return Response(
+                {"detail": "Ungültige Schüler- oder Dateiauswahl."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         subject = request.data.get("subject", "")
         body = request.data.get("body", "")
