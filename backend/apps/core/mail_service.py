@@ -179,7 +179,8 @@ def list_folder(config, folder='inbox', offset=0, limit=LIST_PAGE_SIZE):
     limit = max(1, min(MAX_PAGE_SIZE, int(limit)))
     with _readonly_folder(config, folder) as client:
         own_addresses = (
-            config.get("imap_username"), config.get("smtp_from_email")
+            config.get("imap_username"), config.get("smtp_username"),
+            config.get("smtp_from_email"),
         )
         status, data = client.uid("SEARCH", None, "ALL")
         if status != "OK":
@@ -267,7 +268,8 @@ def get_folder_message(config, folder, uid, expected_uidvalidity=None):
 
     with _readonly_folder(config, folder) as client:
         own_addresses = (
-            config.get("imap_username"), config.get("smtp_from_email")
+            config.get("imap_username"), config.get("smtp_username"),
+            config.get("smtp_from_email"),
         )
         uidvalidity = _uidvalidity(client)
         if expected_uidvalidity and uidvalidity != str(expected_uidvalidity):
