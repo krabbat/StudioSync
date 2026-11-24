@@ -117,3 +117,25 @@ test('SMTP send uses selected roster IDs, validated text and local attachments',
     assert.match(jsx, /student_ids_sent/)
     assert.match(jsx, /mailSending \? 'Sendet …'/)
 })
+
+test('composer retains a compact recipient row and moves search to an overlay dialog', () => {
+    const jsx = source('components/mail/MailWorkspace.tsx')
+    const css = source('app/dashboard/messages/mail.css')
+    const inline = jsx.split('<div className="mail-compose-scroll">')[1]
+        ?.split('<label htmlFor="mail-subject">')[0] || ''
+    assert.match(inline, /mail-compose-to-row/)
+    assert.match(inline, /mail-compose-to-chips/)
+    assert.match(inline, /setRecipientPickerOpen\(true\)/)
+    assert.doesNotMatch(inline, /mail-recipient-grid|mail-recipient-dialog-search/)
+    assert.match(jsx, /createPortal\(\(/)
+    assert.match(jsx, /document\.body\)/)
+    assert.match(jsx, /role="dialog" aria-modal="true"/)
+    assert.match(jsx, /ref=\{recipientSearchRef\}/)
+    assert.match(jsx, /onClick=\{\(\) => setVisibleRecipientSelection\(true\)\}/)
+    assert.match(jsx, /onClick=\{\(\) => setVisibleRecipientSelection\(false\)\}/)
+    assert.match(jsx, /event\.key === 'Escape'/)
+    assert.match(css, /\.mail-compose-to-row\s*\{[^}]*min-height:\s*39px/s)
+    assert.match(css, /\.mail-compose-to-chips\s*\{[^}]*white-space:\s*nowrap/s)
+    assert.match(css, /\.mail-recipient-overlay\s*\{[^}]*position:\s*fixed/s)
+    assert.match(css, /\.mail-recipient-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s)
+})
