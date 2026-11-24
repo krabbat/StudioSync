@@ -126,6 +126,10 @@ class Lesson(models.Model):
         help_text="Optional lesson plan template used for this lesson",
     )
 
+    # One-off appointments for people who do not have a StudioSync student account.
+    guest_name = models.CharField(max_length=200, blank=True)
+    guest_address = models.CharField(max_length=500, blank=True)
+
     # Location
     location = models.CharField(max_length=200, blank=True)
     is_online = models.BooleanField(default=False)
@@ -167,7 +171,7 @@ class Lesson(models.Model):
         subject = (
             self.student.user.get_full_name()
             if self.student
-            else (self.band.name if self.band else "Unknown")
+            else (self.band.name if self.band else (self.guest_name or "Unknown"))
         )
         return f"{subject} - {self.scheduled_start.strftime('%Y-%m-%d %H:%M')}"
 
