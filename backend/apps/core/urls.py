@@ -18,6 +18,9 @@ from apps.core.views import (
     update,
 )
 from apps.core.views.mail import (
+    MailCachedFolderDetailView,
+    MailCachedFolderListView,
+    MailCachedFolderSyncView,
     MailFolderActionView,
     MailFolderDetailView,
     MailFolderListView,
@@ -76,6 +79,21 @@ urlpatterns = (
             r"^mail/inbox/(?P<uid>[0-9]+)/?$",
             MailInboxDetailView.as_view(),
             name="mail-inbox-detail",
+        ),
+        re_path(
+            r"^mail/cache/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/?$",
+            MailCachedFolderListView.as_view(),
+            name="mail-cache-folder-list",
+        ),
+        re_path(
+            r"^mail/cache/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/sync/?$",
+            MailCachedFolderSyncView.as_view(),
+            name="mail-cache-folder-sync",
+        ),
+        re_path(
+            r"^mail/cache/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/(?P<uid>[0-9]+)/?$",
+            MailCachedFolderDetailView.as_view(),
+            name="mail-cache-folder-detail",
         ),
         re_path(
             r"^mail/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/?$",
