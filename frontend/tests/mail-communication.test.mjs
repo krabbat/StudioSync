@@ -6,10 +6,18 @@ const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf
 
 test('student profile adds an admin-only Kommunikation tab and a mail overview', () => {
     const profile = read('app/dashboard/students/[id]/page.tsx')
+    const editor = read('app/dashboard/students/[id]/edit/page.tsx')
+    const tabs = read('components/StudentAccountTabs.tsx')
     const panel = read('components/StudentCommunicationPanel.tsx')
     assert.match(profile, /profileTab === 'communication'/)
     assert.match(profile, /currentUser\?\.role === 'admin'/)
     assert.match(profile, /<StudentCommunicationPanel studentId=\{studentId\}/)
+    assert.match(tabs, /'communication'/)
+    assert.match(tabs, /label: 'Kommunikation'/)
+    assert.match(tabs, /icon: Mail/)
+    assert.match(editor, /\['personal', 'contract', 'lessons', 'billing', 'communication'\]/)
+    assert.match(editor, /section === 'communication' && currentUser\?\.role === 'admin'/)
+    assert.match(editor, /<StudentCommunicationPanel studentId=\{studentId\}/)
     assert.match(panel, /\/core\/mail\/cache\/students\/\$\{studentId\}\/overview\//)
     assert.match(panel, /\/dashboard\/messages\?student=/)
     assert.match(panel, /&folder=/)
