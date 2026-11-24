@@ -1244,3 +1244,183 @@
         flex-basis: 90px;
     }
 }
+
+
+/* Attachment actions stay at the bottom and never reduce the recipient editor. */
+.mail-compose-attachments-strip {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 9px;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    border-top: 1px solid var(--mail-border-color);
+    background: var(--mail-toolbar-background);
+}
+
+.mail-attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    max-width: min(230px, 60%);
+    padding: 4px 6px;
+    border: 1px solid var(--mail-border-color);
+    border-radius: var(--mail-panel-radius);
+    color: var(--mail-text-color);
+    background: var(--mail-panel-background);
+    font-size: 11px;
+}
+
+.mail-attachment-chip > svg {
+    color: var(--mail-action-color);
+    flex-shrink: 0;
+}
+
+.mail-attachment-chip > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mail-attachment-chip > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    padding: 0;
+    flex-shrink: 0;
+    background: transparent;
+    color: var(--mail-muted-color);
+    cursor: pointer;
+}
+
+.mail-attachment-chip > button:hover {
+    color: var(--mail-text-color);
+}
+
+.mail-recipient-extra-toggle {
+    align-self: flex-start;
+    padding: 3px 0;
+    border: 0;
+    background: transparent;
+    color: var(--mail-action-color);
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.mail-recipient-extra-clear {
+    border: 0;
+    flex: 0 0 auto;
+    background: transparent;
+    color: var(--mail-muted-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+}
+
+.mail-resource-dialog {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(680px, calc(100vw - 32px));
+    max-height: min(640px, calc(100dvh - 32px));
+    min-height: 0;
+    overflow: hidden;
+    background: var(--mail-panel-background);
+    color: var(--mail-text-color);
+    border: 1px solid var(--mail-border-color);
+    border-radius: calc(var(--mail-panel-radius) + 3px);
+    box-shadow: 0 16px 55px rgba(0,0,0,.3);
+}
+
+.mail-resource-search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--mail-border-color);
+    color: var(--mail-muted-color);
+}
+
+.mail-resource-search-row input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--mail-border-color);
+    border-radius: var(--mail-panel-radius);
+    background: var(--mail-panel-background);
+    color: var(--mail-text-color);
+    padding: 8px;
+    font-size: 12px;
+}
+
+.mail-resource-dialog-list {
+    flex: 1 1 auto;
+    min-height: 100px;
+    padding: 10px 14px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    font-size: 12px;
+}
+
+.mail-resource-dialog-list > p {
+    padding: 8px 4px;
+    color: var(--mail-muted-color);
+}
+
+.mail-resource-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    padding: 9px 7px;
+    border: 1px solid var(--mail-border-color);
+    border-radius: var(--mail-panel-radius);
+    margin: 0 0 6px;
+    cursor: pointer;
+}
+
+.mail-resource-option:hover,
+.mail-resource-option:has(input:checked) {
+    background: var(--mail-selected-background);
+}
+
+.mail-resource-option > input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--mail-action-color);
+    flex: 0 0 auto;
+}
+
+.mail-resource-option > svg {
+    flex: 0 0 auto;
+    color: var(--mail-action-color);
+}
+
+.mail-resource-option-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.mail-resource-option-info strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.mail-resource-option-info small {
+    overflow-wrap: anywhere;
+    color: var(--mail-muted-color);
+    font-size: 10px;
+}
