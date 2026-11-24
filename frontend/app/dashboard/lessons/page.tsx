@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { useState } from 'react'
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { useUser } from '@/contexts/UserContext'
-import { useLessons, useUsers, useStudents, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
+import { useLessons, useUsers, useStudents, useTeachers, useStudios, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
 import ResourceSelector from '@/components/ResourceSelector'
 import LessonDeleteDialog, { type LessonDeleteTarget, type LessonDeleteScope } from '@/components/LessonDeleteDialog'
 import api from '@/services/api'
@@ -40,6 +40,7 @@ import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/
 interface Lesson {
     id: string
     student?: string
+    teacher?: string
     student_profile_id?: string
     student_name: string
     teacher_name: string
@@ -66,6 +67,9 @@ export default function LessonsPage() {
     const typedLessons = lessons as Lesson[]
     const { users } = useUsers({ page_size: 100 })
     const { students: studentProfiles } = useStudents({ page_size: 100 })
+    const { teachers } = useTeachers()
+    const { studios } = useStudios()
+    const preferredTeacherId = teachers.find((item: any) => [item.first_name, item.last_name].filter(Boolean).join(' ').toLocaleLowerCase('de-DE') === 'peter sartori')?.id || teachers[0]?.id || ''
 
     // Derive students from users for consistent name rendering
     const students = users
@@ -111,10 +115,15 @@ export default function LessonsPage() {
     const [showLessonModal, setShowLessonModal] = useState(false)
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
     const [lessonSubmitting, setLessonSubmitting] = useState(false)
+    const [isSpecialBooking, setIsSpecialBooking] = useState(false)
     const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<LessonDeleteTarget | null>(null)
     const [lessonData, setLessonData] = useState({
         student: '',
+        teacher: '',
+        guest_name: '',
+        guest_address: '',
+        summary: '',
         lesson_type: 'private',
         status: 'scheduled',
         scheduled_start: '',
@@ -264,8 +273,13 @@ export default function LessonsPage() {
                         <Button
                             onClick={() => {
                                 setEditingLessonId(null)
+                                setIsSpecialBooking(false)
                                 setLessonData({
                                     student: '',
+                                    teacher: preferredTeacherId,
+                                    guest_name: '',
+                                    guest_address: '',
+                                    summary: '',
                                     lesson_type: 'private',
                                     status: 'scheduled',
                                     scheduled_start: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
@@ -436,8 +450,13 @@ export default function LessonsPage() {
                                                         size="icon"
                                                         onClick={() => {
                                                             setEditingLessonId(lesson.id)
+                                                            setIsSpecialBooking(Boolean(lesson.guest_name))
                                                             setLessonData({
                                                                 student: lesson.student_profile_id || lesson.student || '',
+                                                                teacher: lesson.teacher || preferredTeacherId,
+                                                                guest_name: lesson.guest_name || '',
+                                                                guest_address: lesson.guest_address || '',
+                                                                summary: lesson.summary || '',
                                                                 lesson_type: lesson.lesson_type,
                                                                 status: lesson.status,
                                                                 scheduled_start: new Date(new Date(start).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
@@ -542,8 +561,13 @@ export default function LessonsPage() {
                                             size="sm"
                                             onClick={() => {
                                                 setEditingLessonId(lesson.id)
+                                                setIsSpecialBooking(Boolean(lesson.guest_name))
                                                 setLessonData({
                                                     student: lesson.student_profile_id || lesson.student || '',
+                                                    teacher: lesson.teacher || preferredTeacherId,
+                                                    guest_name: lesson.guest_name || '',
+                                                    guest_address: lesson.guest_address || '',
+                                                    summary: lesson.summary || '',
                                                     lesson_type: lesson.lesson_type,
                                                     status: lesson.status,
                                                     scheduled_start: new Date(new Date(start).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
@@ -916,18 +940,32 @@ export default function LessonsPage() {
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('student')}</label>
-                                <select
-                                    required
-                                    value={lessonData.student}
-                                    onChange={(e) => setLessonData({ ...lessonData, student: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
-                                >
-                                    <option value="">{tr('selectStudent')}</option>
-                                    {students.map((student: any) => (
-                                        <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>
-                                    ))}
-                                </select>
+                                <label className="flex items-center gap-2 text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                    <input type="checkbox" checked={isSpecialBooking}
+                                        onChange={e => {
+                                            setIsSpecialBooking(e.target.checked)
+                                            setLessonData(previous => ({ ...previous, student: e.target.checked ? '' : previous.student }))
+                                        }} />
+                                    Sondertermin ohne Schülerkonto
+                                </label>
+                                {isSpecialBooking ? (
+                                    <input type="text" placeholder="Vorname und Nachname"
+                                        value={lessonData.guest_name}
+                                        onChange={e => setLessonData({ ...lessonData, guest_name: e.target.value })}
+                                        className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900" />
+                                ) : (
+                                    <select required value={lessonData.student}
+                                        onChange={e => {
+                                            const selected = studentProfiles.find((s: any) => s.id === e.target.value)
+                                            setLessonData(previous => ({ ...previous, student: e.target.value, summary: previous.summary || selected?.instrument || '' }))
+                                        }}
+                                        className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900">
+                                        <option value="">{tr('selectStudent')}</option>
+                                        {students.map((student: any) => (
+                                            <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('dateTime')}</label>
@@ -979,10 +1017,37 @@ export default function LessonsPage() {
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('teachingAddress')}</label>
-                                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-gray-900">
-                                    {lessonData.is_online ? tr('online') : (selectedAddress || tr('addressMissing'))}
-                                </div>
+                                {isSpecialBooking ? (
+                                    <input type="text" placeholder="Straße, Hausnummer, PLZ, Ort"
+                                        value={lessonData.guest_address}
+                                        onChange={e => setLessonData({ ...lessonData, guest_address: e.target.value })}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-gray-900" />
+                                ) : (
+                                    <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-gray-900">
+                                        {lessonData.is_online ? tr('online') : (selectedAddress || tr('addressMissing'))}
+                                    </div>
+                                )}
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Notizen / Terminbeschreibung</label>
+                            <textarea rows={3} value={lessonData.summary}
+                                onChange={e => setLessonData({ ...lessonData, summary: e.target.value })}
+                                placeholder="Probestunde, Ersatztermin, weitere Hinweise"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 resize-y" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Lehrkraft</label>
+                            <select value={lessonData.teacher}
+                                onChange={e => setLessonData({ ...lessonData, teacher: e.target.value })}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900">
+                                <option value="">Lehrkraft auswählen</option>
+                                {teachers.map((teacher: any) => (
+                                    <option key={teacher.id} value={teacher.id}>
+                                        {teacher.first_name} {teacher.last_name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 </DialogContent>
@@ -1005,14 +1070,19 @@ export default function LessonsPage() {
                     )}
                     <Button variant="ghost" onClick={() => setShowLessonModal(false)} disabled={lessonSubmitting}>{tr('cancel')}</Button>
                     <Button
-                        disabled={lessonSubmitting || !lessonData.student || !lessonData.scheduled_start}
+                        disabled={lessonSubmitting || (!isSpecialBooking && !lessonData.student) || (isSpecialBooking && !lessonData.guest_name.trim()) || !lessonData.scheduled_start}
                         onClick={async () => {
                             setLessonSubmitting(true)
                             try {
                                 const start = new Date(lessonData.scheduled_start)
                                 const end = new Date(start.getTime() + lessonData.duration_minutes * 60000)
                                 const payload = {
-                                    student: lessonData.student,
+                                    studio: currentUser?.studio?.id || studios?.[0]?.id,
+                                    teacher: lessonData.teacher || preferredTeacherId,
+                                    student: isSpecialBooking ? null : lessonData.student,
+                                    guest_name: isSpecialBooking ? lessonData.guest_name.trim() : '',
+                                    guest_address: isSpecialBooking ? lessonData.guest_address.trim() : '',
+                                    summary: lessonData.summary,
                                     status: lessonData.status,
                                     lesson_type: lessonData.lesson_type,
                                     scheduled_start: start.toISOString(),
