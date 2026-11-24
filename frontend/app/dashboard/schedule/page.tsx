@@ -374,7 +374,8 @@ export default function SchedulePage() {
   // Time slots generation
   const timeSlots = (() => {
     if (!isOvernight) {
-      return Array.from({ length: businessEnd - businessStart + 1 }, (_, i) => i + businessStart);
+      // Each row represents one full hour. Last row 21:00–22:00.
+      return Array.from({ length: businessEnd - businessStart }, (_, i) => i + businessStart);
     } else {
       // Example: Start 16, End 2 -> [16...23, 0...2]
       const pmSlots = Array.from({ length: 24 - businessStart }, (_, i) => i + businessStart);
@@ -892,6 +893,13 @@ export default function SchedulePage() {
                     })}
                   </tr>
                 ))}
+                {/* The lower boundary is 22:00, not another bookable 22:00–23:00 slot. */}
+                <tr aria-hidden="true">
+                  <td className="px-2 py-2 text-xs font-bold text-gray-400 border-r border-gray-100 bg-gray-50/30 sticky left-0 text-center">
+                    {formatGridHour(businessEnd)}
+                  </td>
+                  <td colSpan={7} className="border-t border-gray-100" />
+                </tr>
               </tbody>
             </table>
           ) : (
@@ -1367,6 +1375,9 @@ export default function SchedulePage() {
                     onChange={(e) => setNewBooking({ ...newBooking, time: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                   >
+                    {editingLessonId && newBooking.time && !timeOptions.includes(newBooking.time) && (
+                      <option value={newBooking.time}>{formatTime(newBooking.time)}</option>
+                    )}
                     {timeOptions.map((t) => (
                       <option key={t} value={t}>
                         {formatTime(t)}
