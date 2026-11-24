@@ -386,3 +386,75 @@ class ExternalCalendarEvent(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.start_dt:%Y-%m-%d %H:%M})"
+
+
+class ICloudCalendarSeries(models.Model):
+    """One iCloud VEVENT resource (master and any recurrence overrides).
+
+    UID, calendar URL and originating user identify the remote resource; never
+    use the event title or time as an identity when updating or deleting.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        "core.User", on_delete=models.CASCADE, related_name="icloud_series"
+    )
+    studio = models.ForeignKey(
+        Studio, on_delete=models.CASCADE, related_name="icloud_series"
+    )
+    calendar_url = models.URLField(max_length=2000)
+    uid = models.CharField(max_length=500)
+    remote_url = models.URLField(max_length=2000, blank=True)
+    ical_data = models.TextField(blank=True)
+    remote_hash = models.CharField(max_length=64, blank=True)
+    title = models.CharField(max_length=500, blank=True)
+    location = models.CharField(max_length=500, blank=True)
+    student = models.ForeignKey(
+        Student, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="icloud_series"
+    )
+    teacher = models.ForeignKey(
+        Teacher, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="icloud_series"
+    )
+    last_error = models.TextField(blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "icloud_calendar_series"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "calendar_url", "uid"],
+                name="unique_icloud_series_owner_calendar_uid"
+            )
+        ]
+
+
+class ICloudCalendarOccurrence(models.Model):
+    """One occurrence of an iCloud series linked to one StudioSync lesson."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    series = models.ForeignKey(
+        ICloudCalendarSeries, on_delete=models.CASCADE,
+        related_name="occurrences"
+    )
+    recurrence_id = models.CharField(max_length=64)
+    lesson = models.OneToOneField(
+        Lesson, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="icloud_occurrence"
+    )
+    # Fingerprint of the lesson state at the last successful sync.
+    synced_signature = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "icloud_calendar_occurrences"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series", "recurrence_id"],
+                name="unique_icloud_series_occurrence"
+            )
+        ]
