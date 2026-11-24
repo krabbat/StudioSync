@@ -207,6 +207,7 @@ export default function MailWorkspace() {
     const [linkedMessageUid, setLinkedMessageUid] = useState('')
     const [linkedMessageFolder, setLinkedMessageFolder] = useState<FolderId | null>(null)
     const [linkedDraftId, setLinkedDraftId] = useState('')
+    const [loadedMailFolder, setLoadedMailFolder] = useState<FolderId | null>(null)
     const [instrumentFilter, setInstrumentFilter] = useState('')
     const [dateFrom, setDateFrom] = useState('')
     const [dateTo, setDateTo] = useState('')
@@ -426,6 +427,7 @@ export default function MailWorkspace() {
                 { params: { offset: reset ? 0 : offset, limit: 40 } },
             )
             if (generation !== requestGeneration.current) return
+            setLoadedMailFolder(currentFolder)
             const fresh = response.data.messages.map((item) => normalizeMessage(item, currentFolder))
             const generationChanged = Boolean(
                 lastFolderUidvalidity.current && response.data.uidvalidity &&
@@ -773,6 +775,7 @@ export default function MailWorkspace() {
         if (mailActionBusy) return
         if (next === folder) { setFolderMenuOpen(false); return }
         setFolder(next)
+        setLoadedMailFolder(null)
         setLastFetched(null)
         setCacheSyncing(false)
         setPendingPageOffset(null)
@@ -829,7 +832,8 @@ export default function MailWorkspace() {
         }
     }
     useEffect(() => {
-        if (!linkedMessageUid || folder === 'outbox' || folder === 'drafts' ||
+        if (!linkedMessageUid || loadedMailFolder !== folder ||
+            folder === 'outbox' || folder === 'drafts' ||
             (linkedMessageFolder && linkedMessageFolder !== folder)) return
         let active = true
         const existing = messages.find((item) =>
@@ -859,7 +863,7 @@ export default function MailWorkspace() {
         return () => { active = false }
         // Deliberately reacts only when a new URL-selected UID or folder arrives.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [linkedMessageUid, linkedMessageFolder, folder])
+    }, [linkedMessageUid, linkedMessageFolder, folder, loadedMailFolder])
 
     const editMailAssociation = () => {
         if (!selected) return
