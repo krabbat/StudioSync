@@ -31,6 +31,9 @@ from apps.core.views.mail import (
     MailInboxDetailView,
     MailInboxListView,
 )
+from apps.core.views.mail_drafts import (
+    MailDraftsView, MailDraftDetailView, MailDraftAttachmentView,
+)
 from apps.core.views.mail_outbound import (
     MailRecipientsView,
     MailResourceAttachmentsView,
@@ -68,6 +71,11 @@ urlpatterns = (
             MailSendView.as_view(),
             name="mail-send",
         ),
+        path("mail/drafts/", MailDraftsView.as_view(), name="mail-drafts"),
+        path("mail/drafts/<uuid:draft_id>/", MailDraftDetailView.as_view(),
+             name="mail-draft-detail"),
+        path("mail/drafts/<uuid:draft_id>/attachments/<uuid:file_id>/",
+             MailDraftAttachmentView.as_view(), name="mail-draft-file"),
         re_path(
             r"^mail/attachments/resources/?$",
             MailResourceAttachmentsView.as_view(),
