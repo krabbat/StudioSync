@@ -185,6 +185,7 @@ export default function MailWorkspace() {
     const [cacheSyncing, setCacheSyncing] = useState(false)
     const [pendingPageOffset, setPendingPageOffset] = useState<number | null>(null)
     const requestGeneration = useRef(0)
+    const lastFolderUidvalidity = useRef<string | null>(null)
     const [selectedMailIds, setSelectedMailIds] = useState<string[]>([])
     const [composing, setComposing] = useState(false)
     const [recipientMode, setRecipientMode] = useState<RecipientMode>('single')
@@ -334,6 +335,16 @@ export default function MailWorkspace() {
             )
             if (generation !== requestGeneration.current) return
             const fresh = response.data.messages.map((item) => normalizeMessage(item, currentFolder))
+            const generationChanged = Boolean(
+                lastFolderUidvalidity.current && response.data.uidvalidity &&
+                lastFolderUidvalidity.current !== response.data.uidvalidity
+            )
+            lastFolderUidvalidity.current = response.data.uidvalidity
+            if (generationChanged) {
+                detailGeneration.current += 1
+                setSelectedId(null)
+                setSelectedMailIds([])
+            }
             setMessages((previous) => {
                 // Keep already opened bodies when refreshing cached headers.
                 const oldMessages = new Map(previous
@@ -346,7 +357,17 @@ export default function MailWorkspace() {
                         preview: old.preview, attachments: old.attachments,
                     } : item
                 }
-                if (reset) return fresh.map(keepBody)
+                if (reset) {
+                    if (generationChanged || !silent) return fresh.map(keepBody)
+                    // Silent background refresh must not hide paginated rows.
+                    const fetchedIds = new Set(fresh.map((item) => item.id))
+                    return [
+                        ...fresh.map(keepBody),
+                        ...previous.filter((item) =>
+                            item.folder === currentFolder && !fetchedIds.has(item.id)
+                        ),
+                    ]
+                }
                 const existingIds = new Set(previous.map((item) => item.id))
                 return [...previous, ...fresh.filter((item) => !existingIds.has(item.id)).map(keepBody)]
             })
@@ -354,7 +375,9 @@ export default function MailWorkspace() {
             setHasMore(response.data.has_more)
             setCacheSyncing(Boolean(response.data.syncing))
             setMailError(response.data.sync_error || '')
-            setNextOffset(reset ? fresh.length : offset + fresh.length)
+            setNextOffset((current) => reset
+                ? silent && !generationChanged ? Math.max(current, fresh.length) : fresh.length
+                : offset + fresh.length)
             if (!reset && !fresh.length && response.data.syncing) {
                 setPendingPageOffset(offset)
             } else if (!reset) {
@@ -644,6 +667,10 @@ export default function MailWorkspace() {
         if (mailActionBusy) return
         if (next === folder) { setFolderMenuOpen(false); return }
         setFolder(next)
+        setLastFetched(null)
+        setCacheSyncing(false)
+        setPendingPageOffset(null)
+        lastFolderUidvalidity.current = null
         setSelectedId(null)
         detailGeneration.current += 1
         setDetailLoading(false)
