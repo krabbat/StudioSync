@@ -258,7 +258,8 @@ def _collect_attachments(files, studio=None, resource_ids=None):
         try:
             with resource.file.open("rb") as resource_file:
                 payload = resource_file.read(MAX_EACH_ATTACHMENT_SIZE + 1)
-        except (OSError, ValueError) as exc:
+        except Exception as exc:
+            # Storage backends (including S3) may raise provider-specific errors.
             LOG.warning("Studio resource attachment unreadable (%s)", type(exc).__name__)
             raise MailSendError(
                 "Eine StudioSync-Datei konnte nicht geöffnet werden."
@@ -272,7 +273,9 @@ def _collect_attachments(files, studio=None, resource_ids=None):
             )
         filename = os.path.basename(resource.file.name.replace("\\", "/"))[:200]
         mime = resource.mime_type or mimetypes.guess_type(filename)[0]
-        attachments.append((filename, payload, mime or "application/octet-stream"))
+        if not mime or "/" not in mime:
+            mime = "application/octet-stream"
+        attachments.append((filename, payload, mime))
     return attachments
 
 
