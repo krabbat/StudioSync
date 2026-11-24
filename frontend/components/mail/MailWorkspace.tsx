@@ -14,6 +14,23 @@ import { toast } from 'react-hot-toast'
 
 type FolderId = 'inbox' | 'sent' | 'drafts' | 'outbox' | 'archive' | 'spam' | 'trash'
 type RecipientMode = 'single' | 'all' | 'group'
+
+interface StudentMailRecipient {
+    id: string
+    name: string
+    email: string
+    contact_type: 'Schüler' | 'Elternkontakt'
+    instruments: string[]
+    selectable: boolean
+}
+
+interface SendMailResult {
+    sent: number
+    failed: number
+    student_ids_sent: string[]
+    manual_sent: boolean
+    copies_failed: number
+}
 type MailAction = 'read' | 'unread' | 'spam' | 'archive' | 'delete' | 'restore'
 
 interface MailPreview {
@@ -146,11 +163,37 @@ export default function MailWorkspace() {
     const [composing, setComposing] = useState(false)
     const [recipientMode, setRecipientMode] = useState<RecipientMode>('single')
     const [recipient, setRecipient] = useState('')
-    const [group, setGroup] = useState('Klavier')
+    const [group, setGroup] = useState('')
     const [subject, setSubject] = useState('')
     const [body, setBody] = useState('')
     const [localFiles, setLocalFiles] = useState<File[]>([])
+    const [studentRecipients, setStudentRecipients] = useState<StudentMailRecipient[]>([])
+    const [recipientsLoading, setRecipientsLoading] = useState(false)
+    const [recipientsError, setRecipientsError] = useState('')
+    const [recipientSearch, setRecipientSearch] = useState('')
+    const [recipientOverrides, setRecipientOverrides] = useState<Record<string, boolean>>({})
+    const [mailSending, setMailSending] = useState(false)
+    const sendBusyRef = useRef(false)
     const detailGeneration = useRef(0)
+
+    useEffect(() => {
+        if (!composing) return
+        let active = true
+        setRecipientsLoading(true)
+        setRecipientsError('')
+        void api.get<{ students: StudentMailRecipient[] }>('/core/mail/recipients/')
+            .then(({ data }) => {
+                if (active) setStudentRecipients(data.students)
+            })
+            .catch((error: any) => {
+                if (active) setRecipientsError(error?.response?.data?.detail ||
+                    'Die aktive Schülerliste konnte nicht geladen werden.')
+            })
+            .finally(() => {
+                if (active) setRecipientsLoading(false)
+            })
+        return () => { active = false }
+    }, [composing])
 
     const loadFolder = useCallback(async (currentFolder: FolderId, reset = true, offset = 0) => {
         const generation = ++requestGeneration.current
@@ -293,6 +336,93 @@ export default function MailWorkspace() {
         }
     }
 
+    const instrumentGroups = useMemo(() => Array.from(
+        new Set(studentRecipients.flatMap((s) => s.instruments)),
+    ).sort((a, b) => a.localeCompare(b, 'de')), [studentRecipients])
+    const effectiveGroup = instrumentGroups.includes(group)
+        ? group : instrumentGroups[0] || ''
+
+    const isRecipientSelected = (student: StudentMailRecipient) => {
+        if (!student.selectable) return false
+        if (recipientOverrides[student.id] !== undefined) {
+            return recipientOverrides[student.id]
+        }
+        return recipientMode === 'all' || (recipientMode === 'group' &&
+            student.instruments.some((name) => name.toLocaleLowerCase('de') ===
+                effectiveGroup.toLocaleLowerCase('de')))
+    }
+    const selectedStudents = studentRecipients.filter(isRecipientSelected)
+    const studentAddresses = new Set(
+        selectedStudents.map((s) => s.email.trim().toLocaleLowerCase('de'))
+    )
+    const manualTarget = recipientMode === 'single' ? recipient.trim() : ''
+    const distinctRecipientCount = studentAddresses.size + (
+        manualTarget && !studentAddresses.has(manualTarget.toLocaleLowerCase('de')) ? 1 : 0
+    )
+    const visibleStudents = studentRecipients.filter((student) => {
+        const q = recipientSearch.trim().toLocaleLowerCase('de')
+        return !q || [student.name, student.email, ...student.instruments]
+            .some((value) => value.toLocaleLowerCase('de').includes(q))
+    })
+
+    const switchRecipientMode = (next: RecipientMode) => {
+        setRecipientMode(next)
+        setRecipientOverrides({})
+        setRecipientSearch('')
+    }
+
+    const sendMail = async () => {
+        if (sendBusyRef.current || mailSending || recipientsLoading || recipientsError) return
+        if (!distinctRecipientCount || !subject.trim() || !body.trim()) {
+            toast.error('Bitte Empfänger, Betreff und Nachrichtentext angeben.')
+            return
+        }
+        if (distinctRecipientCount > 1 && !window.confirm(
+            `Diese Nachricht wirklich an ${distinctRecipientCount} unterschiedliche E-Mail-Adressen senden?`
+        )) return
+        sendBusyRef.current = true
+        setMailSending(true)
+        try {
+            const form = new FormData()
+            form.append('student_ids', JSON.stringify(selectedStudents.map((s) => s.id)))
+            form.append('manual_recipient', manualTarget)
+            form.append('subject', subject)
+            form.append('body', body)
+            for (const file of localFiles) form.append('attachments', file)
+            const { data } = await api.post<SendMailResult>('/core/mail/send/', form)
+            if (data.student_ids_sent.length > 0) {
+                setRecipientOverrides((current) => {
+                    const next = { ...current }
+                    for (const id of data.student_ids_sent) next[id] = false
+                    return next
+                })
+            }
+            if (data.manual_sent) setRecipient('')
+            if (data.sent > 0 && data.failed === 0) {
+                toast.success(`${data.sent} E-Mail(s) erfolgreich versendet.`)
+                if (data.copies_failed > 0) {
+                    toast.error(`${data.copies_failed} Kopie(n) konnten nicht im Gesendet-Ordner gespeichert werden.`)
+                }
+                setComposing(false)
+                setSubject('')
+                setBody('')
+                setLocalFiles([])
+                setSelectedId(null)
+                setFolder('sent')
+            } else if (data.sent > 0) {
+                toast.error(`${data.sent} zugestellt, ${data.failed} fehlgeschlagen. Die erfolgreichen Empfänger wurden aus der Auswahl entfernt.`)
+            } else {
+                toast.error('Der SMTP-Server hat keine der Nachrichten angenommen.')
+            }
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail ||
+                'Der E-Mail-Versand ist fehlgeschlagen. Bitte SMTP-Einstellungen prüfen.')
+        } finally {
+            sendBusyRef.current = false
+            setMailSending(false)
+        }
+    }
+
     const activeFilters = !!(studentFilter || instrumentFilter || dateFrom || dateTo || unreadOnly || attachmentOnly)
     const resetFilters = () => {
         setStudentFilter('')
@@ -361,6 +491,8 @@ export default function MailWorkspace() {
             setLocalFiles([])
         }
         setRecipientMode('single')
+        setRecipientOverrides({})
+        setRecipientSearch('')
         setComposing(true)
         setFolderMenuOpen(false)
     }
