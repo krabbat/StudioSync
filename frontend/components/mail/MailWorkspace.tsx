@@ -858,6 +858,94 @@ export default function MailWorkspace() {
         }
     }
 
+    const saveDraft = async () => {
+        if (draftSaving || mailSending || recipientsLoading) return
+        setDraftSaving(true)
+        try {
+            const form = new FormData()
+            if (draftId) form.append('draft_id', draftId)
+            form.append('student_ids', JSON.stringify(selectedStudents.map(student => student.id)))
+            form.append('manual_recipient', manualTarget)
+            form.append('additional_recipient', extraTarget)
+            form.append('resource_ids', JSON.stringify(studioFiles.map(file => file.id)))
+            form.append('subject', subject)
+            form.append('body', body)
+            for (const file of localFiles) form.append('attachments', file)
+            const { data } = await api.post<SavedMailDraft>('/core/mail/drafts/', form)
+            setDraftId(data.id)
+            toast.success('Entwurf mit Anhängen gespeichert.')
+            setComposing(false)
+            setRecipientPickerOpen(false)
+            if (folder === 'drafts') {
+                void loadFolder('drafts', true)
+            } else {
+                setFolder('drafts')
+            }
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail ||
+                'Der Entwurf konnte nicht gespeichert werden.')
+        } finally {
+            setDraftSaving(false)
+        }
+    }
+
+    const openDraft = async (id: string) => {
+        if (draftLoading) return
+        setDraftLoading(true)
+        try {
+            const { data } = await api.get<SavedMailDraft>(
+                '/core/mail/drafts/' + id + '/',
+            )
+            // Files are private in PostgreSQL. Recreate the same File objects
+            // so saving again or sending from another device still works.
+            const retrieved: File[] = []
+            for (const file of data.local_attachments) {
+                const { data: blob } = await api.get<Blob>(
+                    '/core/mail/drafts/' + id + '/attachments/' + file.id + '/',
+                    { responseType: 'blob' },
+                )
+                retrieved.push(new File([blob], file.filename, {
+                    type: file.mime_type || 'application/octet-stream',
+                }))
+            }
+            setDraftId(data.id)
+            setRecipientMode('single')
+            setRecipient(data.recipient)
+            setReplyRecipientName('')
+            setAdditionalRecipient(data.additional_recipient)
+            setShowAdditionalRecipient(Boolean(data.additional_recipient))
+            setRecipientOverrides(Object.fromEntries(
+                data.student_ids.map(studentId => [studentId, true]),
+            ))
+            setStudioFiles(data.resources)
+            setLocalFiles(retrieved)
+            setSubject(data.subject)
+            setBody(data.body)
+            setComposing(true)
+            setSelectedId(null)
+            setRecipientPickerOpen(false)
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail ||
+                'Entwurf oder gespeicherte Anhänge konnten nicht geladen werden.')
+        } finally {
+            setDraftLoading(false)
+        }
+    }
+
+    const deleteDraft = async (id: string) => {
+        if (!window.confirm('Diesen gespeicherten Entwurf endgültig löschen?')) return
+        try {
+            await api.delete('/core/mail/drafts/' + id + '/')
+            if (draftId === id) setDraftId(null)
+            setMessages(items => items.filter(item => item.id !== id))
+            toast.success('Entwurf gelöscht.')
+            void loadFolder('drafts', true)
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail ||
+                'Entwurf konnte nicht gelöscht werden.')
+        }
+    }
+
     const compose = (mode: 'new' | 'reply' | 'forward' = 'new') => {
         setDraftId(null)
         if (mode === 'new') {
