@@ -16,6 +16,7 @@ import {
     CheckCircle2,
     Clock,
     Download,
+    Share2,
     Send,
     Trash2,
     FileText,
@@ -32,6 +33,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import { shareFilesOrDownload } from '@/lib/shareFile'
 
 interface Invoice {
     id: string
@@ -275,6 +277,29 @@ export default function BillingPage() {
             refetchInvoices()
         } catch (error: any) {
             toast.error(error.response?.data?.detail || 'Der Rechnungsversand ist fehlgeschlagen.')
+        }
+    }
+
+    const handleShareInvoice = async (invoice: Invoice) => {
+        if (invoice.status === 'draft' || invoice.status === 'cancelled') {
+            toast.error('Bitte die Rechnung zuerst ausstellen.')
+            return
+        }
+        try {
+            const response = await api.get<Blob>(
+                `/billing/invoices/${invoice.id}/pdf/`,
+                { responseType: 'blob' },
+            )
+            const filename = 'MUSart-Rechnung-' + invoice.invoice_number + '.pdf'
+            const file = new File([response.data], filename, { type: 'application/pdf' })
+            const outcome = await shareFilesOrDownload([file],
+                'MUSart – Rechnung ' + invoice.invoice_number,
+                'Anbei die Rechnung ' + invoice.invoice_number + '.')
+            if (outcome === 'downloaded') {
+                toast('Rechnung heruntergeladen. In WhatsApp bitte manuell anhängen.')
+            }
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail || 'Rechnung konnte nicht geteilt werden.')
         }
     }
 
@@ -634,6 +659,14 @@ export default function BillingPage() {
                                                             className="hover:scale-110 active:scale-95 text-red-400 hover:text-red-500 hover:bg-red-50"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                    {isAdmin && invoice.status !== 'draft' && invoice.status !== 'cancelled' && (
+                                                        <Button variant="outline" size="icon"
+                                                            title="Rechnung über Teilen-Menü versenden (z. B. WhatsApp)"
+                                                            aria-label={'Rechnung ' + invoice.invoice_number + ' teilen'}
+                                                            onClick={() => void handleShareInvoice(invoice)}>
+                                                            <Share2 className="w-4 h-4" />
                                                         </Button>
                                                     )}
                                                     <Button
@@ -1138,6 +1171,12 @@ export default function BillingPage() {
                             </div>
                         </DialogContent>
                         <DialogFooter className="print:hidden">
+                            {isAdmin && viewingInvoice.status !== 'draft' && viewingInvoice.status !== 'cancelled' && (
+                                <Button variant="outline" onClick={() => void handleShareInvoice(viewingInvoice)}
+                                    title="PDF im Teilen-Menü versenden (z. B. WhatsApp)">
+                                    <Share2 className="w-4 h-4" /> Teilen
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => handleDownloadInvoice(viewingInvoice)}
