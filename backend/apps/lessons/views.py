@@ -3,6 +3,7 @@ Lesson API views
 """
 
 from datetime import timedelta
+import logging
 
 from django.db.models import Q
 from django.utils import timezone
@@ -12,9 +13,12 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework import status
 
 from apps.core.tenancy import studios_for_request
 from apps.lessons.models import Lesson, LessonPlan, StudentGoal
+
+logger = logging.getLogger(__name__)
 from apps.lessons.serializers import (
     LessonCreateSerializer,
     LessonDetailSerializer,
@@ -153,8 +157,55 @@ class LessonViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
+        """Remove one lesson and mirror its deletion to the linked iCloud event.
+
+        An iCloud recurrence keeps the other instances. Its occurrence link has
+        on_delete=SET_NULL so the sync process can send an EXDATE tombstone.
+        """
         self._reject_student_mutation()
-        return super().destroy(request, *args, **kwargs)
+        lesson = self.get_object()
+        if lesson.is_paid or lesson.status in ("completed", "in_progress", "no_show"):
+            return Response(
+                {"detail": "Bereits erteilte, laufende oder bezahlte Unterrichtsstunden "
+                 "können nicht gelöscht werden. Bitte den Unterrichtsstatus bearbeiten."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Remember the owner before deleting. Teachers may delete their own
+        # upcoming lessons, but the iCloud credentials belong to the admin.
+        studio_owner = lesson.studio.owner
+        linked_to_icloud = hasattr(lesson, "icloud_occurrence")
+        self.perform_destroy(lesson)
+
+        if not linked_to_icloud:
+            return Response(
+                {"detail": "Unterrichtstermin gelöscht.", "icloud_synced": True},
+                status=status.HTTP_200_OK,
+            )
+
+        try:
+            from apps.lessons.icloud_sync import sync_icloud_user
+            sync_result = sync_icloud_user(studio_owner)
+            if sync_result.get("conflicts"):
+                return Response(
+                    {"detail": "Unterrichtstermin gelöscht. Der iCloud-Abgleich meldet "
+                     "noch Konflikte; bitte im Kalender prüfen.",
+                     "icloud_synced": False},
+                    status=status.HTTP_200_OK,
+                )
+            return Response(
+                {"detail": "Unterrichtstermin gelöscht und mit iCloud abgeglichen.",
+                 "icloud_synced": True},
+                status=status.HTTP_200_OK,
+            )
+        except Exception:
+            logger.exception("Lesson deleted locally but iCloud removal not yet synchronized")
+            return Response(
+                {"detail": "Unterrichtstermin in StudioSync gelöscht. iCloud konnte noch "
+                 "nicht aktualisiert werden; der nächste Abgleich versucht es erneut.",
+                 "icloud_synced": False},
+                status=status.HTTP_200_OK,
+            )
 
     def perform_create(self, serializer):
         user = self.request.user
