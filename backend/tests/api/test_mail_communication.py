@@ -243,8 +243,11 @@ def test_student_communication_lists_all_received_sent_archived_and_drafts_with_
     assert {item["category"] for item in combined} == {"received", "sent", "draft"}
     assert sum(item["category"] == "draft" for item in combined) == 2
     assert all(item["uid"] for item in combined)
-    assert all(combined[i]["date"] >= combined[i + 1]["date"]
-               for i in range(len(combined) - 1))
+    assert all(
+        datetime.fromisoformat(combined[i]["date"]).timestamp()
+        >= datetime.fromisoformat(combined[i + 1]["date"]).timestamp()
+        for i in range(len(combined) - 1)
+    )
     # The shared parent's address intentionally associates a second student.
     sibling_page = mail_student_overview(
         studio, admin_user, inbox.account_key, str(sibling.pk),
