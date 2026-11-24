@@ -72,13 +72,17 @@ urlpatterns = (
             MailSendView.as_view(),
             name="mail-send",
         ),
-        path("mail/drafts/", MailDraftsView.as_view(), name="mail-drafts"),
-        path("mail/drafts/<uuid:draft_id>/", MailDraftDetailView.as_view(),
-             name="mail-draft-detail"),
-        path("mail/drafts/<uuid:draft_id>/attachments/<uuid:file_id>/",
-             MailDraftAttachmentView.as_view(), name="mail-draft-file"),
-        path(
-            "mail/attachments/resources/<uuid:resource_id>/download/",
+        re_path(r"^mail/drafts/?$", MailDraftsView.as_view(), name="mail-drafts"),
+        re_path(
+            r"^mail/drafts/(?P<draft_id>[0-9a-fA-F-]{36})/?$",
+            MailDraftDetailView.as_view(), name="mail-draft-detail",
+        ),
+        re_path(
+            r"^mail/drafts/(?P<draft_id>[0-9a-fA-F-]{36})/attachments/(?P<file_id>[0-9a-fA-F-]{36})/?$",
+            MailDraftAttachmentView.as_view(), name="mail-draft-file",
+        ),
+        re_path(
+            r"^mail/attachments/resources/(?P<resource_id>[0-9a-fA-F-]{36})/download/?$",
             MailResourceDownloadView.as_view(),
             name="mail-attachment-resource-download",
         ),
@@ -97,13 +101,13 @@ urlpatterns = (
             MailInboxDetailView.as_view(),
             name="mail-inbox-detail",
         ),
-        path(
-            "mail/cache/students/",
+        re_path(
+            r"^mail/cache/students/?$",
             MailStudentCatalogView.as_view(),
             name="mail-student-catalog",
         ),
-        path(
-            "mail/cache/students/<uuid:student_id>/overview/",
+        re_path(
+            r"^mail/cache/students/(?P<student_id>[0-9a-fA-F-]{36})/overview/?$",
             MailStudentOverviewView.as_view(),
             name="mail-student-overview",
         ),
