@@ -21,16 +21,20 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
     const [messages, setMessages] = useState<MailOverviewItem[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [syncing, setSyncing] = useState(false)
     const [revision, setRevision] = useState(0)
 
     useEffect(() => {
         let active = true
         setLoading(true)
         setError('')
-        void api.get<{ messages: MailOverviewItem[] }>(
+        void api.get<{ messages: MailOverviewItem[]; syncing: boolean }>(
             `/core/mail/cache/students/${studentId}/overview/`,
         ).then(({ data }) => {
-            if (active) setMessages(data.messages)
+            if (active) {
+                setMessages(data.messages)
+                setSyncing(Boolean(data.syncing))
+            }
         }).catch((failure: any) => {
             if (active) setError(failure?.response?.data?.detail ||
                 'Der Schriftverkehr konnte nicht geladen werden.')
@@ -39,6 +43,12 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
         })
         return () => { active = false }
     }, [studentId, revision])
+
+    useEffect(() => {
+        if (!syncing) return
+        const timeout = window.setTimeout(() => setRevision(value => value + 1), 2500)
+        return () => window.clearTimeout(timeout)
+    }, [syncing, revision])
 
     const filterUrl = `/dashboard/messages?student=${encodeURIComponent(studentId)}`
 
@@ -69,6 +79,9 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
             </div>
 
             {loading && <p className="text-sm text-gray-500">Schriftverkehr wird geladen …</p>}
+            {syncing && <p className="mb-3 text-xs text-gray-500" role="status">
+                Posteingang und Gesendet werden im Hintergrund aktualisiert.
+            </p>}
             {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
             {!loading && !error && messages.length === 0 && (
                 <p className="rounded-xl bg-gray-50 p-5 text-sm text-gray-500">
