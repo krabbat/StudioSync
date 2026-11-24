@@ -945,10 +945,15 @@ export default function MailWorkspace() {
                                         ))}
                                         {manualTarget && (
                                             <span className="mail-compose-to-chip" title={manualTarget}>
-                                                {manualTarget}
+                                                {replyRecipientName || manualTarget}
                                             </span>
                                         )}
-                                        {!selectedStudents.length && !manualTarget && (
+                                        {extraTarget && (
+                                            <span className="mail-compose-to-chip" title={extraTarget}>
+                                                {extraTarget}
+                                            </span>
+                                        )}
+                                        {!selectedStudents.length && !manualTarget && !extraTarget && (
                                             <span className="mail-compose-to-placeholder">
                                                 Empfänger auswählen …
                                             </span>
@@ -973,32 +978,65 @@ export default function MailWorkspace() {
                             </div>
                             <textarea className="mail-compose-body" aria-label="Nachrichtentext" value={body}
                                 placeholder="Nachricht verfassen …" onChange={(e) => setBody(e.target.value)} />
-                            {localFiles.length > 0 && (
-                                <div className="mail-file-chips">
-                                    {localFiles.map((file, index) => (
-                                        <span key={String(index) + file.name}>
-                                            <Paperclip size={13} /> {file.name}
-                                            <button type="button" aria-label={file.name + ' entfernen'}
-                                                onClick={() => setLocalFiles((files) => files.filter((_, i) => i !== index))}>
+                        </div>
+                        {(localFiles.length > 0 || studioFiles.length > 0) && (
+                            <div className="mail-compose-attachments-strip"
+                                aria-label="Angehängte Dateien">
+                                {localFiles.map((file, index) => {
+                                    const Icon = attachmentIcon(file.name, file.type)
+                                    return (
+                                        <span className="mail-attachment-chip"
+                                            key={String(index) + file.name}
+                                            title={`Gerät: ${file.name}`}>
+                                            <Icon size={16} />
+                                            <span>{file.name}</span>
+                                            <button type="button" disabled={mailSending}
+                                                aria-label={file.name + ' entfernen'}
+                                                onClick={() => setLocalFiles((items) => items.filter((_, i) => i !== index))}>
                                                 <X size={13} />
                                             </button>
                                         </span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                                    )
+                                })}
+                                {studioFiles.map((file) => {
+                                    const Icon = attachmentIcon(file.filename, file.mime_type)
+                                    return (
+                                        <span className="mail-attachment-chip" key={file.id}
+                                            title={`StudioSync: ${file.title} (${file.filename})`}>
+                                            <Icon size={16} />
+                                            <span>{file.title}</span>
+                                            <button type="button" disabled={mailSending}
+                                                aria-label={file.title + ' entfernen'}
+                                                onClick={() => setStudioFiles((items) =>
+                                                    items.filter((item) => item.id !== file.id))}>
+                                                <X size={13} />
+                                            </button>
+                                        </span>
+                                    )
+                                })}
+                            </div>
+                        )}
                         <div className="mail-compose-footer">
                             <input ref={fileInputRef} hidden multiple type="file" onChange={(e) => {
-                                setLocalFiles((items) => [...items, ...Array.from(e.target.files || [])])
+                                const additions = Array.from(e.target.files || [])
+                                if (additions.length + localFiles.length + studioFiles.length > 8) {
+                                    toast.error('Maximal acht Anhänge pro Nachricht.')
+                                } else {
+                                    setLocalFiles((items) => [...items, ...additions])
+                                }
                                 e.target.value = ''
                             }} />
-                            <button type="button" className="mail-secondary-button" onClick={() => fileInputRef.current?.click()}
-                                title="Dateien zur E-Mail hinzufügen">
-                                <Upload size={17} /> Datei auswählen
+                            <button type="button" className="mail-secondary-button"
+                                disabled={mailSending}
+                                onClick={() => fileInputRef.current?.click()}
+                                title="Dateien vom aktuellen Gerät auswählen">
+                                <Upload size={17} /> Vom Gerät
                             </button>
-                            <button type="button" className="mail-secondary-button" disabled
-                                title="Die Ressourcen-Auswahl wird mit dem Backend verbunden">
-                                <FileText size={17} /> StudioSync-Datei
+                            <button type="button" className="mail-secondary-button"
+                                disabled={mailSending}
+                                onClick={() => { setResourceQuery(''); setResourcePickerOpen(true) }}
+                                title="Vorhandene StudioSync-Datei anhängen">
+                                <FileText size={17} /> Aus StudioSync
                             </button>
                             <div className="mail-compose-spacer" />
                             <button type="button" className="mail-secondary-button" disabled
@@ -1062,13 +1100,41 @@ export default function MailWorkspace() {
                                             </div>
                                         )}
                                         {recipientMode === 'single' && (
-                                            <div className="mail-recipient-dialog-field">
-                                                <label htmlFor="mail-to">Zusätzliche Adresse</label>
-                                                <input id="mail-to" type="email" value={recipient}
-                                                    disabled={mailSending}
-                                                    onChange={(e) => setRecipient(e.target.value)}
-                                                    placeholder="Optional: direkte E-Mail-Adresse" />
-                                            </div>
+                                            <>
+                                                <div className="mail-recipient-dialog-field">
+                                                    <label htmlFor="mail-to">Direkte Adresse</label>
+                                                    <input id="mail-to" type="email" value={recipient}
+                                                        disabled={mailSending}
+                                                        onChange={(e) => {
+                                                            setRecipient(e.target.value)
+                                                            setReplyRecipientName('')
+                                                        }}
+                                                        placeholder="Optional: eine E-Mail-Adresse" />
+                                                </div>
+                                                {!showAdditionalRecipient && !additionalRecipient ? (
+                                                    <button type="button" className="mail-recipient-extra-toggle"
+                                                        disabled={mailSending}
+                                                        onClick={() => setShowAdditionalRecipient(true)}>
+                                                        + Weitere Adresse (z. B. Studio oder Lehrkraft)
+                                                    </button>
+                                                ) : (
+                                                    <div className="mail-recipient-dialog-field">
+                                                        <label htmlFor="mail-extra">Weitere Adresse</label>
+                                                        <input id="mail-extra" type="email"
+                                                            value={additionalRecipient} disabled={mailSending}
+                                                            placeholder="Nur bei Bedarf"
+                                                            onChange={(e) => setAdditionalRecipient(e.target.value)} />
+                                                        <button type="button" className="mail-recipient-extra-clear"
+                                                            disabled={mailSending} aria-label="Weitere Adresse entfernen"
+                                                            onClick={() => {
+                                                                setAdditionalRecipient('')
+                                                                setShowAdditionalRecipient(false)
+                                                            }}>
+                                                            <X size={15} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                         <div className="mail-recipient-dialog-search">
                                             <Search size={17} aria-hidden="true" />
@@ -1146,6 +1212,80 @@ export default function MailWorkspace() {
                                         <button type="button" className="mail-recipient-dialog-done"
                                             disabled={mailSending}
                                             onClick={() => setRecipientPickerOpen(false)}>
+                                            Fertig
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ), document.body)}
+                        {resourcePickerOpen && createPortal((
+                            <div className="mail-recipient-overlay">
+                                <button type="button" className="mail-recipient-backdrop"
+                                    aria-label="Dateiauswahl schließen" disabled={mailSending}
+                                    onClick={() => setResourcePickerOpen(false)} />
+                                <div className="mail-resource-dialog" role="dialog" aria-modal="true"
+                                    aria-labelledby="mail-resource-dialog-title">
+                                    <div className="mail-recipient-dialog-header">
+                                        <div>
+                                            <strong id="mail-resource-dialog-title">
+                                                Datei aus StudioSync anhängen
+                                            </strong>
+                                            <span>{studioFiles.length + localFiles.length} von 8 Anhängen ausgewählt</span>
+                                        </div>
+                                        <button type="button" className="mail-icon"
+                                            disabled={mailSending} aria-label="Dateiauswahl schließen"
+                                            onClick={() => setResourcePickerOpen(false)}>
+                                            <X size={19} />
+                                        </button>
+                                    </div>
+                                    <div className="mail-resource-search-row">
+                                        <Search size={16} />
+                                        <input ref={resourceSearchRef} type="search"
+                                            value={resourceQuery} disabled={mailSending}
+                                            aria-label="StudioSync-Dateien suchen"
+                                            placeholder="Dateiname, Titel, Instrument oder Ordner suchen …"
+                                            onChange={(e) => setResourceQuery(e.target.value)} />
+                                    </div>
+                                    <div className="mail-resource-dialog-list">
+                                        {resourcesLoading && <p>StudioSync-Dateien werden geladen …</p>}
+                                        {resourcesError && <p role="alert">{resourcesError}</p>}
+                                        {!resourcesLoading && !resourcesError && (
+                                            <>
+                                                {resourceResults.map((item) => {
+                                                    const Icon = attachmentIcon(item.filename, item.mime_type)
+                                                    const checked = studioFiles.some((file) => file.id === item.id)
+                                                    return (
+                                                        <label className="mail-resource-option" key={item.id}>
+                                                            <input type="checkbox" checked={checked}
+                                                                disabled={mailSending || (!checked &&
+                                                                    studioFiles.length + localFiles.length >= 8)}
+                                                                onChange={() => toggleStudioFile(item)} />
+                                                            <Icon size={21} />
+                                                            <span className="mail-resource-option-info">
+                                                                <strong>{item.title || item.filename}</strong>
+                                                                <small>{item.filename}
+                                                                    {item.folder_name ? ` · ${item.folder_name}` : ''}
+                                                                    {typeof item.size === 'number'
+                                                                        ? ` · ${Math.round(item.size / 1024)} KB` : ''}
+                                                                </small>
+                                                            </span>
+                                                        </label>
+                                                    )
+                                                })}
+                                                {resourceResults.length === 0 && (
+                                                    <p>Keine passenden gespeicherten Dateien gefunden.</p>
+                                                )}
+                                                {resourceHasMore && (
+                                                    <p>Weitere Dateien vorhanden. Bitte die Suche eingrenzen.</p>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="mail-recipient-dialog-footer">
+                                        <span>{studioFiles.length} StudioSync-Datei(en) ausgewählt</span>
+                                        <button type="button" className="mail-recipient-dialog-done"
+                                            disabled={mailSending}
+                                            onClick={() => setResourcePickerOpen(false)}>
                                             Fertig
                                         </button>
                                     </div>
