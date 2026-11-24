@@ -103,7 +103,9 @@ def schedule_folder_sync(cache, force=False, requested_count=INITIAL_CACHED_COUN
             current.last_attempt_at
             and now - current.last_attempt_at < timedelta(seconds=RETRY_SECONDS)
         )
-        if running or (not force and (fresh and not missing_page or attempted_recently)):
+        if running or (not force and (
+            (fresh and not missing_page) or (attempted_recently and bool(current.sync_error))
+        )):
             current.save(update_fields=["requested_count"])
             return False
         current.sync_started_at = now
@@ -275,7 +277,8 @@ def _sync_folder_from_imap(cache, config):
         else:
             # Rows already in the cache, but deleted/moved on the server.
             known_uids = list(current.messages.values_list("uid", flat=True))
-            vanished = [uid for uid in known_uids if uid not in set(all_uids)]
+            server_uid_set = set(all_uids)
+            vanished = [uid for uid in known_uids if uid not in server_uid_set]
             if vanished:
                 current.messages.filter(uid__in=vanished).delete()
 
