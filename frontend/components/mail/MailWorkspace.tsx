@@ -25,6 +25,19 @@ interface StudentMailRecipient {
     selectable: boolean
 }
 
+interface SavedMailDraft {
+    id: string
+    recipient: string
+    additional_recipient: string
+    student_ids: string[]
+    resources: StudioMailResource[]
+    subject: string
+    body: string
+    local_attachments: Array<{
+        id: string; filename: string; mime_type: string; size: number
+    }>
+}
+
 interface MailStudent {
     id: string
     name: string
@@ -222,6 +235,9 @@ export default function MailWorkspace() {
     const [group, setGroup] = useState('')
     const [subject, setSubject] = useState('')
     const [body, setBody] = useState('')
+    const [draftId, setDraftId] = useState<string | null>(null)
+    const [draftSaving, setDraftSaving] = useState(false)
+    const [draftLoading, setDraftLoading] = useState(false)
     const [localFiles, setLocalFiles] = useState<File[]>([])
     const [studioFiles, setStudioFiles] = useState<StudioMailResource[]>([])
     const [resourcePickerOpen, setResourcePickerOpen] = useState(false)
@@ -380,7 +396,8 @@ export default function MailWorkspace() {
                 return
             }
             const response = await api.get<InboxPage>(
-                '/core/mail/cache/folders/' + currentFolder + '/',
+                currentFolder === 'drafts' ? '/core/mail/drafts/' :
+                    '/core/mail/cache/folders/' + currentFolder + '/',
                 { params: { offset: reset ? 0 : offset, limit: 40 } },
             )
             if (generation !== requestGeneration.current) return
@@ -476,7 +493,7 @@ export default function MailWorkspace() {
     }, [folder, cacheSyncing, pendingPageOffset, loadFolder])
 
     useEffect(() => {
-        if (folder === 'outbox') return
+        if (folder === 'outbox' || folder === 'drafts') return
         const timer = window.setInterval(() => {
             if (!cacheSyncing && !mailLoading) {
                 void loadFolder(folder, true, 0, true)
@@ -487,6 +504,10 @@ export default function MailWorkspace() {
 
     const refreshFolder = async () => {
         if (folder === 'outbox') return
+        if (folder === 'drafts') {
+            await loadFolder('drafts', true)
+            return
+        }
         try {
             await api.post('/core/mail/cache/folders/' + folder + '/sync/')
             await loadFolder(folder, true, 0, true)
@@ -838,6 +859,7 @@ export default function MailWorkspace() {
     }
 
     const compose = (mode: 'new' | 'reply' | 'forward' = 'new') => {
+        setDraftId(null)
         if (mode === 'new') {
             setRecipient('')
             setReplyRecipientName('')
