@@ -9,6 +9,11 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.security import assert_public_host
+from apps.core.mail_outbound import _open_sent_folder, _save_sent_copy, MailSendError
+from apps.core.mail_cache import invalidate_sent_folder
+import logging
+
+LOG = logging.getLogger(__name__)
 
 from .invoice_pdf import invoice_snapshot, missing_billing_fields, render_invoice_pdf
 from .models import Invoice
@@ -130,6 +135,28 @@ def send_invoice(invoice_id, *, resend=False):
                 "Invoice email failed for invoice %s", invoice.id
             )
             raise InvoiceDeliveryError("SMTP-Versand fehlgeschlagen. Die E-Mail wurde nicht bestätigt.") from exc
+
+        # Show native invoice emails in the same IMAP Sent folder as the
+        # StudioSync mailclient. Any IMAP-copy error must not be interpreted as
+        # SMTP failure: the invoice was already delivered.
+        technical = (invoice.studio.owner.preferences or {}).get("technical", {})
+        if isinstance(technical, dict) and all(technical.get(key) for key in (
+            "imap_host", "imap_username", "imap_password",
+        )):
+            sent_client = None
+            try:
+                sent_client, sent_folder = _open_sent_folder(technical)
+                _save_sent_copy(sent_client, sent_folder, email)
+                invalidate_sent_folder(invoice.studio, invoice.studio.owner, technical)
+            except Exception as exc:
+                LOG.warning("Invoice accepted by SMTP, but IMAP Sent copy failed (%s)",
+                            type(exc).__name__)
+            finally:
+                if sent_client is not None:
+                    try:
+                        sent_client.logout()
+                    except Exception:
+                        pass
 
         if already_sent:
             # Do not touch previously issued invoice data or its original send timestamp.
