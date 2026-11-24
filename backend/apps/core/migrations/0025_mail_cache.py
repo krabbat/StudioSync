@@ -22,6 +22,7 @@ class Migration(migrations.Migration):
                 ("requested_count", models.PositiveIntegerField(default=200)),
                 ("last_synced_at", models.DateTimeField(blank=True, null=True)),
                 ("sync_started_at", models.DateTimeField(blank=True, null=True)),
+                ("last_attempt_at", models.DateTimeField(blank=True, null=True)),
                 ("sync_error", models.CharField(blank=True, max_length=240)),
                 ("owner", models.ForeignKey(
                     on_delete=django.db.models.deletion.CASCADE,
