@@ -2,6 +2,12 @@
 
 import json
 import logging
+import uuid
+
+from django.http import HttpResponse
+from django.utils.http import content_disposition_header
+from apps.resources.models import Resource
+from apps.core.mail_outbound import MAX_EACH_ATTACHMENT_SIZE
 
 from apps.core.mail_cache import invalidate_sent_folder
 
@@ -41,9 +47,65 @@ class MailResourceAttachmentsView(APIView):
     def get(self, request):
         _mailbox_config(request)
         studio = studio_for_request(request)
+        exact_id = request.query_params.get("id")
+        if exact_id:
+            try:
+                exact_id = uuid.UUID(str(exact_id))
+            except (ValueError, AttributeError, TypeError):
+                return Response({"detail": "Ungültige Dateikennung."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            resource = Resource.objects.filter(
+                studio=studio, pk=exact_id,
+            ).exclude(file="").exclude(file__isnull=True).select_related("folder").first()
+            if resource is None:
+                return Response({"resources": [], "has_more": False})
+            return Response({"resources": [{
+                "id": str(resource.pk),
+                "title": resource.title,
+                "filename": resource.file.name.rsplit("/", 1)[-1],
+                "size": resource.file_size,
+                "mime_type": resource.mime_type,
+                "folder_name": resource.folder.name if resource.folder else "",
+            }], "has_more": False})
         return Response(studio_resource_attachments(
             studio, request.query_params.get("q", "")
         ))
+
+
+class MailResourceDownloadView(APIView):
+    """Bounded authenticated download for native iPad/Windows share sheets."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, resource_id):
+        _mailbox_config(request)
+        resource = Resource.objects.filter(
+            studio=studio_for_request(request), pk=resource_id,
+        ).exclude(file="").exclude(file__isnull=True).first()
+        if resource is None:
+            return Response({"detail": "Datei nicht gefunden."},
+                            status=status.HTTP_404_NOT_FOUND)
+        if resource.file_size and resource.file_size > MAX_EACH_ATTACHMENT_SIZE:
+            return Response({"detail": "Diese Datei ist für den Versand zu groß."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with resource.file.open("rb") as file:
+                content = file.read(MAX_EACH_ATTACHMENT_SIZE + 1)
+        except Exception:
+            return Response({"detail": "Datei konnte nicht geöffnet werden."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if len(content) > MAX_EACH_ATTACHMENT_SIZE:
+            return Response({"detail": "Diese Datei ist für den Versand zu groß."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        response = HttpResponse(
+            content, content_type=resource.mime_type or "application/octet-stream",
+        )
+        response["Content-Disposition"] = content_disposition_header(
+            as_attachment=True, filename=resource.file.name.rsplit("/", 1)[-1],
+        )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
 
 class MailSendView(APIView):
