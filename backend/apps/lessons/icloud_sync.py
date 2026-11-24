@@ -308,12 +308,20 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                 stats["imported"] += 1
             link.lesson = lesson
         if lesson:
+            if lesson.pk in locally_changed and lesson.status not in COMPLETED_STATUSES:
+                # Remote event is unchanged. Do not undo a local move:
+                # _push_changes will emit the matching RECURRENCE-ID override.
+                continue
             if lesson.status in COMPLETED_STATUSES:
                 # Accounting history is authoritative, not the calendar.
                 link.synced_signature = _lesson_signature(lesson)
             else:
-                if not entry["cancelled"] and _conflict(lesson, series.student, series.teacher, start, end):
-                    _set_error(series, "Terminkollision: " + entry["title"][:100])
+                blocking = (
+                    _conflict(lesson, series.student, series.teacher, start, end)
+                    if not entry["cancelled"] else None
+                )
+                if blocking:
+                    collisions.append(_collision_detail(series, entry, blocking))
                     stats["conflicts"] += 1
                     continue
                 changes = {
@@ -339,6 +347,11 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             lesson.status = "cancelled"
             link.synced_signature = _lesson_signature(lesson)
             link.save(update_fields=["synced_signature", "updated_at"])
+    if collisions:
+        shown = collisions[:5]
+        if len(collisions) > 5:
+            shown.append(f"... sowie {len(collisions) - 5} weitere Überschneidungen.")
+        _set_error(series, "\n".join(shown))
     return series
 
 
