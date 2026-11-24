@@ -49,6 +49,10 @@ interface MailPreview {
     folder: FolderId
     from: string
     email: string
+    reply_target_email?: string
+    reply_target_name?: string
+    from_email?: string
+    to_email?: string
     subject: string
     preview: string
     body: string
@@ -66,6 +70,10 @@ interface InboxApiMessage {
     id: string
     from: string
     email: string
+    reply_target_email?: string
+    reply_target_name?: string
+    from_email?: string
+    to_email?: string
     subject: string
     date: string | null
     unread: boolean
@@ -607,6 +615,10 @@ export default function MailWorkspace() {
             setMessages((items) => items.map((item) => item.id === message.id
                 ? { ...item, body: response.data.body, preview: response.data.preview,
                     attachments: response.data.attachments, has_attachment: response.data.has_attachment,
+                    reply_target_email: response.data.reply_target_email,
+                    reply_target_name: response.data.reply_target_name,
+                    from_email: response.data.from_email,
+                    to_email: response.data.to_email,
                     bodyLoaded: true } : item))
             // A message displayed in the preview is now read on the server.
             if (message.unread && !mailActionBusy) {
@@ -627,8 +639,16 @@ export default function MailWorkspace() {
             setBody('')
             setLocalFiles([])
         } else if (selected) {
-            setRecipient(mode === 'reply' ? selected.email : '')
-            setReplyRecipientName(mode === 'reply' ? selected.from : '')
+            // Always answer the real header-derived target, NOT the address
+            // used for the inbox/sent list display.
+            const replyAddress = selected.reply_target_email || ''
+            if (mode === 'reply' && !replyAddress) {
+                toast.error('Keine Antwortadresse in der Originalmail gefunden.')
+                return
+            }
+            setRecipient(mode === 'reply' ? replyAddress : '')
+            setReplyRecipientName(mode === 'reply'
+                ? (selected.reply_target_name || replyAddress) : '')
             setSubject((mode === 'reply' ? 'Re: ' : 'Fw: ') + selected.subject)
             setBody(mode === 'forward' ? '\n\n--- Weitergeleitete Nachricht ---\n' + selected.body : '')
             setLocalFiles([])
