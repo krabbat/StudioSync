@@ -383,6 +383,44 @@ export default function MailWorkspace() {
         return () => { requestGeneration.current += 1 }
     }, [folder, loadFolder])
 
+    // Poll PostgreSQL only while the asynchronous IMAP update runs.
+    useEffect(() => {
+        if (!cacheSyncing || folder === 'outbox') return
+        const timer = window.setInterval(() => {
+            void loadFolder(folder, true, 0, true)
+        }, 1600)
+        return () => window.clearInterval(timer)
+    }, [folder, cacheSyncing, loadFolder])
+
+    // If an older page wasn't cached, finish pagination once the worker has it.
+    useEffect(() => {
+        if (cacheSyncing || pendingPageOffset === null) return
+        const offset = pendingPageOffset
+        setPendingPageOffset(null)
+        void loadFolder(folder, false, offset, true)
+    }, [folder, cacheSyncing, pendingPageOffset, loadFolder])
+
+    useEffect(() => {
+        if (folder === 'outbox') return
+        const timer = window.setInterval(() => {
+            if (!cacheSyncing && !mailLoading) {
+                void loadFolder(folder, true, 0, true)
+            }
+        }, 60_000)
+        return () => window.clearInterval(timer)
+    }, [folder, cacheSyncing, mailLoading, loadFolder])
+
+    const refreshFolder = async () => {
+        if (folder === 'outbox') return
+        try {
+            await api.post('/core/mail/cache/folders/' + folder + '/sync/')
+            await loadFolder(folder, true, 0, true)
+        } catch (error: any) {
+            setMailError(error?.response?.data?.detail ||
+                'Der Hintergrundabgleich konnte nicht gestartet werden.')
+        }
+    }
+
     const activeFolder = FOLDERS.find((item) => item.id === folder) || FOLDERS[0]
 
     const visible = useMemo(() => messages.filter((m) => {
@@ -631,7 +669,7 @@ export default function MailWorkspace() {
         setDetailLoading(true)
         try {
             const response = await api.get<InboxApiMessage & { body: string }>(
-                `/core/mail/folders/${folder}/${message.id}/`,
+                `/core/mail/cache/folders/${folder}/${message.id}/`,
                 { params: uidvalidity ? { uidvalidity } : {} },
             )
             if (detailGeneration.current !== generation) return
