@@ -174,10 +174,11 @@ class LessonViewSet(viewsets.ModelViewSet):
         # Remember the owner before deleting. Teachers may delete their own
         # upcoming lessons, but the iCloud credentials belong to the admin.
         studio_owner = lesson.studio.owner
-        linked_to_icloud = hasattr(lesson, "icloud_occurrence")
+        occurrence = getattr(lesson, "icloud_occurrence", None)
+        occurrence_id = occurrence.pk if occurrence else None
         self.perform_destroy(lesson)
 
-        if not linked_to_icloud:
+        if occurrence_id is None:
             return Response(
                 {"detail": "Unterrichtstermin gelöscht.", "icloud_synced": True},
                 status=status.HTTP_200_OK,
@@ -185,11 +186,17 @@ class LessonViewSet(viewsets.ModelViewSet):
 
         try:
             from apps.lessons.icloud_sync import sync_icloud_user
-            sync_result = sync_icloud_user(studio_owner)
-            if sync_result.get("conflicts"):
+            sync_icloud_user(studio_owner)
+            from apps.lessons.models import ICloudCalendarOccurrence
+            synced_link = ICloudCalendarOccurrence.objects.filter(
+                pk=occurrence_id
+            ).first()
+            # A stand-alone iCloud event deletes its series/link entirely.
+            # A recurrence persists as a tombstone marked "deleted".
+            if synced_link is not None and synced_link.synced_signature != "deleted":
                 return Response(
-                    {"detail": "Unterrichtstermin gelöscht. Der iCloud-Abgleich meldet "
-                     "noch Konflikte; bitte im Kalender prüfen.",
+                    {"detail": "Unterrichtstermin in StudioSync gelöscht. "
+                     "Die Entfernung aus iCloud steht noch aus.",
                      "icloud_synced": False},
                     status=status.HTTP_200_OK,
                 )
