@@ -6,6 +6,8 @@ import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-f
 import { useUser } from '@/contexts/UserContext'
 import { useLessons, useUsers, useStudents, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
 import ResourceSelector from '@/components/ResourceSelector'
+import api from '@/services/api'
+import { toast } from 'react-hot-toast'
 import type { LessonPlan, LessonPlanFormData } from '@/types/lessonPlan'
 import {
     Search,
@@ -55,7 +57,7 @@ export default function LessonsPage() {
   const tr = useTranslations('Lessons')
   const locale = useLocale()
     const { currentUser } = useUser()
-    const { lessons, loading, createLesson, updateLesson } = useLessons()
+    const { lessons, loading, createLesson, updateLesson, refetch: refetchLessons } = useLessons()
     const typedLessons = lessons as Lesson[]
     const { users } = useUsers({ page_size: 100 })
     const { students: studentProfiles } = useStudents({ page_size: 100 })
@@ -104,6 +106,7 @@ export default function LessonsPage() {
     const [showLessonModal, setShowLessonModal] = useState(false)
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
     const [lessonSubmitting, setLessonSubmitting] = useState(false)
+    const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null)
     const [lessonData, setLessonData] = useState({
         student: '',
         lesson_type: 'private',
@@ -195,6 +198,32 @@ export default function LessonsPage() {
     const totalPages = Math.ceil(filteredLessons.length / itemsPerPage)
     const startIndex = (currentPage - 1) * itemsPerPage
     const currentItems = filteredLessons.slice(startIndex, startIndex + itemsPerPage)
+
+    const handleDeleteLesson = async (lesson: Lesson) => {
+        const when = format(parseISO(lesson.scheduled_start), 'dd.MM.yyyy HH:mm')
+        const label = lesson.student_name || 'Unterricht'
+        if (!window.confirm(
+            `Soll ${label} am ${when} wirklich dauerhaft gelöscht werden?\nBei einer Terminserie wird nur dieser einzelne Termin entfernt.`
+        )) return
+
+        setDeletingLessonId(lesson.id)
+        try {
+            const response = await api.delete(`/lessons/${lesson.id}/`)
+            toast.success(response.data?.detail || 'Unterrichtstermin gelöscht.')
+            if (response.data?.icloud_synced === false) {
+                toast.error('iCloud ist noch nicht aktualisiert. Bitte den Kalenderabgleich prüfen.')
+            }
+            setSelectedLessons(previous => previous.filter(id => id !== lesson.id))
+            setShowLessonModal(false)
+            setEditingLessonId(null)
+            setCurrentPage(page => currentItems.length === 1 && page > 1 ? page - 1 : page)
+            await refetchLessons()
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail || 'Unterrichtstermin konnte nicht gelöscht werden.')
+        } finally {
+            setDeletingLessonId(null)
+        }
+    }
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
@@ -411,6 +440,21 @@ export default function LessonsPage() {
                                                     >
                                                         <Edit className="w-4 h-4" />
                                                     </Button>
+                                                    {currentUser && ['admin', 'teacher'].includes(currentUser.role) && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            title="Unterrichtstermin löschen"
+                                                            aria-label={`Termin ${lesson.student_name} löschen`}
+                                                            disabled={deletingLessonId !== null}
+                                                            onClick={() => void handleDeleteLesson(lesson)}
+                                                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        >
+                                                            {deletingLessonId === lesson.id
+                                                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                                : <Trash2 className="w-4 h-4" />}
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -465,6 +509,23 @@ export default function LessonsPage() {
                                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate max-w-[150px]">
                                             {tr('instructor')} <span className="text-gray-600">{lesson.teacher_name}</span>
                                         </span>
+                                        <div className="flex items-center gap-1">
+                                        {currentUser && ['admin', 'teacher'].includes(currentUser.role) && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                title="Unterrichtstermin löschen"
+                                                aria-label={`Termin ${lesson.student_name} löschen`}
+                                                disabled={deletingLessonId !== null}
+                                                onClick={() => void handleDeleteLesson(lesson)}
+                                                className="text-red-600 hover:bg-red-50"
+                                            >
+                                                {deletingLessonId === lesson.id
+                                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                    : <Trash2 className="w-4 h-4" />}
+                                                Löschen
+                                            </Button>
+                                        )}
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -486,6 +547,7 @@ export default function LessonsPage() {
                                             <Edit className="w-3 h-3 mr-1" />
                                             {tr('edit')}
                                         </Button>
+                                        </div>
                                     </div>
                                 </div>
                             )
@@ -914,6 +976,22 @@ export default function LessonsPage() {
                     </div>
                 </DialogContent>
                 <DialogFooter>
+                    {editingLessonId && currentUser && ['admin', 'teacher'].includes(currentUser.role) && (
+                        <Button
+                            variant="outline"
+                            className="gap-2 border-red-200 text-red-700 hover:bg-red-50"
+                            disabled={lessonSubmitting || deletingLessonId !== null}
+                            onClick={() => {
+                                const lesson = typedLessons.find(item => item.id === editingLessonId)
+                                if (lesson) void handleDeleteLesson(lesson)
+                            }}
+                        >
+                            {deletingLessonId === editingLessonId
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Trash2 className="w-4 h-4" />}
+                            Termin löschen
+                        </Button>
+                    )}
                     <Button variant="ghost" onClick={() => setShowLessonModal(false)} disabled={lessonSubmitting}>{tr('cancel')}</Button>
                     <Button
                         disabled={lessonSubmitting || !lessonData.student || !lessonData.scheduled_start}
