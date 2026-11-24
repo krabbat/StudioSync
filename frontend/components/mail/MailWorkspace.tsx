@@ -410,7 +410,11 @@ export default function MailWorkspace() {
                 setBody('')
                 setLocalFiles([])
                 setSelectedId(null)
-                setFolder('sent')
+                if (folder === 'sent') {
+                    void loadFolder('sent', true)
+                } else {
+                    setFolder('sent')
+                }
             } else if (data.sent > 0) {
                 toast.error(`${data.sent} zugestellt, ${data.failed} fehlgeschlagen. Die erfolgreichen Empfänger wurden aus der Auswahl entfernt.`)
             } else {
