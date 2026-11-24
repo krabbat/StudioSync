@@ -9,6 +9,7 @@ from collections import defaultdict
 from datetime import datetime, timezone as dt_timezone
 from email.utils import getaddresses
 
+from django.db import connection
 from django.db.models import Q
 
 from apps.core.models import MailDraft, MailMessageCache, Student
@@ -129,40 +130,63 @@ def mail_student_overview(studio, owner, account_key, student_id,
         raise ValueError("Ungültige Seitenauswahl.")
 
     addresses = catalog[sid]["addresses"]
-    address_queries = Q()
-    for address in addresses:
-        # New cache entries contain full normalized MIME participants;
-        # the fallback also supports older entries without backfilled headers.
-        address_queries |= Q(contact_addresses__contains=[address])
-        address_queries |= Q(email__iexact=address)
-
-    auto_query = Q(manual_student_ids__isnull=True) & address_queries
-    manual_query = Q(manual_student_ids__contains=[sid])
-    mail_qs = MailMessageCache.objects.filter(
+    through = offset + limit + 1
+    base_mail = MailMessageCache.objects.filter(
         folder_cache__studio=studio,
         folder_cache__owner=owner,
         folder_cache__account_key=account_key,
-    ).exclude(folder_cache__folder="drafts").filter(
-        auto_query | manual_query
-    ).select_related("folder_cache").order_by("-date", "-uid")
-
-    # An unfinished message belongs to the student if explicitly selected
-    # or addressed to one of the same known student/parent contacts.
-    draft_match = Q(student_ids__contains=[sid])
-    for address in addresses:
-        draft_match |= Q(recipient__iexact=address)
-        draft_match |= Q(additional_recipient__iexact=address)
-    draft_qs = MailDraft.objects.filter(
+    ).exclude(folder_cache__folder="drafts").select_related(
+        "folder_cache"
+    ).order_by("-date", "-uid")
+    base_drafts = MailDraft.objects.filter(
         studio=studio, owner=owner, account_key=account_key,
-    ).filter(draft_match).order_by("-updated_at", "-id")
+    ).order_by("-updated_at", "-id")
 
-    mail_total = mail_qs.count()
-    draft_total = draft_qs.count()
+    if connection.vendor == "postgresql":
+        # PostgreSQL JSONB containment keeps large mailboxes fast: filter
+        # recipients in SQL before ordering and paging the combined result.
+        address_queries = Q(pk__in=[])
+        for address in addresses:
+            address_queries |= Q(contact_addresses__contains=[address])
+            address_queries |= Q(email__iexact=address)
+        mail_qs = base_mail.filter(
+            Q(manual_student_ids__contains=[sid]) |
+            (Q(manual_student_ids__isnull=True) & address_queries)
+        )
+        draft_query = Q(student_ids__contains=[sid])
+        for address in addresses:
+            draft_query |= Q(recipient__iexact=address)
+            draft_query |= Q(additional_recipient__iexact=address)
+        draft_qs = base_drafts.filter(draft_query)
+        mail_total = mail_qs.count()
+        sent_count = mail_qs.filter(folder_cache__folder="sent").count()
+        draft_total = draft_qs.count()
+        mail_rows = list(mail_qs[:through])
+        draft_rows = list(draft_qs.prefetch_related("local_attachments")[:through])
+    else:
+        # SQLite does not support JSONField__contains. This fallback also
+        # lets local tests exercise precisely the same association semantics.
+        _, by_address = student_catalog(studio)
+        mail_matches = [
+            row for row in base_mail.iterator(chunk_size=500)
+            if sid in assigned_student_ids(row, catalog, by_address)
+        ]
+        mail_total = len(mail_matches)
+        sent_count = sum(row.folder_cache.folder == "sent" for row in mail_matches)
+        mail_rows = mail_matches[:through]
+        address_set = set(addresses)
+        draft_matches = [
+            draft for draft in base_drafts.iterator(chunk_size=500)
+            if sid in [str(value) for value in draft.student_ids] or
+            normalize_address(draft.recipient) in address_set or
+            normalize_address(draft.additional_recipient) in address_set
+        ]
+        draft_total = len(draft_matches)
+        draft_rows = draft_matches[:through]
+
     total = mail_total + draft_total
-    through = offset + limit + 1
-
     merged = []
-    for record in mail_qs[:through]:
+    for record in mail_rows:
         folder = record.folder_cache.folder
         merged.append({
             "folder": folder,
@@ -177,7 +201,7 @@ def mail_student_overview(studio, owner, account_key, student_id,
             "has_attachment": record.has_attachment,
         })
 
-    for draft in draft_qs.prefetch_related("local_attachments")[:through]:
+    for draft in draft_rows:
         merged.append({
             "folder": "drafts",
             "uid": str(draft.pk),
@@ -203,8 +227,8 @@ def mail_student_overview(studio, owner, account_key, student_id,
         "limit": limit,
         "has_more": offset + limit < total,
         "counts": {
-            "received": mail_qs.exclude(folder_cache__folder="sent").count(),
-            "sent": mail_qs.filter(folder_cache__folder="sent").count(),
+            "received": mail_total - sent_count,
+            "sent": sent_count,
             "draft": draft_total,
         },
     }
