@@ -35,7 +35,8 @@ def _mailbox_config(request):
     if not isinstance(technical, dict):
         technical = {}
     return {key: technical.get(key) for key in (
-        "imap_host", "imap_port", "imap_username", "imap_security", "imap_password"
+        "imap_host", "imap_port", "imap_username", "imap_security",
+        "imap_password", "smtp_from_email", "smtp_username",
     )}
 
 
