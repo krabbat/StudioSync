@@ -69,7 +69,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       network: host
-    command: python manage.py qcluster
+    command: sh -c "python manage.py ensure_icloud_schedule && exec python manage.py qcluster"
     volumes:
       - media_data:/app/media
       - static_data:/app/staticfiles
