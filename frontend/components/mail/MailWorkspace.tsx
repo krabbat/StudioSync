@@ -971,7 +971,9 @@ export default function MailWorkspace() {
                                         ))}
                                         {manualTarget && (
                                             <span className="mail-compose-to-chip" title={manualTarget}>
-                                                {replyRecipientName || manualTarget}
+                                                {replyRecipientName && replyRecipientName !== manualTarget
+                                                    ? `${replyRecipientName} · ${manualTarget}`
+                                                    : manualTarget}
                                             </span>
                                         )}
                                         {extraTarget && (
