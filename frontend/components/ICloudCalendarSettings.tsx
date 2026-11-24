@@ -5,6 +5,7 @@ import { CalendarDays, CheckCircle2, Loader2, RefreshCw, Save, ShieldCheck } fro
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
 import { useUser } from '@/contexts/UserContext'
+import ICloudSyncPanel from '@/components/ICloudSyncPanel'
 
 type CalendarChoice = { name: string; url: string }
 type ICloudState = { icloud_username?: string; icloud_calendar_url?: string; icloud_app_password_set?: boolean }
@@ -173,6 +174,7 @@ export default function ICloudCalendarSettings() {
                         <CheckCircle2 className="h-4 w-4" /> iCloud-Kalender ist für lesenden und schreibenden Zugriff bereit.
                     </p>
                 )}
+                <ICloudSyncPanel enabled={Boolean(saved.icloud_app_password_set && saved.icloud_calendar_url)} />
             </div>
         </section>
     )
