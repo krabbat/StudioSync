@@ -13,6 +13,7 @@ import uuid
 
 from dateutil.rrule import rrulestr
 from django.db import connection, transaction
+from django.db.models import Q
 from django.utils import timezone
 from icalendar import Calendar, Event
 
@@ -165,11 +166,46 @@ def _resolve_student(series, master):
 
 
 def _conflict(lesson, student, teacher, start, end):
+    """Return the actual blocking lesson, not only a boolean.
+
+    Any overlapping lesson with the same teacher OR student is a collision.
+    Exclude the exact linked lesson being updated.
+    """
     overlapping = Lesson.objects.filter(
         studio=student.studio, status__in=["scheduled", "in_progress"],
-        scheduled_start__lt=end, scheduled_end__gt=start
-    ).exclude(pk=lesson.pk if lesson else None)
-    return overlapping.filter(teacher=teacher).exists() or overlapping.filter(student=student).exists()
+        scheduled_start__lt=end, scheduled_end__gt=start,
+    ).filter(Q(teacher=teacher) | Q(student=student))
+    if lesson is not None:
+        overlapping = overlapping.exclude(pk=lesson.pk)
+    return overlapping.select_related(
+        "teacher__user", "student__user", "band"
+    ).order_by("scheduled_start").first()
+
+
+def _collision_detail(series, incoming, blocking):
+    """Show both calendar times, the actual blocking student and lesson ID."""
+    start = timezone.localtime(incoming["start"], LOCAL_TZ)
+    end = timezone.localtime(incoming["end"], LOCAL_TZ)
+    existing_start = timezone.localtime(blocking.scheduled_start, LOCAL_TZ)
+    existing_end = timezone.localtime(blocking.scheduled_end, LOCAL_TZ)
+    other_name = (
+        blocking.student.user.get_full_name()
+        if blocking.student_id else
+        blocking.band.name if blocking.band_id else "Sonstiger Unterrichtstermin"
+    )
+    cause = (
+        "Lehrkraft bereits belegt"
+        if blocking.teacher_id == series.teacher_id
+        else "Schüler bereits belegt"
+    )
+    return (
+        f"Terminkollision: iCloud \"{incoming['title']}\" "
+        f"{start:%d.%m.%Y} {start:%H:%M}–{end:%H:%M} Uhr; "
+        f"StudioSync \"{other_name}\" "
+        f"{existing_start:%d.%m.%Y} "
+        f"{existing_start:%H:%M}–{existing_end:%H:%M} Uhr "
+        f"({cause}, Termin-ID {blocking.pk})."
+    )
 
 
 def _set_error(series, message):
@@ -198,12 +234,13 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         _set_error(series, "Konflikt: Termin wurde gleichzeitig in Apple und StudioSync geändert.")
         stats["conflicts"] += 1
         return series
-    if not made and remote_hash == series.remote_hash and not dirty and series.student_id:
-        # Still expand below, since the 12-month rolling window moves every day.
-        pass
-    elif not made and remote_hash == series.remote_hash and dirty:
-        # Caller will export these changes after importing every remote event.
-        return series
+    # When only StudioSync has changed, DO NOT return early and leave a
+    # previously recorded collision in place. Recheck all other occurrences,
+    # but preserve locally edited ones for the subsequent CalDAV push.
+    locally_changed = {
+        entry.lesson_id for entry in dirty
+        if not made and remote_hash == series.remote_hash
+    }
 
     series.remote_url = remote_url
     series.ical_data = raw
@@ -232,6 +269,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
 
     expected = _expand(raw)
     present = set()
+    collisions = []
     for entry in expected:
         rid, start, end = entry["rid"], entry["start"], entry["end"]
         present.add(rid)
@@ -253,11 +291,13 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             ).exclude(icloud_occurrence__isnull=False).first()
             if matching:
                 lesson = matching
-            elif _conflict(None, series.student, series.teacher, start, end):
-                _set_error(series, "Terminkollision: " + entry["title"][:100])
-                stats["conflicts"] += 1
-                continue
             else:
+                blocking = _conflict(None, series.student, series.teacher, start, end)
+                if blocking:
+                    collisions.append(_collision_detail(series, entry, blocking))
+                    stats["conflicts"] += 1
+                    continue
+            if not blocking:
                 lesson = Lesson(
                     studio=studio, student=series.student, teacher=series.teacher,
                     scheduled_start=start, scheduled_end=end, status="scheduled",
