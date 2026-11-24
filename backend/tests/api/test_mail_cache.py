@@ -131,6 +131,9 @@ def test_incremental_sync_downloads_only_new_headers_and_keeps_saved_body(
     assert folder.server_total == 2
     assert folder.uidvalidity == "99"
     assert folder.last_synced_at is not None
+    with patch("apps.core.mail_cache.schedule_folder_sync"):
+        snapshot = cached_folder_page(studio, admin_user, CONFIG, "inbox")
+    assert set(snapshot["cached_ids"]) == {"10", "11"}
 
 
 @pytest.mark.django_db
