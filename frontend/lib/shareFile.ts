@@ -53,11 +53,13 @@ export async function shareProtectedResource(
     const path = proxyFileUrl(url)
     if (!path) throw new Error('Datei nicht verfügbar')
     const headers: Record<string, string> = {}
-    if (!isPublicMediaPath(path)) {
+    const resolved = new URL(path, window.location.origin)
+    // Never disclose the StudioSync bearer token to external signed-file hosts.
+    if (resolved.origin === window.location.origin && !isPublicMediaPath(path)) {
         const token = localStorage.getItem('accessToken')
         if (token) headers.Authorization = 'Bearer ' + token
     }
-    const response = await fetch(path, { headers })
+    const response = await fetch(resolved.href, { headers })
     if (!response.ok) throw new Error('Datei konnte nicht abgerufen werden')
     const blob = await response.blob()
     return shareFilesOrDownload([
