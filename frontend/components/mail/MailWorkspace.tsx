@@ -416,7 +416,7 @@ export default function MailWorkspace() {
                     setFolder('sent')
                 }
             } else if (data.sent > 0) {
-                toast.error(`${data.sent} zugestellt, ${data.failed} fehlgeschlagen. Die erfolgreichen Empfänger wurden aus der Auswahl entfernt.`)
+                toast.error(`${data.sent} vom Mailserver angenommen, ${data.failed} fehlgeschlagen. Erfolgreiche Empfänger wurden aus der Auswahl entfernt.`)
             } else {
                 toast.error('Der SMTP-Server hat keine der Nachrichten angenommen.')
             }
