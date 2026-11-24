@@ -13,6 +13,7 @@ import api from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { formatPhoneNumber, proxyFileUrl } from '@/lib/utils'
 import { useUser } from '@/contexts/UserContext'
+import StudentCommunicationPanel from '@/components/StudentCommunicationPanel'
 
 export default function StudentProfilePage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const tr = useTranslations('StudentProfile')
@@ -30,6 +31,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     const [confirmNewPassword, setConfirmNewPassword] = useState('')
     const [passwordSaving, setPasswordSaving] = useState(false)
     const [editingLogin, setEditingLogin] = useState(false)
+    const [profileTab, setProfileTab] = useState<'profile' | 'communication'>('profile')
 
     useEffect(() => {
         const fetchStudent = async () => {
@@ -211,6 +213,27 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                     </div>
                 </div>
 
+                {currentUser?.role === 'admin' && (
+                    <nav aria-label="Schülerprofil-Bereiche" className="flex flex-wrap gap-2">
+                        <button type="button" aria-pressed={profileTab === 'profile'}
+                            className={profileTab === 'profile'
+                                ? 'rounded-xl bg-primary text-primary-foreground px-5 py-3 font-bold'
+                                : 'rounded-xl bg-white border border-gray-200 px-5 py-3 font-bold'}
+                            onClick={() => setProfileTab('profile')}>Profil</button>
+                        <button type="button" aria-pressed={profileTab === 'communication'}
+                            className={profileTab === 'communication'
+                                ? 'rounded-xl bg-primary text-primary-foreground px-5 py-3 font-bold'
+                                : 'rounded-xl bg-white border border-gray-200 px-5 py-3 font-bold'}
+                            onClick={() => setProfileTab('communication')}>
+                            <Mail className="w-4 h-4 inline mr-2" />Kommunikation
+                        </button>
+                    </nav>
+                )}
+
+                {profileTab === 'communication' && currentUser?.role === 'admin' ? (
+                    <StudentCommunicationPanel studentId={studentId} />
+                ) : (
+                <>
                 {/* Detailed Info Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Contact & Identity */}
@@ -403,6 +426,8 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                         </section>
                     </div>
                 </div>
+                </>
+                )}
             </div>
         </div>
     )
