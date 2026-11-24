@@ -56,7 +56,7 @@ def _lesson_signature(lesson):
     values = [
         lesson.scheduled_start.astimezone(utc_timezone.utc).isoformat(),
         lesson.scheduled_end.astimezone(utc_timezone.utc).isoformat(),
-        lesson.status, lesson.location or "", str(lesson.student_id or ""),
+        lesson.status, lesson.location or "", lesson.summary or "", str(lesson.student_id or ""),
         str(lesson.teacher_id),
     ]
     return _hash(json.dumps(values, ensure_ascii=False))
@@ -117,6 +117,7 @@ def _expand(content, now=None):
             "cancelled": cancelled,
             "title": _raw(candidate.get("SUMMARY", master.get("SUMMARY", ""))),
             "location": _raw(candidate.get("LOCATION", master.get("LOCATION", ""))),
+            "description": _raw(candidate.get("DESCRIPTION", master.get("DESCRIPTION", ""))),
         }
 
     # An exception can move a remote occurrence into this window even if its
@@ -132,6 +133,7 @@ def _expand(content, now=None):
                 "cancelled": _raw(override.get("STATUS", "")).upper() == "CANCELLED",
                 "title": _raw(override.get("SUMMARY", master.get("SUMMARY", ""))),
                 "location": _raw(override.get("LOCATION", master.get("LOCATION", ""))),
+                "description": _raw(override.get("DESCRIPTION", master.get("DESCRIPTION", ""))),
             }
     return [result[key] for key in sorted(result)]
 
@@ -252,7 +254,8 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                 lesson = Lesson(
                     studio=studio, student=series.student, teacher=series.teacher,
                     scheduled_start=start, scheduled_end=end, status="scheduled",
-                    location=entry["location"][:200], lesson_type="private",
+                    location=entry["location"][:200], summary=entry["description"][:5000],
+                    lesson_type="private",
                 )
                 # Never call save(): that would send one email per imported lesson.
                 Lesson.objects.bulk_create([lesson])
@@ -270,6 +273,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                 changes = {
                     "scheduled_start": start, "scheduled_end": end,
                     "location": entry["location"][:200],
+                    "summary": entry["description"][:5000],
                     "status": "cancelled" if entry["cancelled"] else "scheduled",
                 }
                 Lesson.objects.filter(pk=lesson.pk).update(**changes)
@@ -303,6 +307,8 @@ def _ical_for_lesson(lesson):
     event.add("dtend", lesson.scheduled_end.astimezone(LOCAL_TZ))
     event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else "MUSart Unterricht")
     event.add("location", lesson.location or "")
+    if lesson.summary:
+        event.add("description", lesson.summary)
     if lesson.student_id:
         event.add("X-STUDIOSYNC-STUDENT-ID", str(lesson.student_id))
     if lesson.status == "cancelled":
@@ -368,6 +374,7 @@ def _push_changes(series, remote, stats):
             _set_property(target, "DTSTART", lesson.scheduled_start.astimezone(LOCAL_TZ))
             _set_property(target, "DTEND", lesson.scheduled_end.astimezone(LOCAL_TZ))
             _set_property(target, "LOCATION", lesson.location or "")
+            _set_property(target, "DESCRIPTION", lesson.summary or "")
             _set_property(target, "STATUS", "CANCELLED" if lesson.status == "cancelled" else "CONFIRMED")
         _set_property(target, "DTSTAMP", timezone.now())
         modified_links.append(entry)
