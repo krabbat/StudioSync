@@ -7,7 +7,10 @@ receive exactly one copy. The SMTP credentials never leave the backend.
 
 import imaplib
 import logging
+import mimetypes
+import os
 import smtplib
+import uuid
 import ssl
 from collections import OrderedDict
 from email.utils import formataddr, make_msgid
@@ -19,6 +22,7 @@ from django.core.validators import validate_email
 from apps.core.mail_folders import MailFolderError, resolve_folder
 from apps.core.mail_service import MailFetchError, _configuration
 from apps.core.models import Student
+from apps.resources.models import Resource
 from apps.core.security import assert_public_host
 
 LOG = logging.getLogger(__name__)
@@ -123,7 +127,7 @@ def _smtp_settings(config):
     }
 
 
-def _resolve_addresses(studio, student_ids, manual_recipient):
+def _resolve_addresses(studio, student_ids, manual_recipient, additional_recipient=''):
     if not isinstance(student_ids, list) or len(student_ids) > MAX_STUDENTS:
         raise MailSendError("Ungültige Schülerauswahl.")
     ids = [str(uid) for uid in student_ids]
@@ -138,8 +142,11 @@ def _resolve_addresses(studio, student_ids, manual_recipient):
     if any(not available[uid]["selectable"] for uid in ids):
         raise MailSendError("Ein ausgewählter Schüler hat keine gültige Kontaktadresse.")
     manual = (manual_recipient or "").strip()
+    additional = (additional_recipient or "").strip()
     if manual and not _valid_email(manual):
-        raise MailSendError("Die zusätzlich eingegebene E-Mail-Adresse ist ungültig.")
+        raise MailSendError("Die eingegebene E-Mail-Adresse ist ungültig.")
+    if additional and not _valid_email(additional):
+        raise MailSendError("Die zusätzliche E-Mail-Adresse ist ungültig.")
 
     unique = OrderedDict()
     for uid in ids:
@@ -149,6 +156,10 @@ def _resolve_addresses(studio, student_ids, manual_recipient):
         entry["student_ids"].append(uid)
     if manual:
         unique.setdefault(manual.casefold(), {"email": manual, "student_ids": []})
+    if additional:
+        unique.setdefault(additional.casefold(), {
+            "email": additional, "student_ids": [],
+        })
     if not unique:
         raise MailSendError("Bitte mindestens einen Empfänger auswählen.")
     if len(unique) > MAX_STUDENTS:
@@ -156,9 +167,72 @@ def _resolve_addresses(studio, student_ids, manual_recipient):
     return list(unique.values())
 
 
-def _collect_attachments(files):
-    if len(files) > MAX_ATTACHMENTS:
+def studio_resource_attachments(studio, query=""):
+    """Return files from this studio only; never leak their storage URLs."""
+    from django.db.models import Q
+
+    resources = (
+        Resource.objects.filter(studio=studio)
+        .exclude(file="")
+        .exclude(file__isnull=True)
+        .select_related("folder")
+        .order_by("title", "id")
+    )
+    search = str(query or "").strip()[:120]
+    if search:
+        resources = resources.filter(
+            Q(title__icontains=search)
+            | Q(file__icontains=search)
+            | Q(instrument__icontains=search)
+            | Q(folder__name__icontains=search)
+        )
+    # A server-side search can retrieve files beyond the first 100.
+    items = []
+    records = list(resources[:101])
+    for resource in records[:100]:
+        items.append({
+            "id": str(resource.pk),
+            "title": resource.title,
+            "filename": os.path.basename(resource.file.name),
+            "size": resource.file_size,
+            "mime_type": resource.mime_type,
+            "folder_name": resource.folder.name if resource.folder else "",
+        })
+    return {"resources": items, "has_more": len(records) > 100}
+
+
+def _collect_attachments(files, studio=None, resource_ids=None):
+    """Resolve and size-check all attachments before opening any SMTP session."""
+    resource_ids = resource_ids if resource_ids is not None else []
+    if not isinstance(resource_ids, list) or len(resource_ids) > MAX_ATTACHMENTS:
+        raise MailSendError("Ungültige StudioSync-Dateiauswahl.")
+    if len(files) + len(resource_ids) > MAX_ATTACHMENTS:
         raise MailSendError("Maximal acht Anhänge pro Nachricht sind erlaubt.")
+    unique = []
+    for candidate in resource_ids:
+        try:
+            resource_id = str(uuid.UUID(str(candidate)))
+        except (ValueError, AttributeError, TypeError) as exc:
+            raise MailSendError("Ungültige StudioSync-Dateikennung.") from exc
+        if resource_id in unique:
+            raise MailSendError("Eine StudioSync-Datei wurde mehrfach ausgewählt.")
+        unique.append(resource_id)
+
+    resources = {}
+    if unique:
+        if studio is None:
+            raise MailSendError("StudioSync-Dateien benötigen einen Studio-Kontext.")
+        resources = {
+            str(resource.pk): resource for resource in
+            Resource.objects.filter(studio=studio, pk__in=unique)
+            .exclude(file="")
+            .exclude(file__isnull=True)
+        }
+        if len(resources) != len(unique):
+            raise MailSendError(
+                "Eine ausgewählte StudioSync-Datei ist nicht mehr verfügbar."
+            )
+
     total = 0
     attachments = []
     for uploaded in files:
@@ -166,12 +240,39 @@ def _collect_attachments(files):
             raise MailSendError("Ein Anhang ist zu groß oder hat keinen Dateinamen.")
         total += uploaded.size
         if total > MAX_TOTAL_ATTACHMENT_SIZE:
-            raise MailSendError("Die Anhänge dürfen zusammen höchstens 12 MB groß sein.")
+            raise MailSendError(
+                "Die Anhänge dürfen zusammen höchstens 12 MB groß sein."
+            )
+        filename = os.path.basename(uploaded.name.replace("\\", "/"))[:200]
+        data = uploaded.read(MAX_EACH_ATTACHMENT_SIZE + 1)
+        if len(data) > MAX_EACH_ATTACHMENT_SIZE:
+            raise MailSendError("Ein lokaler Anhang ist zu groß.")
         attachments.append((
-            uploaded.name.rsplit("/", 1)[-1].rsplit("\\", 1)[-1][:200],
-            uploaded.read(),
-            uploaded.content_type or "application/octet-stream",
+            filename, data, uploaded.content_type or "application/octet-stream",
         ))
+
+    for resource_id in unique:
+        resource = resources[resource_id]
+        if resource.file_size is not None and resource.file_size > MAX_EACH_ATTACHMENT_SIZE:
+            raise MailSendError("Eine StudioSync-Datei ist größer als 8 MB.")
+        try:
+            with resource.file.open("rb") as resource_file:
+                payload = resource_file.read(MAX_EACH_ATTACHMENT_SIZE + 1)
+        except (OSError, ValueError) as exc:
+            LOG.warning("Studio resource attachment unreadable (%s)", type(exc).__name__)
+            raise MailSendError(
+                "Eine StudioSync-Datei konnte nicht geöffnet werden."
+            ) from exc
+        if len(payload) > MAX_EACH_ATTACHMENT_SIZE:
+            raise MailSendError("Eine StudioSync-Datei ist größer als 8 MB.")
+        total += len(payload)
+        if total > MAX_TOTAL_ATTACHMENT_SIZE:
+            raise MailSendError(
+                "Die Anhänge dürfen zusammen höchstens 12 MB groß sein."
+            )
+        filename = os.path.basename(resource.file.name.replace("\\", "/"))[:200]
+        mime = resource.mime_type or mimetypes.guess_type(filename)[0]
+        attachments.append((filename, payload, mime or "application/octet-stream"))
     return attachments
 
 
@@ -220,7 +321,8 @@ def _save_sent_copy(client, mailbox, message):
 
 
 def send_student_mail(
-    *, studio, config, student_ids, manual_recipient, subject, body, uploads
+    *, studio, config, student_ids, manual_recipient, subject, body, uploads,
+    resource_ids=None, additional_recipient="",
 ):
     """Send one private email per distinct address; report any partial success.
 
@@ -233,8 +335,10 @@ def send_student_mail(
         raise MailSendError("Bitte einen gültigen Betreff mit maximal 220 Zeichen eingeben.")
     if not content or len(content) > MAX_BODY:
         raise MailSendError("Bitte einen Nachrichtentext eingeben (maximal 100.000 Zeichen).")
-    recipients = _resolve_addresses(studio, student_ids, manual_recipient)
-    attachments = _collect_attachments(uploads)
+    recipients = _resolve_addresses(
+        studio, student_ids, manual_recipient, additional_recipient
+    )
+    attachments = _collect_attachments(uploads, studio, resource_ids)
     settings = _smtp_settings(config)
 
     connection = get_connection(
@@ -318,4 +422,11 @@ def send_student_mail(
             )
         ),
         "copies_failed": copies_failed,
+        "additional_sent": bool(
+            additional_recipient and any(
+                recipient["email"].casefold()
+                == additional_recipient.strip().casefold()
+                for recipient in sent
+            )
+        ),
     }
