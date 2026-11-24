@@ -94,6 +94,7 @@ export default function SchedulePage() {
   const tr = useTranslations('Schedule')
   const locale = useLocale()
   const { currentUser } = useUser();
+  const hasIcloudCalendar = currentUser?.role === "admin" && Boolean(currentUser?.preferences?.technical?.icloud_calendar_url);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [colorMode, setColorMode] = useState<"status" | "student" | "instrument">("status");
@@ -666,7 +667,7 @@ export default function SchedulePage() {
             {tr('orchestrateYourWeeklyLessonCalendar')}
           </p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 no-print">
+        <div className={`grid ${hasIcloudCalendar ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} gap-2 sm:gap-3 no-print`}>
           <Button
             variant="outline"
             size="icon"
@@ -695,7 +696,7 @@ export default function SchedulePage() {
             <Link className="w-4 h-4" />
             <span className="hidden sm:inline">{tr('subscribe')}</span>
           </Button>
-          {currentUser?.role === 'admin' && currentUser?.preferences?.technical?.icloud_calendar_url && (
+          {hasIcloudCalendar && (
             <Button type="button" variant="outline" onClick={() => void syncAppleNow()}
               disabled={icloudBusy} className="gap-2 w-full" title="Bidirektional mit iCloud synchronisieren">
               <RefreshCw className={`w-4 h-4 ${icloudBusy ? 'animate-spin' : ''}`} />
@@ -716,7 +717,7 @@ export default function SchedulePage() {
                 resetBooking();
                 setShowBookingModal(true);
               }}
-              className="gap-2 hover:scale-105 col-span-2 sm:col-span-4 w-full"
+              className={`gap-2 hover:scale-105 w-full ${hasIcloudCalendar ? "col-span-3 sm:col-span-5" : "col-span-2 sm:col-span-4"}`}
             >
               <Plus className="w-4 h-4" />
               {tr('newBooking')}
