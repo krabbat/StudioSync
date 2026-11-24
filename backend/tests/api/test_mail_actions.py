@@ -109,7 +109,7 @@ def test_archive_folder_created_only_on_explicit_archive_action():
 def test_missing_spam_folder_never_creates_or_moves_anything():
     client = mock_imap()
     client.list.return_value = ("OK", [rb'(\HasNoChildren) "/" "INBOX"'])
-    with pytest.raises(MailFetchError, match="Spam-Ordner"):
+    with pytest.raises(MailFetchError, match="spam"):
         run_with_client(client, "spam")
     client.create.assert_not_called()
     assert not any(call.args[0] == "MOVE" for call in client.uid.call_args_list)
