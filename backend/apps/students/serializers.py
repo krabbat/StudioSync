@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.core.models import Student, TeachingContract, User
+from apps.core.international_email import InternationalEmailField
 from apps.core.tenancy import studio_for_request
 
 
@@ -111,7 +112,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
     user = serializers.UUIDField(source="user_id", read_only=True)
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
-    email = serializers.EmailField(write_only=True)
+    email = InternationalEmailField(write_only=True)
     phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
     password = serializers.CharField(
         write_only=True, required=False, allow_blank=True, trim_whitespace=False,
