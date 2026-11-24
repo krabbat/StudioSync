@@ -37,6 +37,7 @@ from apps.core.views.mail_drafts import (
 from apps.core.views.mail_outbound import (
     MailRecipientsView,
     MailResourceAttachmentsView,
+    MailResourceDownloadView,
     MailSendView,
 )
 from config.routers import OptionalSlashRouter
@@ -76,6 +77,11 @@ urlpatterns = (
              name="mail-draft-detail"),
         path("mail/drafts/<uuid:draft_id>/attachments/<uuid:file_id>/",
              MailDraftAttachmentView.as_view(), name="mail-draft-file"),
+        path(
+            "mail/attachments/resources/<uuid:resource_id>/download/",
+            MailResourceDownloadView.as_view(),
+            name="mail-attachment-resource-download",
+        ),
         re_path(
             r"^mail/attachments/resources/?$",
             MailResourceAttachmentsView.as_view(),
