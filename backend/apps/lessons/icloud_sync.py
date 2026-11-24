@@ -1,0 +1,518 @@
+"""Bidirectional iCloud CalDAV synchronization for MUSart teaching lessons.
+
+One iCloud VEVENT UID maps to a series and one RECURRENCE-ID maps to one
+lesson. This module never sends lesson notification emails on import, since
+bulk_create/QuerySet.update bypass the standard post_save signal.
+"""
+from datetime import date, datetime, timedelta, timezone as utc_timezone
+from hashlib import sha256
+from zoneinfo import ZoneInfo
+import json
+import re
+import uuid
+
+from dateutil.rrule import rrulestr
+from django.db import connection, transaction
+from django.utils import timezone
+from icalendar import Calendar, Event
+
+from apps.core.models import Student, Teacher, User
+from apps.core.views.icloud_calendar import (
+    ICloudSetupError, _allowed_calendar_url, _connect, _credentials, _discover,
+    _settings,
+)
+from apps.lessons.models import (
+    ICloudCalendarOccurrence, ICloudCalendarSeries, Lesson,
+)
+
+WINDOW_BEFORE = 35
+WINDOW_AFTER = 370
+LOCAL_TZ = ZoneInfo("Europe/Berlin")
+COMPLETED_STATUSES = {"completed", "in_progress", "no_show"}
+
+
+def _dt(value):
+    """Return an aware datetime; all-day calendar items are not lessons."""
+    if not isinstance(value, datetime):
+        return None
+    if timezone.is_naive(value):
+        return timezone.make_aware(value, LOCAL_TZ)
+    return value
+
+
+def _key(value):
+    return _dt(value).astimezone(utc_timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _raw(value):
+    return value.decode("utf-8") if isinstance(value, bytes) else str(value)
+
+
+def _hash(value):
+    return sha256(value.encode("utf-8")).hexdigest()
+
+
+def _lesson_signature(lesson):
+    values = [
+        lesson.scheduled_start.astimezone(utc_timezone.utc).isoformat(),
+        lesson.scheduled_end.astimezone(utc_timezone.utc).isoformat(),
+        lesson.status, lesson.location or "", str(lesson.student_id or ""),
+        str(lesson.teacher_id),
+    ]
+    return _hash(json.dumps(values, ensure_ascii=False))
+
+
+def _master_and_overrides(content):
+    data = Calendar.from_ical(content.encode("utf-8") if isinstance(content, str) else content)
+    events = [part for part in data.walk() if part.name == "VEVENT"]
+    masters = [part for part in events if not part.get("RECURRENCE-ID")]
+    if len(masters) != 1:
+        raise ICloudSetupError("Kalendereintrag enthält keine eindeutige Terminserie.")
+    master = masters[0]
+    if not master.get("UID") or not master.get("DTSTART"):
+        raise ICloudSetupError("Kalendereintrag enthält keine UID oder Startzeit.")
+    return data, master, {
+        _key(part["RECURRENCE-ID"].dt): part
+        for part in events if part.get("RECURRENCE-ID") and _dt(part["RECURRENCE-ID"].dt)
+    }
+
+
+def _expand(content, now=None):
+    _, master, overrides = _master_and_overrides(content)
+    start = _dt(master["DTSTART"].dt)
+    if start is None:
+        return []
+    end = _dt(master["DTEND"].dt) if master.get("DTEND") else None
+    duration = (end - start) if end else timedelta(minutes=45)
+    if duration <= timedelta(0):
+        return []
+    now = now or timezone.now()
+    low, high = now - timedelta(days=WINDOW_BEFORE), now + timedelta(days=WINDOW_AFTER)
+    original_starts = []
+    rule = master.get("RRULE")
+    if rule:
+        recurrence = rrulestr(_raw(rule.to_ical()), dtstart=start)
+        original_starts = list(recurrence.between(low, high, inc=True))
+    elif low <= start <= high:
+        original_starts = [start]
+
+    for rdate in master.get("RDATE", []) if isinstance(master.get("RDATE"), list) else ([master.get("RDATE")] if master.get("RDATE") else []):
+        original_starts += [_dt(v.dt) for v in rdate.dts if _dt(v.dt) and low <= _dt(v.dt) <= high]
+
+    excluded = set()
+    ex = master.get("EXDATE", [])
+    for item in ex if isinstance(ex, list) else ([ex] if ex else []):
+        excluded.update(_key(v.dt) for v in item.dts if _dt(v.dt))
+
+    result = {}
+    for original in original_starts:
+        rid = _key(original)
+        override = overrides.get(rid)
+        candidate = override or master
+        changed_start = _dt(candidate["DTSTART"].dt) if candidate.get("DTSTART") else original
+        changed_end = _dt(candidate["DTEND"].dt) if candidate.get("DTEND") else changed_start + duration
+        cancelled = rid in excluded or _raw(candidate.get("STATUS", "")).upper() == "CANCELLED"
+        result[rid] = {
+            "rid": rid, "start": changed_start, "end": changed_end,
+            "cancelled": cancelled,
+            "title": _raw(candidate.get("SUMMARY", master.get("SUMMARY", ""))),
+            "location": _raw(candidate.get("LOCATION", master.get("LOCATION", ""))),
+        }
+
+    # An exception can move a remote occurrence into this window even if its
+    # original timestamp is outside the master expansion window.
+    for rid, override in overrides.items():
+        if rid in result:
+            continue
+        altered = _dt(override["DTSTART"].dt) if override.get("DTSTART") else None
+        if altered and low <= altered <= high:
+            altered_end = _dt(override["DTEND"].dt) if override.get("DTEND") else altered + duration
+            result[rid] = {
+                "rid": rid, "start": altered, "end": altered_end,
+                "cancelled": _raw(override.get("STATUS", "")).upper() == "CANCELLED",
+                "title": _raw(override.get("SUMMARY", master.get("SUMMARY", ""))),
+                "location": _raw(override.get("LOCATION", master.get("LOCATION", ""))),
+            }
+    return [result[key] for key in sorted(result)]
+
+
+def _student_from_title(studio, title):
+    """Link only unambiguous full names, never fuzzy surname-only matches."""
+    folded = title.casefold()
+    matches = []
+    for student in Student.objects.filter(studio=studio).select_related("user"):
+        name = student.user.get_full_name().strip()
+        if name and re.search(r"(?<!\w)" + re.escape(name.casefold()) + r"(?!\w)", folded):
+            matches.append(student)
+    return matches[0] if len(matches) == 1 else None
+
+
+def _default_teacher(studio):
+    qs = Teacher.objects.filter(studio=studio).select_related("user")
+    return (qs.filter(user__first_name__iexact="Peter", user__last_name__iexact="Sartori").first()
+            or qs.first())
+
+
+def _resolve_student(series, master):
+    if series.student_id:
+        return series.student
+    student_id = _raw(master.get("X-STUDIOSYNC-STUDENT-ID", "")).strip()
+    if student_id:
+        return Student.objects.filter(pk=student_id, studio=series.studio).first()
+    return _student_from_title(series.studio, series.title)
+
+
+def _conflict(lesson, student, teacher, start, end):
+    overlapping = Lesson.objects.filter(
+        studio=student.studio, status__in=["scheduled", "in_progress"],
+        scheduled_start__lt=end, scheduled_end__gt=start
+    ).exclude(pk=lesson.pk if lesson else None)
+    return overlapping.filter(teacher=teacher).exists() or overlapping.filter(student=student).exists()
+
+
+def _set_error(series, message):
+    series.last_error = message
+    series.save(update_fields=["last_error", "updated_at"])
+
+
+def _import_series(user, studio, calendar_url, remote_event, stats):
+    raw = _raw(remote_event.data)
+    _, master, _ = _master_and_overrides(raw)
+    uid = str(master["UID"])
+    remote_url = str(remote_event.url)
+    _allowed_calendar_url(remote_url)
+
+    series, made = ICloudCalendarSeries.objects.get_or_create(
+        user=user, calendar_url=calendar_url, uid=uid,
+        defaults={"studio": studio, "remote_url": remote_url}
+    )
+    remote_hash = _hash(raw)
+    dirty = [
+        entry for entry in series.occurrences.select_related("lesson")
+        if entry.lesson and entry.synced_signature and
+        _lesson_signature(entry.lesson) != entry.synced_signature
+    ]
+    if not made and remote_hash != series.remote_hash and dirty:
+        _set_error(series, "Konflikt: Termin wurde gleichzeitig in Apple und StudioSync geändert.")
+        stats["conflicts"] += 1
+        return series
+    if not made and remote_hash == series.remote_hash and not dirty and series.student_id:
+        # Still expand below, since the 12-month rolling window moves every day.
+        pass
+    elif not made and remote_hash == series.remote_hash and dirty:
+        # Caller will export these changes after importing every remote event.
+        return series
+
+    series.remote_url = remote_url
+    series.ical_data = raw
+    series.remote_hash = remote_hash
+    series.title = _raw(master.get("SUMMARY", ""))[:500]
+    series.location = _raw(master.get("LOCATION", ""))[:500]
+    series.last_synced_at = timezone.now()
+    series.last_error = ""
+    if not series.teacher_id:
+        series.teacher = _default_teacher(studio)
+    if not series.student_id:
+        series.student = _resolve_student(series, master)
+    series.save()
+
+    if not series.student_id or not series.teacher_id:
+        _set_error(series, "Schüler zuordnen" if not series.student_id else "Keine Lehrkraft vorhanden")
+        stats["unassigned"] += 1
+        return series
+
+    expected = _expand(raw)
+    present = set()
+    for entry in expected:
+        rid, start, end = entry["rid"], entry["start"], entry["end"]
+        present.add(rid)
+        if not start or not end or start >= end:
+            continue
+        link, created = ICloudCalendarOccurrence.objects.get_or_create(
+            series=series, recurrence_id=rid
+        )
+        lesson = link.lesson
+        if not lesson and not entry["cancelled"]:
+            # Attach an existing local lesson before creating a new one.
+            matching = Lesson.objects.filter(
+                studio=studio, student=series.student, teacher=series.teacher,
+                scheduled_start=start, scheduled_end=end,
+            ).exclude(icloud_occurrence__isnull=False).first()
+            if matching:
+                lesson = matching
+            elif _conflict(None, series.student, series.teacher, start, end):
+                _set_error(series, "Terminkollision: " + entry["title"][:100])
+                stats["conflicts"] += 1
+                continue
+            else:
+                lesson = Lesson(
+                    studio=studio, student=series.student, teacher=series.teacher,
+                    scheduled_start=start, scheduled_end=end, status="scheduled",
+                    location=entry["location"][:200], lesson_type="private",
+                )
+                # Never call save(): that would send one email per imported lesson.
+                Lesson.objects.bulk_create([lesson])
+                stats["imported"] += 1
+            link.lesson = lesson
+        if lesson:
+            if lesson.status in COMPLETED_STATUSES:
+                # Accounting history is authoritative, not the calendar.
+                link.synced_signature = _lesson_signature(lesson)
+            else:
+                if not entry["cancelled"] and _conflict(lesson, series.student, series.teacher, start, end):
+                    _set_error(series, "Terminkollision: " + entry["title"][:100])
+                    stats["conflicts"] += 1
+                    continue
+                changes = {
+                    "scheduled_start": start, "scheduled_end": end,
+                    "location": entry["location"][:200],
+                    "status": "cancelled" if entry["cancelled"] else "scheduled",
+                }
+                Lesson.objects.filter(pk=lesson.pk).update(**changes)
+                for key, value in changes.items():
+                    setattr(lesson, key, value)
+                link.synced_signature = _lesson_signature(lesson)
+        link.save()
+
+    for link in series.occurrences.select_related("lesson"):
+        if link.recurrence_id in present or not link.lesson:
+            continue
+        lesson = link.lesson
+        if (timezone.now() - timedelta(days=WINDOW_BEFORE) <= lesson.scheduled_start
+                <= timezone.now() + timedelta(days=WINDOW_AFTER)
+                and lesson.status not in COMPLETED_STATUSES):
+            Lesson.objects.filter(pk=lesson.pk).update(status="cancelled")
+            lesson.status = "cancelled"
+            link.synced_signature = _lesson_signature(lesson)
+            link.save(update_fields=["synced_signature", "updated_at"])
+    return series
+
+
+def _ical_for_lesson(lesson):
+    ical = Calendar()
+    ical.add("prodid", "-//MUSart StudioSync//iCloud//DE")
+    ical.add("version", "2.0")
+    event = Event()
+    event.add("uid", f"studiosync-{lesson.id}@musart.de")
+    event.add("dtstamp", timezone.now())
+    event.add("dtstart", lesson.scheduled_start.astimezone(LOCAL_TZ))
+    event.add("dtend", lesson.scheduled_end.astimezone(LOCAL_TZ))
+    event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else "MUSart Unterricht")
+    event.add("location", lesson.location or "")
+    if lesson.student_id:
+        event.add("X-STUDIOSYNC-STUDENT-ID", str(lesson.student_id))
+    if lesson.status == "cancelled":
+        event.add("status", "CANCELLED")
+    ical.add_component(event)
+    return ical.to_ical().decode("utf-8")
+
+
+def _set_property(event, key, value):
+    if key in event:
+        del event[key]
+    event.add(key.lower(), value)
+
+
+def _push_changes(series, remote, stats):
+    raw = _raw(remote.data)
+    if _hash(raw) != series.remote_hash:
+        _set_error(series, "Konflikt: iCloud wurde nach dem letzten Abgleich verändert.")
+        stats["conflicts"] += 1
+        return
+
+    cal, master, overrides = _master_and_overrides(raw)
+    recurring = bool(master.get("RRULE"))
+    modified_links = []
+    for entry in series.occurrences.select_related("lesson"):
+        if not entry.lesson:
+            continue
+        lesson = entry.lesson
+        if _lesson_signature(lesson) == entry.synced_signature:
+            continue
+        if lesson.status in COMPLETED_STATUSES:
+            # Calendar never controls the teaching/accounting classification.
+            entry.synced_signature = _lesson_signature(lesson)
+            entry.save(update_fields=["synced_signature", "updated_at"])
+            continue
+        if recurring:
+            override = overrides.get(entry.recurrence_id)
+            if override is None:
+                override = Event()
+                override.add("uid", series.uid)
+                override.add("recurrence-id", datetime.fromisoformat(entry.recurrence_id).astimezone(LOCAL_TZ))
+                cal.add_component(override)
+            target = override
+        else:
+            target = master
+        _set_property(target, "DTSTART", lesson.scheduled_start.astimezone(LOCAL_TZ))
+        _set_property(target, "DTEND", lesson.scheduled_end.astimezone(LOCAL_TZ))
+        _set_property(target, "LOCATION", lesson.location or "")
+        _set_property(target, "STATUS", "CANCELLED" if lesson.status == "cancelled" else "CONFIRMED")
+        _set_property(target, "DTSTAMP", timezone.now())
+        modified_links.append(entry)
+
+    if not modified_links:
+        return
+    remote.data = cal.to_ical().decode("utf-8")
+    remote.save()
+    remote.load()
+    series.ical_data = _raw(remote.data)
+    series.remote_hash = _hash(series.ical_data)
+    series.last_synced_at = timezone.now()
+    series.last_error = ""
+    series.save(update_fields=["ical_data", "remote_hash", "last_synced_at", "last_error", "updated_at"])
+    for link in modified_links:
+        link.synced_signature = _lesson_signature(link.lesson)
+        link.save(update_fields=["synced_signature", "updated_at"])
+        stats["exported"] += 1
+
+
+def sync_icloud_user(user):
+    """Run one pull-then-push, idempotent round trip; returns per-direction counts."""
+    from apps.core.tenancy import studios_for_request
+    cfg = _settings(user)
+    calendar_url = _allowed_calendar_url(cfg.get("icloud_calendar_url") or "")
+    username, password = _credentials(user)
+    studio = user.owned_studios.order_by("id").first()
+    if not studio:
+        raise ICloudSetupError("Kein eigenes Studio gefunden.")
+    stats = {"imported": 0, "exported": 0, "unassigned": 0, "conflicts": 0}
+    with _connect(username, password) as client:
+        available = {item["url"] for item in _discover(client)}
+        if calendar_url not in available:
+            raise ICloudSetupError("iCloud-Kalender wurde nicht gefunden.")
+        remote_calendar = client.calendar(url=calendar_url)
+        remote_items = {}
+        for item in remote_calendar.events():
+            try:
+                item.load()
+                _, master, _ = _master_and_overrides(_raw(item.data))
+                remote_items[str(master["UID"])] = item
+            except (ICloudSetupError, ValueError, TypeError):
+                # All-day, malformed and unrelated entries are not lessons.
+                continue
+
+        for uid, item in remote_items.items():
+            try:
+                with transaction.atomic():
+                    _import_series(user, studio, calendar_url, item, stats)
+            except Exception as exc:
+                stats["conflicts"] += 1
+                # Continue with the other unrelated series; never retry blindly.
+                ICloudCalendarSeries.objects.filter(
+                    user=user, calendar_url=calendar_url, uid=uid
+                ).update(last_error="Importfehler: " + str(exc)[:200])
+
+        all_series = ICloudCalendarSeries.objects.filter(user=user, calendar_url=calendar_url)
+        for series in all_series:
+            remote = remote_items.get(series.uid)
+            if remote is None:
+                # Never silently recreate a deleted remote event.
+                _set_error(series, "Terminserie in iCloud nicht mehr vorhanden.")
+                stats["conflicts"] += 1
+                continue
+            if series.last_error:
+                continue
+            try:
+                _push_changes(series, remote, stats)
+            except Exception as exc:
+                _set_error(series, "Exportfehler: " + str(exc)[:200])
+                stats["conflicts"] += 1
+
+        # Export stand-alone StudioSync lessons without iCloud identity.
+        low = timezone.now() - timedelta(days=WINDOW_BEFORE)
+        high = timezone.now() + timedelta(days=WINDOW_AFTER)
+        local_lessons = Lesson.objects.filter(
+            studio=studio, student__isnull=False,
+            scheduled_start__gte=low, scheduled_start__lte=high,
+        ).exclude(icloud_occurrence__isnull=False).select_related("student__user", "teacher")
+        for lesson in local_lessons:
+            if lesson.status == "cancelled":
+                continue
+            if any(
+                item["start"] == lesson.scheduled_start and item["end"] == lesson.scheduled_end
+                for series in all_series if series.uid in remote_items
+                for item in _expand(_raw(remote_items[series.uid].data))
+            ):
+                # An unresolved iCloud event already occupies this slot.
+                continue
+            try:
+                content = _ical_for_lesson(lesson)
+                created = remote_calendar.save_event(content)
+                created.load()
+                _, master, _ = _master_and_overrides(_raw(created.data))
+                record, _ = ICloudCalendarSeries.objects.get_or_create(
+                    user=user, calendar_url=calendar_url, uid=str(master["UID"]),
+                    defaults={
+                        "studio": studio, "student": lesson.student,
+                        "teacher": lesson.teacher, "title": str(master.get("SUMMARY", "")),
+                    },
+                )
+                record.remote_url = str(created.url)
+                record.ical_data = _raw(created.data)
+                record.remote_hash = _hash(record.ical_data)
+                record.last_synced_at = timezone.now()
+                record.save()
+                ICloudCalendarOccurrence.objects.update_or_create(
+                    series=record, recurrence_id=_key(lesson.scheduled_start),
+                    defaults={"lesson": lesson, "synced_signature": _lesson_signature(lesson)},
+                )
+                stats["exported"] += 1
+            except Exception as exc:
+                stats["conflicts"] += 1
+                # Avoid leaking secrets or mail contents in user-facing errors.
+                stats["last_error"] = "Export eines StudioSync-Termins fehlgeschlagen."
+    return stats
+
+
+def create_icloud_series(user, *, student, teacher, start, end, frequency, until=None):
+    """Create a real VEVENT recurrence in Apple and import its instances."""
+    if frequency not in {"weekly", "biweekly", "monthly"}:
+        raise ICloudSetupError("Ungültige Wiederholungsregel.")
+    if student.studio_id != teacher.studio_id or student.studio.owner_id != user.id:
+        raise ICloudSetupError("Schüler und Lehrkraft müssen zum eigenen Studio gehören.")
+    if end <= start:
+        raise ICloudSetupError("Das Terminende muss nach dem Beginn liegen.")
+    calendar_url = _allowed_calendar_url(_settings(user).get("icloud_calendar_url") or "")
+    username, password = _credentials(user)
+
+    ical = Calendar()
+    ical.add("prodid", "-//MUSart StudioSync//iCloud recurrence//DE")
+    ical.add("version", "2.0")
+    event = Event()
+    event.add("uid", f"studiosync-{uuid.uuid4()}@musart.de")
+    event.add("dtstamp", timezone.now())
+    event.add("dtstart", start.astimezone(LOCAL_TZ))
+    event.add("dtend", end.astimezone(LOCAL_TZ))
+    event.add("summary", student.user.get_full_name())
+    event.add("X-STUDIOSYNC-STUDENT-ID", str(student.id))
+    values = {"freq": "monthly" if frequency == "monthly" else "weekly"}
+    if frequency == "biweekly":
+        values["interval"] = 2
+    if until:
+        values["until"] = until
+    event.add("rrule", values)
+    ical.add_component(event)
+    with _connect(username, password) as client:
+        if calendar_url not in {item["url"] for item in _discover(client)}:
+            raise ICloudSetupError("Der gewählte iCloud-Kalender ist nicht erreichbar.")
+        cal = client.calendar(url=calendar_url)
+        saved = cal.save_event(ical.to_ical().decode("utf-8"))
+        saved.load()
+        stats = {"imported": 0, "exported": 0, "unassigned": 0, "conflicts": 0}
+        _import_series(user, student.studio, calendar_url, saved, stats)
+    return stats
+
+
+def sync_all_icloud_users():
+    """Entry point for the existing Django-Q scheduler."""
+    results = {}
+    for user in User.objects.filter(role="admin", owned_studios__isnull=False).distinct():
+        cfg = _settings(user)
+        if not (cfg.get("icloud_calendar_url") and cfg.get("icloud_app_password")):
+            continue
+        try:
+            results[str(user.pk)] = sync_icloud_user(user)
+        except Exception:
+            results[str(user.pk)] = {"error": "iCloud-Abgleich fehlgeschlagen"}
+    return results
