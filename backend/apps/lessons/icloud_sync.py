@@ -57,7 +57,9 @@ def _lesson_signature(lesson):
     values = [
         lesson.scheduled_start.astimezone(utc_timezone.utc).isoformat(),
         lesson.scheduled_end.astimezone(utc_timezone.utc).isoformat(),
-        lesson.status, lesson.location or "", lesson.summary or "", str(lesson.student_id or ""),
+        lesson.status, lesson.location or "", lesson.summary or "",
+        lesson.guest_name or "", lesson.guest_address or "",
+        str(lesson.student_id or ""),
         str(lesson.teacher_id),
     ]
     return _hash(json.dumps(values, ensure_ascii=False))
@@ -183,9 +185,9 @@ def _conflict(lesson, student, teacher, start, end):
     Exclude the exact linked lesson being updated.
     """
     overlapping = Lesson.objects.filter(
-        studio=student.studio, status__in=["scheduled", "in_progress"],
+        studio=teacher.studio, status__in=["scheduled", "in_progress"],
         scheduled_start__lt=end, scheduled_end__gt=start,
-    ).filter(Q(teacher=teacher) | Q(student=student))
+    ).filter(Q(teacher=teacher) | (Q(student=student) if student else Q(pk__isnull=True)))
     if lesson is not None:
         overlapping = overlapping.exclude(pk=lesson.pk)
     return overlapping.select_related(
@@ -274,8 +276,10 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         series.student = _resolve_student(series, master)
     series.save()
 
-    if not series.student_id or not series.teacher_id:
-        _set_error(series, "Schüler zuordnen" if not series.student_id else "Keine Lehrkraft vorhanden")
+    guest_name = _raw(master.get("X-STUDIOSYNC-GUEST-NAME", "")).strip()[:200]
+    guest_address = _raw(master.get("X-STUDIOSYNC-GUEST-ADDRESS", "")).strip()[:500]
+    if (not series.student_id and not guest_name) or not series.teacher_id:
+        _set_error(series, "Schüler zuordnen" if not series.student_id and not guest_name else "Keine Lehrkraft vorhanden")
         stats["unassigned"] += 1
         return series
 
@@ -308,7 +312,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             # Attach an existing local lesson before creating a new one.
             matching = Lesson.objects.filter(
                 studio=studio, student=series.student, teacher=series.teacher,
-                scheduled_start=start, scheduled_end=end,
+                guest_name=guest_name, scheduled_start=start, scheduled_end=end,
             ).exclude(icloud_occurrence__isnull=False).first()
             if matching:
                 lesson = matching
@@ -320,6 +324,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                     continue
                 lesson = Lesson(
                     studio=studio, student=series.student, teacher=series.teacher,
+                    guest_name=guest_name, guest_address=guest_address,
                     scheduled_start=start, scheduled_end=end, status="scheduled",
                     location=entry["location"][:200], summary=entry["description"][:5000],
                     lesson_type="private",
@@ -349,6 +354,8 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                     "scheduled_start": start, "scheduled_end": end,
                     "location": entry["location"][:200],
                     "summary": entry["description"][:5000],
+                    "guest_name": guest_name,
+                    "guest_address": guest_address,
                     "status": "cancelled" if entry["cancelled"] else "scheduled",
                 }
                 Lesson.objects.filter(pk=lesson.pk).update(**changes)
@@ -385,8 +392,12 @@ def _ical_for_lesson(lesson):
     event.add("dtstamp", timezone.now())
     event.add("dtstart", lesson.scheduled_start.astimezone(LOCAL_TZ))
     event.add("dtend", lesson.scheduled_end.astimezone(LOCAL_TZ))
-    event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else "MUSart Unterricht")
-    event.add("location", lesson.location or "")
+    event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else (lesson.guest_name or "MUSart Unterricht"))
+    event.add("location", lesson.guest_address or lesson.location or "")
+    if lesson.guest_name and not lesson.student_id:
+        event.add("X-STUDIOSYNC-GUEST-NAME", lesson.guest_name)
+        if lesson.guest_address:
+            event.add("X-STUDIOSYNC-GUEST-ADDRESS", lesson.guest_address)
     if lesson.summary:
         event.add("description", lesson.summary)
     if lesson.student_id:
@@ -476,8 +487,12 @@ def _push_changes(series, remote, stats):
                 return
             _set_property(target, "DTSTART", lesson.scheduled_start.astimezone(LOCAL_TZ))
             _set_property(target, "DTEND", lesson.scheduled_end.astimezone(LOCAL_TZ))
-            _set_property(target, "LOCATION", lesson.location or "")
+            _set_property(target, "LOCATION", lesson.guest_address or lesson.location or "")
             _set_property(target, "DESCRIPTION", lesson.summary or "")
+            if lesson.guest_name and not lesson.student_id:
+                _set_property(target, "SUMMARY", lesson.guest_name)
+                _set_property(target, "X-STUDIOSYNC-GUEST-NAME", lesson.guest_name)
+                _set_property(target, "X-STUDIOSYNC-GUEST-ADDRESS", lesson.guest_address or "")
             _set_property(target, "STATUS", "CANCELLED" if lesson.status == "cancelled" else "CONFIRMED")
         _set_property(target, "DTSTAMP", timezone.now())
         modified_links.append(entry)
@@ -581,8 +596,9 @@ def _sync_icloud_user_impl(user):
         low = timezone.now() - timedelta(days=WINDOW_BEFORE)
         high = timezone.now() + timedelta(days=WINDOW_AFTER)
         local_lessons = Lesson.objects.filter(
-            studio=studio, student__isnull=False,
-            scheduled_start__gte=low, scheduled_start__lte=high,
+            studio=studio, scheduled_start__gte=low, scheduled_start__lte=high,
+        ).filter(
+            Q(student__isnull=False) | ~Q(guest_name="")
         ).exclude(icloud_occurrence__isnull=False).select_related("student__user", "teacher")
         for lesson in local_lessons:
             if lesson.status == "cancelled":
