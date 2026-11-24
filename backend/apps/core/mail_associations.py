@@ -6,9 +6,12 @@ override an ambiguous message without altering the other messages.
 """
 
 from collections import defaultdict
+from datetime import datetime, timezone as dt_timezone
 from email.utils import getaddresses
 
-from apps.core.models import MailMessageCache, Student
+from django.db.models import Q
+
+from apps.core.models import MailDraft, MailMessageCache, Student
 
 
 def normalize_address(address):
@@ -94,27 +97,77 @@ def enrich_cached_message(row, catalog, by_address):
     }
 
 
-def mail_student_overview(studio, owner, account_key, student_id, limit=25):
-    """Overview is a bounded snapshot; link opens the real filtered mailclient."""
-    catalog, by_address = student_catalog(studio)
-    if str(student_id) not in catalog:
-        return None
-    from apps.core.models import MailMessageCache
+def _sort_timestamp(value):
+    """Sort mixed historical IMAP dates and draft timestamps safely."""
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value or ""))
+        except (ValueError, TypeError):
+            return float("-inf")
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt_timezone.utc)
+    return parsed.timestamp()
 
-    matches = []
-    rows = MailMessageCache.objects.filter(
+
+def mail_student_overview(studio, owner, account_key, student_id,
+                          limit=40, offset=0):
+    """All matching received/sent mail and local drafts, paginated newest first.
+
+    Search all cached IMAP folders (including archive) and private PostgreSQL
+    drafts. No fixed 25/5000 message ceiling: retrieve just the prefix needed
+    for this requested page from each source and merge by date.
+    """
+    sid = str(student_id)
+    catalog, _ = student_catalog(studio)
+    if sid not in catalog:
+        return None
+    if not isinstance(offset, int) or not isinstance(limit, int) or (
+        offset < 0 or offset > 1_000_000 or limit < 1 or limit > 100
+    ):
+        raise ValueError("Ungültige Seitenauswahl.")
+
+    addresses = catalog[sid]["addresses"]
+    address_queries = Q()
+    for address in addresses:
+        # New cache entries contain full normalized MIME participants;
+        # the fallback also supports older entries without backfilled headers.
+        address_queries |= Q(contact_addresses__contains=[address])
+        address_queries |= Q(email__iexact=address)
+
+    auto_query = Q(manual_student_ids__isnull=True) & address_queries
+    manual_query = Q(manual_student_ids__contains=[sid])
+    mail_qs = MailMessageCache.objects.filter(
         folder_cache__studio=studio,
         folder_cache__owner=owner,
         folder_cache__account_key=account_key,
-    ).exclude(folder_cache__folder__in=["spam", "trash"]).select_related(
-        "folder_cache"
-    ).order_by("-date", "-uid")[:5000]
-    for record in rows:
-        if str(student_id) not in assigned_student_ids(record, catalog, by_address):
-            continue
-        matches.append({
-            "folder": record.folder_cache.folder,
+    ).exclude(folder_cache__folder="drafts").filter(
+        auto_query | manual_query
+    ).select_related("folder_cache").order_by("-date", "-uid")
+
+    # An unfinished message belongs to the student if explicitly selected
+    # or addressed to one of the same known student/parent contacts.
+    draft_match = Q(student_ids__contains=[sid])
+    for address in addresses:
+        draft_match |= Q(recipient__iexact=address)
+        draft_match |= Q(additional_recipient__iexact=address)
+    draft_qs = MailDraft.objects.filter(
+        studio=studio, owner=owner, account_key=account_key,
+    ).filter(draft_match).order_by("-updated_at", "-id")
+
+    mail_total = mail_qs.count()
+    draft_total = draft_qs.count()
+    total = mail_total + draft_total
+    through = offset + limit + 1
+
+    merged = []
+    for record in mail_qs[:through]:
+        folder = record.folder_cache.folder
+        merged.append({
+            "folder": folder,
             "uid": str(record.uid),
+            "category": "sent" if folder == "sent" else "received",
             "from": record.sender_name,
             "email": record.email,
             "subject": record.subject,
@@ -123,6 +176,35 @@ def mail_student_overview(studio, owner, account_key, student_id, limit=25):
             "unread": record.unread,
             "has_attachment": record.has_attachment,
         })
-        if len(matches) >= limit:
-            break
-    return {"student": catalog[str(student_id)], "messages": matches}
+
+    for draft in draft_qs.prefetch_related("local_attachments")[:through]:
+        merged.append({
+            "folder": "drafts",
+            "uid": str(draft.pk),
+            "category": "draft",
+            "from": "Entwurf an: " + (draft.recipient or "Empfänger noch offen"),
+            "email": draft.recipient,
+            "subject": draft.subject or "(Ohne Betreff)",
+            "date": draft.updated_at.isoformat(),
+            "preview": draft.body[:160],
+            "unread": False,
+            "has_attachment": bool(draft.resource_ids or draft.local_attachments.all()),
+        })
+
+    merged.sort(
+        key=lambda item: (_sort_timestamp(item["date"]), item["folder"], item["uid"]),
+        reverse=True,
+    )
+    return {
+        "student": catalog[sid],
+        "messages": merged[offset:offset + limit],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + limit < total,
+        "counts": {
+            "received": mail_qs.exclude(folder_cache__folder="sent").count(),
+            "sent": mail_qs.filter(folder_cache__folder="sent").count(),
+            "draft": draft_total,
+        },
+    }
