@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { INTERNATIONAL_EMAIL_PATTERN, INTERNATIONAL_EMAIL_HINT } from '@/lib/internationalEmail'
 
 export type StudentPersonalData = {
     first_name: string; last_name: string; email: string; phone: string
@@ -74,7 +75,10 @@ export default function StudentPersonalFields({ value, onChange }: {
     ) => (
         <label key={key} className="block space-y-1 text-sm font-medium text-gray-700">
             {t(key)}
-            <input type={type} name={key} value={value[key] || ''} required={required}
+            <input type={type === 'email' ? 'text' : type} name={key} value={value[key] || ''} required={required}
+                inputMode={type === 'email' ? 'email' : undefined}
+                pattern={type === 'email' ? INTERNATIONAL_EMAIL_PATTERN : undefined}
+                title={type === 'email' ? INTERNATIONAL_EMAIL_HINT : undefined}
                 autoComplete={autoComplete}
                 onChange={event => onChange({ [key]: event.target.value })}
                 className="block w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900"
