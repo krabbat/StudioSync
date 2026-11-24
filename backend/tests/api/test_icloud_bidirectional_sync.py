@@ -6,7 +6,7 @@ import pytest
 from django.utils import timezone
 from icalendar import Calendar, Event
 
-from apps.lessons.icloud_sync import _expand, sync_icloud_user
+from apps.lessons.icloud_sync import LOCAL_TZ, _expand, sync_icloud_user
 from apps.lessons.models import Lesson, ICloudCalendarSeries, ICloudCalendarOccurrence
 
 CALENDAR_URL = "https://p12-caldav.icloud.com/abc/calendars/unterricht/"
@@ -178,7 +178,7 @@ def test_collision_names_exact_blocking_lesson_and_clears_after_rebooking(
         assert first["conflicts"] == 1
         assert "Terminkollision:" in series.last_error
         assert "Lina Becker" in series.last_error
-        assert start.astimezone(timezone.get_current_timezone()).strftime("%d.%m.%Y") in series.last_error
+        assert start.astimezone(LOCAL_TZ).strftime("%d.%m.%Y") in series.last_error
         assert "Lehrkraft bereits belegt" in series.last_error
 
         # The original blocker is moved to a different time.
