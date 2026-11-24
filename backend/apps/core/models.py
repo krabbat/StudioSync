@@ -714,6 +714,9 @@ class MailMessageCache(models.Model):
     has_attachment = models.BooleanField(default=False)
     size = models.BigIntegerField(null=True, blank=True)
     preview = models.TextField(blank=True)
+    contact_addresses = models.JSONField(default=list, blank=True)
+    # None = automatic matching; [] = explicitly unassigned.
+    manual_student_ids = models.JSONField(null=True, blank=True, default=None)
     attachments = models.JSONField(default=list, blank=True)
     body = models.TextField(blank=True)
     body_loaded = models.BooleanField(default=False)
@@ -732,3 +735,39 @@ class MailMessageCache(models.Model):
                 name="mail_cache_folder_uid_desc",
             ),
         ]
+
+
+class MailDraft(models.Model):
+    """Owner-private, device-independent message draft, not an IMAP UID."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    studio = models.ForeignKey(Studio, on_delete=models.CASCADE, related_name="mail_drafts")
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mail_drafts")
+    account_key = models.CharField(max_length=64)
+    recipient = models.CharField(max_length=320, blank=True)
+    additional_recipient = models.CharField(max_length=320, blank=True)
+    student_ids = models.JSONField(default=list, blank=True)
+    resource_ids = models.JSONField(default=list, blank=True)
+    subject = models.CharField(max_length=220, blank=True)
+    body = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "mail_drafts"
+        ordering = ["-updated_at"]
+
+
+class MailDraftAttachment(models.Model):
+    """Bounded private attachment in PostgreSQL; never exposed via MEDIA_URL."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    draft = models.ForeignKey(
+        MailDraft, on_delete=models.CASCADE, related_name="local_attachments"
+    )
+    filename = models.CharField(max_length=200)
+    content_type = models.CharField(max_length=150, default="application/octet-stream")
+    payload = models.BinaryField()
+
+    class Meta:
+        db_table = "mail_draft_attachments"
