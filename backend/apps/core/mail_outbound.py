@@ -397,7 +397,11 @@ def send_student_mail(
             email = EmailMultiAlternatives(
                 subject=title,
                 body=plain_mail_with_signature(content),
-                from_email=formataddr((studio.name, settings["sender"])),
+                from_email=(
+                    formataddr((studio.name, settings["sender"]))
+                    if settings["sender"].split("@", 1)[0].isascii()
+                    else settings["sender"]
+                ),
                 to=[recipient["email"]],
                 connection=connection,
                 headers={"Message-ID": make_msgid()},
