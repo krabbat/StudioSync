@@ -789,11 +789,12 @@ export default function SchedulePage() {
                             if (slotLessons.length === 0) {
                               const dateStr = format(weekDays[dayIdx], "yyyy-MM-dd");
                               const hourStr = `${hour.toString().padStart(2, "0")}:00`;
-                              setNewBooking({
-                                ...newBooking,
+                              resetBooking();
+                              setNewBooking((previous) => ({
+                                ...previous,
                                 date: dateStr,
                                 time: hourStr,
-                              });
+                              }));
                               setEditingLessonId(null);
                               setBookingMode("individual");
                               setShowBookingModal(true);
@@ -917,11 +918,12 @@ export default function SchedulePage() {
                       onDoubleClick={() => {
                         const dateStr = format(day, "yyyy-MM-dd");
                         const hourStr = bookingDefaults.time;
-                        setNewBooking({
-                          ...newBooking,
+                        resetBooking();
+                        setNewBooking((previous) => ({
+                          ...previous,
                           date: dateStr,
                           time: hourStr,
-                        });
+                        }));
                         setEditingLessonId(null);
                         setBookingMode("individual");
                         setShowBookingModal(true);
@@ -1184,7 +1186,10 @@ export default function SchedulePage() {
                     </label>
                     <select
                       value={newBooking.teacher}
-                      onChange={(e) => setNewBooking({ ...newBooking, teacher: e.target.value })}
+                      onChange={(e) => {
+                       teacherManuallyChanged.current = true;
+                       setNewBooking({ ...newBooking, teacher: e.target.value });
+                     }}
                       className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                     >
                       <option value="">
@@ -1232,9 +1237,11 @@ export default function SchedulePage() {
                       <select
                         required
                         value={newBooking.student}
-                        onChange={(e) =>
-                          setNewBooking({ ...newBooking, student: e.target.value, band: "" })
-                        }
+                        onChange={(e) => {
+                           durationManuallyChanged.current = false;
+                           setNewBooking({ ...newBooking, student: e.target.value,
+                             band: "", duration: 60 });
+                         }}
                         className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                       >
                         <option value="">{tr('selectStudent')}</option>
@@ -1252,7 +1259,8 @@ export default function SchedulePage() {
                           if (!val) {
                             setNewBooking({ ...newBooking, student: "", band: "" });
                           } else if (students.find((s) => s.id === val)) {
-                            setNewBooking({ ...newBooking, student: val, band: "" });
+                            durationManuallyChanged.current = false;
+                             setNewBooking({ ...newBooking, student: val, band: "", duration: 60 });
                           } else {
                             setNewBooking({ ...newBooking, band: val, student: "" });
                           }
@@ -1286,7 +1294,10 @@ export default function SchedulePage() {
                   </label>
                   <select
                     value={newBooking.teacher}
-                    onChange={(e) => setNewBooking({ ...newBooking, teacher: e.target.value })}
+                    onChange={(e) => {
+                       teacherManuallyChanged.current = true;
+                       setNewBooking({ ...newBooking, teacher: e.target.value });
+                     }}
                     className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                   >
                     <option value="">
@@ -1378,9 +1389,10 @@ export default function SchedulePage() {
                   min="15"
                   step="15"
                   value={newBooking.duration}
-                  onChange={(e) =>
-                    setNewBooking({ ...newBooking, duration: parseInt(e.target.value) })
-                  }
+                  onChange={(e) => {
+                     durationManuallyChanged.current = true;
+                     setNewBooking({ ...newBooking, duration: parseInt(e.target.value) });
+                   }}
                   className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all"
                 />
               </div>
