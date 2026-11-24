@@ -21,6 +21,9 @@ from apps.core.views.mail import (
     MailCachedFolderDetailView,
     MailCachedFolderListView,
     MailCachedFolderSyncView,
+    MailStudentCatalogView,
+    MailStudentOverviewView,
+    MailMessageAssociationView,
     MailFolderActionView,
     MailFolderDetailView,
     MailFolderListView,
@@ -79,6 +82,21 @@ urlpatterns = (
             r"^mail/inbox/(?P<uid>[0-9]+)/?$",
             MailInboxDetailView.as_view(),
             name="mail-inbox-detail",
+        ),
+        path(
+            "mail/cache/students/",
+            MailStudentCatalogView.as_view(),
+            name="mail-student-catalog",
+        ),
+        path(
+            "mail/cache/students/<uuid:student_id>/overview/",
+            MailStudentOverviewView.as_view(),
+            name="mail-student-overview",
+        ),
+        re_path(
+            r"^mail/cache/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/(?P<uid>[0-9]+)/students/?$",
+            MailMessageAssociationView.as_view(),
+            name="mail-message-students",
         ),
         re_path(
             r"^mail/cache/folders/(?P<folder>inbox|sent|drafts|archive|spam|trash)/?$",
