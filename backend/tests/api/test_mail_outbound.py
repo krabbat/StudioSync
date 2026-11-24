@@ -148,7 +148,8 @@ def test_real_smtp_sends_only_one_private_mail_to_shared_family_address(
     assert sent.to == ["eltern@example.org"]
     assert sent.bcc == []
     assert sent.subject == "Noten"
-    assert sent.body.startswith("Hier sind die Übungen.\\n\\n-- \\n".replace("\\\\n", "\\n"))
+    assert sent.body.splitlines()[0] == "Hier sind die Übungen."
+    assert sent.body.count("Musikunterricht Sartori") == 1
     assert "Musikunterricht Sartori" in sent.body
     assert "Peter Müller" in sent.body
     assert sent.alternatives[0].mimetype == "text/html"
