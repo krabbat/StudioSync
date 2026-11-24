@@ -786,11 +786,11 @@ export default function MailWorkspace() {
                             <Filter size={18} />
                         </button>
                         <button type="button" className="mail-fetch-button"
-                            onClick={() => void loadFolder(folder, true)}
-                            disabled={mailLoading || mailActionBusy}
-                            aria-label="Mails abrufen" title="Aktuellen IMAP-Ordner abrufen">
-                            <RefreshCw size={16} className={mailLoading ? 'animate-spin' : ''} />
-                            <span>Abrufen</span>
+                            onClick={() => void refreshFolder()}
+                            disabled={mailLoading || mailActionBusy || cacheSyncing}
+                            aria-label="Mails abrufen" title="IMAP-Abgleich im Hintergrund starten">
+                            <RefreshCw size={16} className={mailLoading || cacheSyncing ? 'animate-spin' : ''} />
+                            <span>{cacheSyncing ? 'Gleicht ab …' : 'Abrufen'}</span>
                         </button>
                         <button type="button" className="mail-primary-icon" aria-label="Neue E-Mail"
                             title="Neue E-Mail entwerfen" onClick={() => compose()}>
@@ -902,17 +902,23 @@ export default function MailWorkspace() {
                 {mailError && (
                     <div className="mail-fetch-error" role="alert">{mailError}</div>
                 )}
+                {cacheSyncing && !lastFetched && (
+                    <div className="mail-fetch-status" role="status">
+                        Nachrichten werden erstmals im Hintergrund übernommen …
+                    </div>
+                )}
                 {lastFetched && folder !== 'outbox' && (
                     <div className="mail-fetch-status">
                         Letzter Abruf: {lastFetched.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                        {mailLoading && ' · Aktualisierung läuft'}
+                        {cacheSyncing && ' · Abgleich im Hintergrund'}
                     </div>
                 )}
                 <div className="mail-list-scroll">
                     {visible.length === 0 && (
                         <div className="mail-list-empty">
                             <Mail size={24} />
-                            <p>{mailLoading ? 'Nachrichten werden geladen …' :
+                            <p>{mailLoading || (cacheSyncing && !lastFetched) ?
+                                'Nachrichten werden synchronisiert …' :
                                 folder === 'outbox' ? 'Postausgang wird später angebunden.' :
                                 mailError ? 'Abruf fehlgeschlagen.' : 'Keine Nachrichten in dieser Ansicht.'}</p>
                             <span>{folder === 'outbox'
@@ -965,9 +971,11 @@ export default function MailWorkspace() {
                         )
                     })}
                     {folder !== 'outbox' && hasMore && (
-                        <button type="button" className="mail-load-more" disabled={mailLoading}
+                        <button type="button" className="mail-load-more"
+                            disabled={mailLoading || pendingPageOffset !== null}
                             onClick={() => void loadFolder(folder, false, nextOffset)}>
-                            {mailLoading ? 'Lädt …' : 'Weitere Nachrichten laden'}
+                            {mailLoading || pendingPageOffset !== null
+                                ? 'Wird nachgeladen …' : 'Weitere Nachrichten laden'}
                         </button>
                     )}
                 </div>
