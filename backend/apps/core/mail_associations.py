@@ -10,9 +10,9 @@ from datetime import datetime, timezone as dt_timezone
 from email.utils import getaddresses
 
 from django.db import connection
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 
-from apps.core.models import MailDraft, MailMessageCache, Student
+from apps.core.models import MailDraft, MailDraftAttachment, MailMessageCache, Student
 
 
 def normalize_address(address):
@@ -121,7 +121,7 @@ def mail_student_overview(studio, owner, account_key, student_id,
     for this requested page from each source and merge by date.
     """
     sid = str(student_id)
-    catalog, _ = student_catalog(studio)
+    catalog, by_address = student_catalog(studio)
     if sid not in catalog:
         return None
     if not isinstance(offset, int) or not isinstance(limit, int) or (
@@ -140,6 +140,10 @@ def mail_student_overview(studio, owner, account_key, student_id,
     ).order_by("-date", "-uid")
     base_drafts = MailDraft.objects.filter(
         studio=studio, owner=owner, account_key=account_key,
+    ).annotate(
+        has_local_attachment=Exists(
+            MailDraftAttachment.objects.filter(draft_id=OuterRef("pk"))
+        )
     ).order_by("-updated_at", "-id")
 
     if connection.vendor == "postgresql":
@@ -162,11 +166,10 @@ def mail_student_overview(studio, owner, account_key, student_id,
         sent_count = mail_qs.filter(folder_cache__folder="sent").count()
         draft_total = draft_qs.count()
         mail_rows = list(mail_qs[:through])
-        draft_rows = list(draft_qs.prefetch_related("local_attachments")[:through])
+        draft_rows = list(draft_qs[:through])
     else:
         # SQLite does not support JSONField__contains. This fallback also
         # lets local tests exercise precisely the same association semantics.
-        _, by_address = student_catalog(studio)
         mail_matches = [
             row for row in base_mail.iterator(chunk_size=500)
             if sid in assigned_student_ids(row, catalog, by_address)
@@ -212,7 +215,7 @@ def mail_student_overview(studio, owner, account_key, student_id,
             "date": draft.updated_at.isoformat(),
             "preview": draft.body[:160],
             "unread": False,
-            "has_attachment": bool(draft.resource_ids or draft.local_attachments.all()),
+            "has_attachment": bool(draft.resource_ids or draft.has_local_attachment),
         })
 
     merged.sort(
