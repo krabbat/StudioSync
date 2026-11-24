@@ -102,6 +102,7 @@ export default function SchedulePage() {
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   const [use24Hour, setUse24Hour] = useState(locale === "de");
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
   const [icloudBusy, setIcloudBusy] = useState(false);
   const [icloudIssues, setIcloudIssues] = useState<{ title: string; error: string }[]>([]);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
@@ -506,6 +507,31 @@ export default function SchedulePage() {
       toast.error(error?.response?.data?.detail || 'iCloud-Abgleich fehlgeschlagen.');
     } finally {
       setIcloudBusy(false);
+    }
+  };
+
+  const deleteBooking = async (lessonId: string) => {
+    const selected = lessons.find((item: any) => item.id === lessonId);
+    const label = selected
+      ? `${selected.student_name || selected.band_name || 'Unterricht'} am ${format(parseISO(selected.scheduled_start), 'dd.MM.yyyy HH:mm')}`
+      : 'diesen Unterrichtstermin';
+    if (!window.confirm(`Soll ${label} wirklich dauerhaft gelöscht werden?\nBei einer Terminserie wird nur dieser einzelne Termin entfernt.`)) {
+      return;
+    }
+    setDeletingLessonId(lessonId);
+    try {
+      const response = await api.delete(`/lessons/${lessonId}/`);
+      toast.success(response.data?.detail || 'Unterrichtstermin gelöscht.');
+      if (response.data?.icloud_synced === false) {
+        toast.error('iCloud ist noch nicht aktualisiert. Bitte den Kalenderabgleich prüfen.');
+      }
+      setShowBookingModal(false);
+      resetBooking();
+      await refetchLessons();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Unterrichtstermin konnte nicht gelöscht werden.');
+    } finally {
+      setDeletingLessonId(null);
     }
   };
 
@@ -1564,6 +1590,20 @@ export default function SchedulePage() {
           </form>
         </DialogContent>
         <DialogFooter>
+          {editingLessonId && ['admin', 'teacher'].includes(currentUser?.role || '') && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void deleteBooking(editingLessonId)}
+              disabled={bookingLoading || deletingLessonId !== null}
+              className="gap-2 border-red-200 text-red-700 hover:bg-red-50"
+            >
+              {deletingLessonId === editingLessonId
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Trash2 className="w-4 h-4" />}
+              Termin löschen
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
