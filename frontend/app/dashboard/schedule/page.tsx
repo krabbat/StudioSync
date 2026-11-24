@@ -86,6 +86,8 @@ interface LessonBooking {
   online_meeting_url: string;
   status: string;
   cancellation_reason: string;
+  recurrence: "none" | "weekly" | "biweekly" | "monthly";
+  recurrence_until: string;
 }
 
 export default function SchedulePage() {
@@ -99,6 +101,7 @@ export default function SchedulePage() {
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   const [use24Hour, setUse24Hour] = useState(locale === "de");
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [icloudBusy, setIcloudBusy] = useState(false);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -283,6 +286,8 @@ export default function SchedulePage() {
     online_meeting_url: "",
     status: "scheduled",
     cancellation_reason: "",
+    recurrence: "none",
+    recurrence_until: "",
   });
 
   const [bookingMode, setBookingMode] = useState<"individual" | "band" | "event">("individual");
@@ -341,6 +346,8 @@ export default function SchedulePage() {
       online_meeting_url: "",
       status: "scheduled",
       cancellation_reason: "",
+    recurrence: "none",
+    recurrence_until: "",
     });
     setEditingLessonId(null);
   };
@@ -360,6 +367,8 @@ export default function SchedulePage() {
       online_meeting_url: lesson.online_meeting_url || "",
       status: lesson.status || "scheduled",
       cancellation_reason: lesson.cancellation_reason || "",
+      recurrence: "none",
+      recurrence_until: "",
     });
     setEditingLessonId(lesson.id);
 
@@ -480,6 +489,21 @@ export default function SchedulePage() {
     window.print();
   };
 
+  const syncAppleNow = async () => {
+    setIcloudBusy(true);
+    try {
+      const { data } = await api.post('/core/calendar/icloud/sync/');
+      refetchLessons();
+      toast.success('iCloud abgeglichen: ' + data.imported + ' importiert, ' + data.exported + ' exportiert.');
+      if (data.unassigned) toast('Nicht zugeordnete Serien: ' + data.unassigned + '. Bitte unter Einstellungen → Technik zuordnen.');
+      if (data.conflicts) toast.error('Kalenderkonflikte: ' + data.conflicts + '. Details unter Einstellungen → Technik.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'iCloud-Abgleich fehlgeschlagen.');
+    } finally {
+      setIcloudBusy(false);
+    }
+  };
+
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -539,7 +563,17 @@ export default function SchedulePage() {
         payload.online_meeting_url = newBooking.is_online ? newBooking.online_meeting_url : "";
       }
 
-      if (editingLessonId) {
+      if (!editingLessonId && newBooking.recurrence !== "none") {
+        if (bookingMode !== "individual" || !newBooking.student || currentUser?.role !== "admin") {
+          toast.error('Wiederholungen sind hier zunächst für einzelne Schüler und Administratoren vorgesehen.');
+          return;
+        }
+        await api.post('/core/calendar/icloud/series/create/', {
+          ...payload, frequency: newBooking.recurrence,
+          until: newBooking.recurrence_until || null,
+        });
+        toast.success('Wiederholungstermin in iCloud und StudioSync angelegt.');
+      } else if (editingLessonId) {
         await api.patch(`/lessons/${editingLessonId}/`, payload);
         toast.success(tr('messageLessonUpdatedSuccessfully'));
       } else {
@@ -550,6 +584,11 @@ export default function SchedulePage() {
       setShowBookingModal(false);
       resetBooking();
       refetchLessons();
+      if (currentUser?.role === 'admin' && currentUser?.preferences?.technical?.icloud_calendar_url) {
+        void api.post('/core/calendar/icloud/sync/').then(() => refetchLessons()).catch(() => {
+          toast.error('Der automatische iCloud-Abgleich ist fehlgeschlagen.');
+        });
+      }
     } catch (error: any) {
       console.error(error);
       const detail =
@@ -644,6 +683,13 @@ export default function SchedulePage() {
               {use24Hour ? "24h" : "12h"} <span className="text-[9px] text-gray-400 font-bold ml-1">{shortTimeZone}</span>
             </span>
           </Button>
+          {currentUser?.role === 'admin' && currentUser?.preferences?.technical?.icloud_calendar_url && (
+            <Button type="button" variant="outline" onClick={() => void syncAppleNow()}
+              disabled={icloudBusy} className="gap-2 w-full" title="Bidirektional mit iCloud synchronisieren">
+              <RefreshCw className={`w-4 h-4 ${icloudBusy ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">iCloud-Abgleich</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => setShowSubscribeModal(true)}
@@ -1425,6 +1471,32 @@ export default function SchedulePage() {
                 </select>
               </div>
             </div>
+
+            {!editingLessonId && currentUser?.role === 'admin' && bookingMode === 'individual' &&
+              currentUser?.preferences?.technical?.icloud_calendar_url && (
+              <div className="grid grid-cols-1 gap-3 rounded-xl border border-indigo-100 bg-indigo-50 p-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-700">Wiederholung (Apple-Kalender)</label>
+                  <select value={newBooking.recurrence}
+                    onChange={e => setNewBooking({ ...newBooking, recurrence: e.target.value as LessonBooking['recurrence'] })}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
+                    <option value="none">Einmaliger Termin</option>
+                    <option value="weekly">Jede Woche</option>
+                    <option value="biweekly">Alle zwei Wochen</option>
+                    <option value="monthly">Jeden Monat</option>
+                  </select>
+                </div>
+                {newBooking.recurrence !== 'none' && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-700">Wiederholen bis (optional)</label>
+                    <input type="date" value={newBooking.recurrence_until}
+                      min={newBooking.date || undefined}
+                      onChange={e => setNewBooking({ ...newBooking, recurrence_until: e.target.value })}
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm" />
+                  </div>
+                )}
+              </div>
+            )}
 
             {editingLessonId && (
               <div className="pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-300">
