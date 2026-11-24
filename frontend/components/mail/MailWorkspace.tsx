@@ -301,15 +301,20 @@ export default function MailWorkspace() {
         return () => document.removeEventListener('keydown', handleEscape)
     }, [resourcePickerOpen, composing, mailSending])
 
-    const loadFolder = useCallback(async (currentFolder: FolderId, reset = true, offset = 0) => {
+    const loadFolder = useCallback(async (
+        currentFolder: FolderId, reset = true, offset = 0, silent = false,
+    ) => {
         const generation = ++requestGeneration.current
-        if (reset) {
+        if (reset && !silent) {
             detailGeneration.current += 1
             setDetailLoading(false)
             setDetailError('')
+            setPendingPageOffset(null)
         }
-        setMailLoading(true)
-        setMailError('')
+        if (!silent) {
+            setMailLoading(true)
+            setMailError('')
+        }
         try {
             if (currentFolder === 'outbox') {
                 if (generation === requestGeneration.current) {
@@ -317,37 +322,59 @@ export default function MailWorkspace() {
                     setTotal(0)
                     setHasMore(false)
                     setUidvalidity(null)
+                    setCacheSyncing(false)
                     setSelectedId(null)
                     setSelectedMailIds([])
                 }
                 return
             }
             const response = await api.get<InboxPage>(
-                `/core/mail/folders/${currentFolder}/`,
+                '/core/mail/cache/folders/' + currentFolder + '/',
                 { params: { offset: reset ? 0 : offset, limit: 40 } },
             )
             if (generation !== requestGeneration.current) return
             const fresh = response.data.messages.map((item) => normalizeMessage(item, currentFolder))
-            setMessages((previous) => reset
-                ? fresh
-                : [...previous, ...fresh.filter((m) => !previous.some(
-                    (old) => old.id === m.id && old.folder === currentFolder
-                ))])
+            setMessages((previous) => {
+                // Keep already opened bodies when refreshing cached headers.
+                const oldMessages = new Map(previous
+                    .filter((item) => item.folder === currentFolder)
+                    .map((item) => [item.id, item]))
+                const keepBody = (item: MailPreview) => {
+                    const old = oldMessages.get(item.id)
+                    return old?.bodyLoaded ? {
+                        ...item, body: old.body, bodyLoaded: true,
+                        preview: old.preview, attachments: old.attachments,
+                    } : item
+                }
+                if (reset) return fresh.map(keepBody)
+                const existingIds = new Set(previous.map((item) => item.id))
+                return [...previous, ...fresh.filter((item) => !existingIds.has(item.id)).map(keepBody)]
+            })
             setTotal(response.data.total)
             setHasMore(response.data.has_more)
-            setNextOffset(response.data.offset + response.data.limit)
+            setCacheSyncing(Boolean(response.data.syncing))
+            setMailError(response.data.sync_error || '')
+            setNextOffset(reset ? fresh.length : offset + fresh.length)
+            if (!reset && !fresh.length && response.data.syncing) {
+                setPendingPageOffset(offset)
+            } else if (!reset) {
+                setPendingPageOffset(null)
+            }
             setUidvalidity(response.data.uidvalidity)
-            setLastFetched(new Date())
-            if (reset) {
+            if (response.data.last_synced_at) {
+                setLastFetched(new Date(response.data.last_synced_at))
+            }
+            if (reset && !silent) {
                 setSelectedId(null)
                 setSelectedMailIds([])
             }
         } catch (error: any) {
             if (generation !== requestGeneration.current) return
             setMailError(error?.response?.data?.detail ||
-                'Der Posteingang konnte nicht geladen werden. Bitte die IMAP-Einstellungen prüfen.')
+                'Der Nachrichten-Cache konnte nicht geladen werden.')
+            setCacheSyncing(false)
         } finally {
-            if (generation === requestGeneration.current) setMailLoading(false)
+            if (generation === requestGeneration.current && !silent) setMailLoading(false)
         }
     }, [])
 
