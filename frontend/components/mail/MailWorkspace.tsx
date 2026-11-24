@@ -169,6 +169,7 @@ export default function MailWorkspace() {
     const [localFiles, setLocalFiles] = useState<File[]>([])
     const [studentRecipients, setStudentRecipients] = useState<StudentMailRecipient[]>([])
     const [recipientsLoading, setRecipientsLoading] = useState(false)
+    const [recipientsReloadKey, setRecipientsReloadKey] = useState(0)
     const [recipientsError, setRecipientsError] = useState('')
     const [recipientSearch, setRecipientSearch] = useState('')
     const [recipientOverrides, setRecipientOverrides] = useState<Record<string, boolean>>({})
@@ -181,6 +182,7 @@ export default function MailWorkspace() {
         let active = true
         setRecipientsLoading(true)
         setRecipientsError('')
+        setStudentRecipients([])
         void api.get<{ students: StudentMailRecipient[] }>('/core/mail/recipients/')
             .then(({ data }) => {
                 if (active) setStudentRecipients(data.students)
@@ -193,7 +195,7 @@ export default function MailWorkspace() {
                 if (active) setRecipientsLoading(false)
             })
         return () => { active = false }
-    }, [composing])
+    }, [composing, recipientsReloadKey])
 
     const loadFolder = useCallback(async (currentFolder: FolderId, reset = true, offset = 0) => {
         const generation = ++requestGeneration.current
@@ -839,10 +841,10 @@ export default function MailWorkspace() {
                                 {recipientsError && (
                                     <div className="mail-fetch-error" role="alert">
                                         {recipientsError}
-                                        <button type="button" onClick={() => {
-                                            setComposing(false)
-                                            setTimeout(() => setComposing(true), 0)
-                                        }}>Erneut versuchen</button>
+                                        <button type="button"
+                                            onClick={() => setRecipientsReloadKey((value) => value + 1)}>
+                                            Erneut versuchen
+                                        </button>
                                     </div>
                                 )}
                                 {!recipientsLoading && !recipientsError && (
