@@ -397,7 +397,7 @@ export default function MailWorkspace() {
                 'Der Nachrichten-Cache konnte nicht geladen werden.')
             setCacheSyncing(false)
         } finally {
-            if (generation === requestGeneration.current && !silent) setMailLoading(false)
+            if (generation === requestGeneration.current) setMailLoading(false)
         }
     }, [])
 
