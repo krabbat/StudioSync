@@ -404,7 +404,21 @@ def _push_changes(series, remote, stats):
         return
 
     cal, master, overrides = _master_and_overrides(raw)
-    recurring = bool(master.get("RRULE"))
+    recurring = bool(master.get("RRULE") or master.get("RDATE"))
+
+    # A stand-alone appointment must disappear from Apple Calendar completely;
+    # a recurrence instance must instead be excluded from its parent series.
+    if not recurring:
+        links = list(series.occurrences.select_related("lesson"))
+        if links and all(
+            link.lesson_id is None and link.synced_signature
+            for link in links
+        ):
+            remote.delete()
+            series.delete()
+            stats["exported"] += 1
+            return
+
     modified_links = []
     for entry in series.occurrences.select_related("lesson"):
         lesson = entry.lesson
