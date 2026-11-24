@@ -272,12 +272,13 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             except ValueError:
                 pass
         series.teacher = teacher or _default_teacher(studio)
-    if not series.student_id:
-        series.student = _resolve_student(series, master)
-    series.save()
-
     guest_name = _raw(master.get("X-STUDIOSYNC-GUEST-NAME", "")).strip()[:200]
     guest_address = _raw(master.get("X-STUDIOSYNC-GUEST-ADDRESS", "")).strip()[:500]
+    if guest_name:
+        series.student = None
+    elif not series.student_id:
+        series.student = _resolve_student(series, master)
+    series.save()
     if (not series.student_id and not guest_name) or not series.teacher_id:
         _set_error(series, "Schüler zuordnen" if not series.student_id and not guest_name else "Keine Lehrkraft vorhanden")
         stats["unassigned"] += 1
