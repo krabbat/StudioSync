@@ -15,11 +15,11 @@ class Command(BaseCommand):
         names = ("MUSart HA attendance (2 min)", "MUSart HA nightly statistics")
         live, created = Schedule.objects.get_or_create(name=names[0], defaults={
             "func": "apps.lessons.ha_attendance.run_live",
-            "args": repr(now.isoformat()),
+            "args": repr((now.isoformat(),)),
             "schedule_type": Schedule.MINUTES, "minutes": 2,
             "repeats": -1, "next_run": now + timedelta(minutes=2),
         })
-        # UTC schedules at 01:00 and 02:00; the job checks Berlin local time.
+        # Hourly local scheduler guard handles both UTC offsets without DST drift.
         next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         Schedule.objects.get_or_create(name=names[1], defaults={
             "func": "apps.lessons.ha_attendance.run_nightly",
