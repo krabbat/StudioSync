@@ -5,6 +5,7 @@ Lesson API views
 import logging
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -155,6 +156,42 @@ class LessonViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         self._reject_student_mutation()
         return super().partial_update(request, *args, **kwargs)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        # Serialize manual status changes against the background worker.
+        current = Lesson.objects.select_for_update().get(pk=serializer.instance.pk)
+        serializer.instance = current
+        data = serializer.validated_data
+        if "status" in data and data["status"] != current.status:
+            serializer.save(ha_manual_override=True, ha_watch_active=False)
+        else:
+            serializer.save()
+
+    @action(detail=True, methods=["post"], url_path="check-attendance")
+    def check_attendance(self, request, pk=None):
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen die Anwesenheit prüfen.")
+        lesson = self.get_object()
+        from django_q.models import Schedule
+        from ast import literal_eval
+        from apps.lessons.ha_attendance import live_studio, locked, stamp, window
+        schedule = Schedule.objects.filter(name="MUSart HA attendance (2 min)").first()
+        now = timezone.now()
+        if not schedule or lesson.ha_manual_override or lesson.ha_finalized_at or lesson.status == "cancelled":
+            return Response({"detail": "Keine automatische Prüfung für diesen Termin."}, status=400)
+        activation = stamp(literal_eval(schedule.args))
+        if lesson.scheduled_start < activation or now < window(lesson)[0]:
+            return Response({"detail": "Termin liegt außerhalb des Erfassungszeitraums."}, status=400)
+        try:
+            with locked(1) as acquired:
+                if not acquired:
+                    return Response({"detail": "Eine Anwesenheitsprüfung läuft bereits."}, status=409)
+                live_studio(lesson.studio, activation, now, only=lesson.pk)
+        except Exception:
+            return Response({"detail": "Home Assistant konnte nicht abgefragt werden."}, status=502)
+        lesson.refresh_from_db()
+        return Response({"status": lesson.status, "ha_attendance": lesson.ha_attendance})
 
     def destroy(self, request, *args, **kwargs):
         """Cancel the StudioSync lesson; remove only its Apple event.
