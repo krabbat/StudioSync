@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import {
     User,
     Building2,
@@ -103,9 +104,11 @@ const SECTIONS = [
 ];
 
     const { currentUser } = useUser();
+    const { flags } = useFeatureFlags();
 
     const visible = SECTIONS.filter(
-        s => !s.roles || (currentUser && s.roles.includes(currentUser.role as string))
+        s => (!s.roles || (currentUser && s.roles.includes(currentUser.role as string)))
+            && (s.href !== '/dashboard/settings/gig-venues/' || flags.gigs_enabled)
     );
 
     return (
