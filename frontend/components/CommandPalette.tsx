@@ -196,6 +196,7 @@ export function CommandPalette() {
       inventory: flags.inventory_enabled,
       messages: flags.messaging_enabled,
       reports: flags.analytics_enabled,
+      teachers: flags.teachers_enabled,
     }
     return featureByCommand[command.id] !== false
   })
