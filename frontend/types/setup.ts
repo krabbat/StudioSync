@@ -25,6 +25,7 @@ export interface FeatureFlags {
   bands_enabled: boolean
   gigs_enabled: boolean
   documentation_enabled: boolean
+  teachers_enabled: boolean
   analytics_enabled: boolean
   practice_rooms_enabled: boolean
 }
@@ -103,6 +104,7 @@ export const DEFAULT_FEATURES: FeatureFlags = {
   bands_enabled: false,
   gigs_enabled: false,
   documentation_enabled: false,
+  teachers_enabled: false,
   analytics_enabled: false,
   practice_rooms_enabled: false,
 }
@@ -146,6 +148,11 @@ export const FEATURE_DESCRIPTIONS = {
     name: 'Performances',
     description: 'Manage concerts, performances and venue bookings',
     icon: 'MapPin'
+  },
+  teachers_enabled: {
+    name: 'Teachers',
+    description: 'Show teacher management in the sidebar',
+    icon: 'UserCheck'
   },
   documentation_enabled: {
     name: 'Documentation',
