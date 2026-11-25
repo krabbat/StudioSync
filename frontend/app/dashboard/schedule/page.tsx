@@ -79,6 +79,7 @@ interface ExternalEvent {
 // One hour always occupies exactly 96px in the weekly timetable.
 // The labels and appointment offsets must use this same scale.
 const WEEK_HOUR_HEIGHT = 96;
+const WEEK_CHROME_COLOR = "#e2e8f0";
 
 export default function SchedulePage() {
   const tr = useTranslations('Schedule')
@@ -376,7 +377,7 @@ export default function SchedulePage() {
   };
 
   const getLessonColorStyles = (lesson: any) => {
-    if (colorMode === "status") return {};
+    if (colorMode === "status" || lesson.status === "cancelled") return {};
 
     let textToHash = "";
     if (colorMode === "student") {
@@ -439,7 +440,7 @@ export default function SchedulePage() {
       setIcloudIssues((data.series || [])
         .filter((row: any) => Boolean(row.error) && row.error !== 'Schüler zuordnen')
         .map((row: any) => ({ title: row.title, error: row.error })));
-      toast.success('iCloud abgeglichen: ' + data.imported + ' importiert, ' + data.exported + ' exportiert, ' + (data.deleted ?? 0) + ' entfernt.');
+      toast.success('iCloud abgeglichen: ' + data.imported + ' importiert, ' + data.exported + ' exportiert, ' + (data.cancelled ?? 0) + ' als abgesagt erhalten.');
       if (data.unassigned) toast('Nicht zugeordnete Serien: ' + data.unassigned + '. Bitte unter Einstellungen → Technik zuordnen.');
       if (data.conflicts) toast.error('Kalenderkonflikte: ' + data.conflicts + '. Die Einzelheiten stehen unter der Kalenderleiste.');
     } catch (error: any) {
@@ -804,15 +805,16 @@ export default function SchedulePage() {
         <div className="overflow-auto custom-scrollbar flex-1 relative">
           {viewMode === "week" ? (
             <table className="w-full min-w-full md:min-w-[1000px] border-separate border-spacing-0">
-              <thead className="bg-slate-200 sticky top-0 z-20">
+              <thead className="bg-slate-200 sticky top-0 z-20" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                 <tr>
-                  <th className="px-2 py-3 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest w-24 sticky left-0 z-30 bg-slate-200 border-r border-b border-slate-300/60">
+                  <th className="px-2 py-3 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest w-24 sticky left-0 z-30 bg-slate-200 border-r border-b border-slate-300/60" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                     {tr('time')}
                   </th>
                   {weekDays.map((day, idx) => (
                     <th
                       key={idx}
                       className={`px-2 py-3 sm:px-4 sm:py-4 text-center min-w-[100px] sm:min-w-[140px] bg-slate-200 border-b border-slate-300/60 ${idx < 6 ? "border-r border-slate-300/60" : ""}`}
+                      style={{ backgroundColor: WEEK_CHROME_COLOR }}
                     >
                       <div
                         className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 ${isSameDay(day, new Date()) ? "text-primary" : "text-gray-400"}`}
@@ -831,7 +833,7 @@ export default function SchedulePage() {
               <tbody className="divide-y divide-gray-50">
                 {timeSlots.map((hour) => (
                   <tr key={hour} className={`group h-24 ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}>
-                    <td className="h-24 p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 sticky left-0 z-10 text-center align-top">
+                    <td className="h-24 p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 sticky left-0 z-10 text-center align-top" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                       <div className="relative h-24">
                         <span className="absolute inset-x-0 top-1">{formatGridHour(hour)}</span>
                       </div>
@@ -874,7 +876,7 @@ export default function SchedulePage() {
                                   title={`${format(parseISO(lesson.scheduled_start), "HH:mm")} – ${format(parseISO(lesson.scheduled_end), "HH:mm")} · ${lesson.student_name || lesson.band_name || "Unterricht"}`}
                                   className={`
                                     absolute inset-x-1 z-10 overflow-hidden p-1 rounded-lg border-l-[3px] shadow-sm hover:shadow-md transition-all cursor-pointer group/card
-                                    ${colorMode === "status" ? (
+                                    ${(colorMode === "status" || lesson.status === "cancelled") ? (
                                       lesson.status === "scheduled" ? "bg-primary/10 border-primary cursor-pointer hover:bg-primary/20" :
                                         lesson.status === "completed" ? "bg-gray-100 border-gray-400" :
                                           lesson.status === "cancelled" ? "bg-red-50 border-red-400" : ""
@@ -955,7 +957,7 @@ export default function SchedulePage() {
                 ))}
                 {/* The lower boundary is 22:00, not another bookable 22:00–23:00 slot. */}
                 <tr aria-hidden="true">
-                  <td className="px-2 py-2 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 sticky left-0 text-center">
+                  <td className="px-2 py-2 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 sticky left-0 text-center" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                     {formatGridHour(businessEnd)}
                   </td>
                   <td colSpan={7} className="border-t border-gray-100" />
@@ -1015,7 +1017,7 @@ export default function SchedulePage() {
                             style={getLessonColorStyles(lesson)}
                             className={`
                               px-1.5 py-1 rounded w-full truncate border-l-2 shadow-sm hover:shadow-md cursor-pointer text-left relative
-                              ${colorMode === "status" ? (
+                              ${(colorMode === "status" || lesson.status === "cancelled") ? (
                                 lesson.status === "scheduled" ? "bg-primary/10 border-primary text-primary-dark" :
                                   lesson.status === "completed" ? "bg-gray-100 border-gray-400 text-gray-700" :
                                     lesson.status === "cancelled" ? "bg-red-50 border-red-400 text-red-700" : ""
