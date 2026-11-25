@@ -29,7 +29,7 @@ test('feature settings are translated through next-intl and persist changes', ()
 test('all feature options have German and English names and descriptions', () => {
     const features = [
         'billing', 'inventory', 'messaging', 'resources', 'goals',
-        'bands', 'gigs', 'reports', 'practiceRooms', 'documentation',
+        'bands', 'gigs', 'reports', 'practiceRooms', 'documentation', 'teachers',
     ]
     for (const language of ['de', 'en']) {
         for (const feature of features) {
@@ -43,6 +43,7 @@ test('all feature options have German and English names and descriptions', () =>
         }
     }
     assert.match(page, /documentation_enabled: \{ name: t\('documentationName'\), description: t\('documentationDescription'\) \}/)
+    assert.match(page, /teachers_enabled: \{ name: t\('teachersName'\), description: t\('teachersDescription'\) \}/)
 })
 
 test('bands, gigs, reports and docs start hidden independently', () => {
@@ -50,12 +51,16 @@ test('bands, gigs, reports and docs start hidden independently', () => {
     assert.match(types, /gigs_enabled: false/)
     assert.match(types, /analytics_enabled: false/)
     assert.match(types, /documentation_enabled: false/)
+    assert.match(types, /teachers_enabled: false/)
+    assert.match(types, /teachers_enabled: boolean/)
     assert.match(types, /documentation_enabled: boolean/)
     assert.match(context, /'documentation_enabled'/)
+    assert.match(context, /'teachers_enabled'/)
     assert.match(sidebar, /href: '\/dashboard\/bands'.*featureFlag: 'bands_enabled'/)
     assert.match(sidebar, /href: '\/dashboard\/gigs'.*featureFlag: 'gigs_enabled'/)
     assert.match(sidebar, /href: '\/dashboard\/reports'.*featureFlag: 'analytics_enabled'/)
     assert.match(sidebar, /href: '\/docs'.*featureFlag: 'documentation_enabled'/)
+    assert.match(sidebar, /href: '\/dashboard\/teachers'.*featureFlag: 'teachers_enabled'/)
 })
 
 test('studio builder is no longer linked from navigation', () => {
@@ -65,6 +70,7 @@ test('studio builder is no longer linked from navigation', () => {
 
 test('reports visibility applies to the command palette', () => {
     assert.match(commands, /reports: flags\.analytics_enabled/)
+    assert.match(commands, /teachers: flags\.teachers_enabled/)
     assert.match(commands, /visibleCommands\.filter/)
     assert.match(settings, /s\.href !== '\/dashboard\/settings\/gig-venues\/' \|\| flags\.gigs_enabled/)
 })
