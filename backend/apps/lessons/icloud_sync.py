@@ -713,6 +713,22 @@ def _sync_icloud_user_impl(user):
     return stats
 
 
+def _find_series_resource(calendar, series):
+    """Locate the exact CalDAV resource by URL or stable VEVENT UID."""
+    by_uid = None
+    for item in calendar.events():
+        item.load()
+        if str(item.url) == series.remote_url:
+            return item
+        try:
+            _, master, _ = _master_and_overrides(_raw(item.data))
+            if str(master["UID"]) == series.uid:
+                by_uid = item
+        except (ICloudSetupError, ValueError, TypeError):
+            continue
+    return by_uid
+
+
 def _trim_rdates(master, cutoff_key):
     """Remove future explicit recurrence dates, retaining earlier RDATEs."""
     rdates = master.get("RDATE")
@@ -777,10 +793,7 @@ def end_icloud_series_from_lesson(lesson):
             if calendar_url not in {item["url"] for item in _discover(client)}:
                 raise ICloudSetupError("Der hinterlegte iCloud-Kalender ist nicht erreichbar.")
             calendar = client.calendar(url=calendar_url)
-            remote = next(
-                (item for item in calendar.events() if str(item.url) == series.remote_url),
-                None,
-            )
+            remote = _find_series_resource(calendar, series)
             if remote is not None:
                 remote.load()
                 raw = _raw(remote.data)
@@ -868,10 +881,7 @@ def permanently_delete_lesson(lesson):
             if calendar_url not in {item["url"] for item in _discover(client)}:
                 raise ICloudSetupError("Der hinterlegte iCloud-Kalender ist nicht erreichbar.")
             calendar = client.calendar(url=calendar_url)
-            remote = next(
-                (item for item in calendar.events() if str(item.url) == series.remote_url),
-                None,
-            )
+            remote = _find_series_resource(calendar, series)
             if remote is not None:
                 remote.load()
                 raw = _raw(remote.data)
