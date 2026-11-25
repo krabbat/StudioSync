@@ -23,6 +23,7 @@ export interface FeatureFlags {
   resources_enabled: boolean
   goals_enabled: boolean
   bands_enabled: boolean
+  gigs_enabled: boolean
   analytics_enabled: boolean
   practice_rooms_enabled: boolean
 }
@@ -99,7 +100,8 @@ export const DEFAULT_FEATURES: FeatureFlags = {
   resources_enabled: true,
   goals_enabled: true,
   bands_enabled: false,
-  analytics_enabled: true,
+  gigs_enabled: false,
+  analytics_enabled: false,
   practice_rooms_enabled: false,
 }
 
@@ -137,6 +139,11 @@ export const FEATURE_DESCRIPTIONS = {
     name: 'Bands & Ensembles',
     description: 'Manage band rehearsals and group lessons',
     icon: 'Users'
+  },
+  gigs_enabled: {
+    name: 'Performances',
+    description: 'Manage concerts, performances and venue bookings',
+    icon: 'MapPin'
   },
   analytics_enabled: {
     name: 'Analytics & Reports',
