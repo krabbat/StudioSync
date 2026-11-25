@@ -95,6 +95,14 @@ def lesson_account_response(student, requested_year=None):
                     unknown += 1  # an unclassified makeup must not consume quota
             else:
                 impact = 1
+        elif (lesson.status == "no_show" and not kind
+              and lesson.lesson_type == "private"
+              and (lesson.ha_finalized_at or (lesson.ha_attendance or {}).get("checked_at"))):
+            # A recorded HA no-show (also after a manual correction) consumes
+            # one unit, without a second counter or classification record.
+            kind = "student_cancelled"
+            student_cancelled += 1
+            impact = 1
         elif kind == "student_cancelled":
             student_cancelled += 1
             impact = 1
