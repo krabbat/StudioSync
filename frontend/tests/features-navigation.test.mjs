@@ -74,3 +74,17 @@ test('reports visibility applies to the command palette', () => {
     assert.match(commands, /visibleCommands\.filter/)
     assert.match(settings, /s\.href !== '\/dashboard\/settings\/gig-venues\/' \|\| flags\.gigs_enabled/)
 })
+
+test('settings appears under Administration and no separate Settings section remains', () => {
+    const admin = sidebar.indexOf("title: t('admin')")
+    const users = sidebar.indexOf("href: '/dashboard/users'", admin)
+    const settingsLink = sidebar.indexOf("href: '/dashboard/settings'", admin)
+    const help = sidebar.indexOf("title: t('help')", admin)
+    assert.ok(admin !== -1 && users > admin && settingsLink > users && help > settingsLink)
+    assert.equal((sidebar.match(/href: '\/dashboard\/settings'/g) || []).length, 1)
+    assert.doesNotMatch(sidebar, /title: t\('settings'\)/)
+    assert.match(sidebar, /name: t\('settings'\), href: '\/dashboard\/settings', icon: Settings, roles: \['admin'\]/)
+    // All existing settings tabs remain accessible through the existing hub.
+    assert.match(settings, /href: '\/dashboard\/settings\/features\/'/)
+    assert.match(settings, /href: '\/dashboard\/settings\/general\/\?tab=technical'/)
+})
