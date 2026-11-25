@@ -23,7 +23,7 @@ FROM base AS development
 COPY . .
 
 # Create directory for media files
-RUN mkdir -p /app/media
+RUN mkdir -p /app/media /app/ha-diagnostics
 
 EXPOSE 8000
 
@@ -35,7 +35,7 @@ FROM base AS production
 
 # Create non-root user
 RUN adduser -D -u 1000 appuser && \
-    mkdir -p /app/media /app/staticfiles && \
+    mkdir -p /app/media /app/staticfiles /app/ha-diagnostics && \
     chown -R appuser:appuser /app
 
 # Copy application code
