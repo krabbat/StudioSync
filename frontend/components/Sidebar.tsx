@@ -18,6 +18,8 @@ import {
     Bell,
     Target,
     BarChart3,
+    Settings,
+    ChevronDown,
     Palette,
     Mail,
     Server,
@@ -57,6 +59,7 @@ interface SidebarItem {
     badge?: string | number
     roles?: UserRole[]
     featureFlag?: keyof FeatureFlags
+    subItems?: SidebarItem[]
 }
 
 interface SidebarSection {
@@ -76,6 +79,7 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
     const tSettings = useTranslations('SettingsHub')
     const pathname = usePathname()
     const [activeSettingsTab, setActiveSettingsTab] = useState('')
+    const [settingsExpanded, setSettingsExpanded] = useState(false)
     useEffect(() => {
         const updateTab = () => setActiveSettingsTab(new URLSearchParams(window.location.search).get('tab') || '')
         updateTab()
@@ -147,17 +151,25 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
             roles: ['admin'],
             items: [
                 { name: t('users'), href: '/dashboard/users', icon: UserCog, roles: ['admin'] },
-                { name: tSettings('sectionAccount'), href: '/dashboard/settings/general/?tab=profile', icon: UserRound, roles: ['admin'] },
-                { name: tSettings('sectionSecurity'), href: '/dashboard/settings/general/?tab=security', icon: ShieldAlert, roles: ['admin'] },
-                { name: tSettings('sectionStudio'), href: '/dashboard/settings/general/?tab=studio', icon: Building2, roles: ['admin'] },
-                { name: tSettings('sectionAppearance'), href: '/dashboard/settings/general/?tab=appearance', icon: Palette, roles: ['admin'] },
-                { name: tSettings('sectionNotifications'), href: '/dashboard/settings/general/?tab=notifications', icon: Bell, roles: ['admin'] },
-                { name: tSettings('sectionCommunication'), href: '/dashboard/settings/general/?tab=communication', icon: Mail, roles: ['admin'] },
-                { name: tSettings('sectionFeatures'), href: '/dashboard/features/', icon: Layers, roles: ['admin'] },
-                { name: tSettings('sectionApiKeys'), href: '/dashboard/settings/api-keys/', icon: Key, roles: ['admin'] },
-                { name: tSettings('sectionGigVenues'), href: '/dashboard/settings/gig-venues/', icon: MapPin, roles: ['admin'], featureFlag: 'gigs_enabled' },
-                { name: tSettings('sectionTechnical'), href: '/dashboard/settings/general/?tab=technical', icon: Server, roles: ['admin'] },
-                { name: tSettings('sectionMaintenance'), href: '/dashboard/settings/general/?tab=maintenance', icon: Database, roles: ['admin'] },
+                {
+                    name: t('settings'),
+                    href: '/dashboard/settings',
+                    icon: Settings,
+                    roles: ['admin'],
+                    subItems: [
+                        { name: tSettings('sectionAccount'), href: '/dashboard/settings/general/?tab=profile', icon: UserRound },
+                        { name: tSettings('sectionSecurity'), href: '/dashboard/settings/general/?tab=security', icon: ShieldAlert },
+                        { name: tSettings('sectionStudio'), href: '/dashboard/settings/general/?tab=studio', icon: Building2 },
+                        { name: tSettings('sectionAppearance'), href: '/dashboard/settings/general/?tab=appearance', icon: Palette },
+                        { name: tSettings('sectionNotifications'), href: '/dashboard/settings/general/?tab=notifications', icon: Bell },
+                        { name: tSettings('sectionCommunication'), href: '/dashboard/settings/general/?tab=communication', icon: Mail },
+                        { name: tSettings('sectionFeatures'), href: '/dashboard/features/', icon: Layers },
+                        { name: tSettings('sectionApiKeys'), href: '/dashboard/settings/api-keys/', icon: Key },
+                        { name: tSettings('sectionGigVenues'), href: '/dashboard/settings/gig-venues/', icon: MapPin, featureFlag: 'gigs_enabled' },
+                        { name: tSettings('sectionTechnical'), href: '/dashboard/settings/general/?tab=technical', icon: Server },
+                        { name: tSettings('sectionMaintenance'), href: '/dashboard/settings/general/?tab=maintenance', icon: Database },
+                    ],
+                },
             ],
         },
         {
@@ -237,6 +249,71 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
                                         )}
                                     </>
                                 )
+                                if (item.subItems) {
+                                    const childItems = item.subItems.filter(child =>
+                                        (!child.roles || (currentUser && child.roles.includes(currentUser.role)))
+                                        && (!child.featureFlag || flags[child.featureFlag])
+                                    )
+                                    const childActive = childItems.some(child => isActive(child.href))
+                                    return (
+                                        <div key={item.href}>
+                                            <button
+                                                type="button"
+                                                className={`studiosync-sidebar-item ${childActive ? 'is-active' : ''}`}
+                                                onClick={() => {
+                                                    if (!isOpen) onOpen()
+                                                    setSettingsExpanded(previous => !previous)
+                                                }}
+                                                aria-expanded={settingsExpanded}
+                                                aria-controls="admin-settings-submenu"
+                                                title={!isOpen ? item.name : undefined}
+                                                style={{ width: '100%', textAlign: 'left' }}
+                                            >
+                                                {content}
+                                                <ChevronDown
+                                                    size={16}
+                                                    className="studiosync-sidebar-label"
+                                                    style={{
+                                                        marginLeft: 'auto',
+                                                        transform: settingsExpanded ? 'rotate(180deg)' : undefined,
+                                                    }}
+                                                    aria-hidden="true"
+                                                />
+                                            </button>
+                                            {settingsExpanded && (
+                                                <div id="admin-settings-submenu" aria-label={item.name}>
+                                                    {childItems.map(child => {
+                                                        const ChildIcon = child.icon
+                                                        const selected = isActive(child.href)
+                                                        return (
+                                                            <Link
+                                                                key={child.href}
+                                                                href={child.href}
+                                                                onClick={() => {
+                                                                    if (child.href.includes('?tab=')) {
+                                                                        setActiveSettingsTab(new URLSearchParams(child.href.split('?')[1]).get('tab') || '')
+                                                                    }
+                                                                    onClose()
+                                                                }}
+                                                                className={`studiosync-sidebar-item ${selected ? 'is-active' : ''}`}
+                                                                aria-current={selected ? 'page' : undefined}
+                                                                title={!isOpen ? child.name : undefined}
+                                                                style={{ paddingLeft: '2.75rem', fontSize: '0.88em' }}
+                                                            >
+                                                                <span className="studiosync-sidebar-icon">
+                                                                    <ChildIcon size={16} style={{ color: selected ? S.amber : S.muted }} />
+                                                                </span>
+                                                                <span className="studiosync-sidebar-label studiosync-sidebar-item-name">
+                                                                    {child.name}
+                                                                </span>
+                                                            </Link>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                }
                                 return item.href.startsWith('http') ? (
                                     <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
                                         title={!isOpen ? item.name : undefined}
