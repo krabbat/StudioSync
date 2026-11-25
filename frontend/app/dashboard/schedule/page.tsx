@@ -11,7 +11,7 @@ import {
   useStudios,
 } from "@/hooks/useDashboardData";
 import api from "@/services/api";
-import LessonDeleteDialog, { type LessonDeleteScope, type LessonDeleteTarget } from "@/components/LessonDeleteDialog";
+import LessonDeleteDialog, { type LessonDeleteScope, type LessonDeleteTarget, type LessonCancellationKind } from "@/components/LessonDeleteDialog";
 import LessonBookingDialog, { type LessonBookingData } from "@/components/LessonBookingDialog";
 import { toast } from "react-hot-toast";
 import {
@@ -460,13 +460,15 @@ export default function SchedulePage() {
       id: lessonId,
       label: `${selected.student_name || selected.band_name || 'Unterricht'} am ${format(parseISO(selected.scheduled_start), 'dd.MM.yyyy HH:mm')}`,
       isRecurring: Boolean(selected.is_recurring),
+      requiresCancellationKind: Boolean(selected.student || selected.student_profile_id)
+        && ["private", "makeup"].includes(selected.lesson_type),
       canPermanentlyDelete: currentUser?.role === 'admin'
         && !selected.is_paid
         && !['completed', 'in_progress', 'no_show'].includes(selected.status),
     });
   };
 
-  const deleteBooking = async (scope: LessonDeleteScope) => {
+  const deleteBooking = async (scope: LessonDeleteScope, cancellationKind?: LessonCancellationKind) => {
     if (!deleteTarget) return;
     if (scope === 'permanent' && !window.confirm(
       'Diesen Unterrichtstermin wirklich ENDGÜLTIG aus StudioSync und iCloud löschen? Die Unterrichtsdaten werden dabei unwiderruflich entfernt.'
@@ -477,7 +479,7 @@ export default function SchedulePage() {
     const lessonId = deleteTarget.id;
     setDeletingLessonId(lessonId);
     try {
-      const response = await api.delete(`/lessons/${lessonId}/`, { params: { scope } });
+      const response = await api.delete(`/lessons/${lessonId}/`, { params: { scope, ...(scope === "this" && cancellationKind ? { cancellation_kind: cancellationKind } : {}) } });
       toast.success(response.data?.detail || 'Unterrichtstermin gelöscht.');
       if (response.data?.icloud_synced === false) {
         toast.error('iCloud ist noch nicht aktualisiert. Bitte den Kalenderabgleich prüfen.');
