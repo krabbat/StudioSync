@@ -9,6 +9,7 @@ import api from '@/services/api'
 import { toast } from 'react-hot-toast'
 import ImageCropper from '@/components/ImageCropper'
 import ICloudCalendarSettings from '@/components/ICloudCalendarSettings'
+import HomeAssistantConnectionSettings from '@/components/HomeAssistantConnectionSettings'
 import { formatPhoneNumber } from '@/lib/utils'
 import { TIMEZONES, CURRENCIES } from '@/types/setup'
 import { detectLocation } from '@/lib/geolocate'
@@ -1369,6 +1370,7 @@ function GeneralSettingsContents() {
                                 </div>
 
                                 <ICloudCalendarSettings />
+                                <HomeAssistantConnectionSettings />
 
                             </div>
                         </div>
