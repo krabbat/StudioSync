@@ -22,6 +22,7 @@ export interface LessonBookingData {
   is_online: boolean;
   online_meeting_url: string;
   status: string;
+  statusTouched?: boolean;
   cancellation_reason: string;
   cancellation_kind: "" | "student_cancelled" | "teacher_cancelled";
   summary: string;
@@ -468,7 +469,7 @@ export default function LessonBookingDialog({
                     </label>
                     <select
                       value={newBooking.status}
-                      onChange={(e) => setNewBooking({ ...newBooking, status: e.target.value })}
+                      onChange={(e) => setNewBooking({ ...newBooking, status: e.target.value, statusTouched: true })}
                       className={`w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 rounded-xl font-bold outline-none transition-all appearance-none ${newBooking.status === 'cancelled' ? 'text-red-600 focus:border-red-400' : 'text-gray-700 focus:border-primary'
                         }`}
                     >
