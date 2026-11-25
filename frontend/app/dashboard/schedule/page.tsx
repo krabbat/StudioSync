@@ -306,7 +306,7 @@ export default function SchedulePage() {
       online_meeting_url: "",
       status: "scheduled",
       cancellation_reason: "",
-    cancellation_kind: "",
+      cancellation_kind: "",
       summary: "",
       guest_name: "",
       guest_address: "",
