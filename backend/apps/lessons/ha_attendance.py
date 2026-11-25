@@ -200,7 +200,7 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
     low, high = window(lesson)
     parts = assigned.get(lesson.pk, [])
     amount = seconds(parts)
-    valid = bool(rows) and rows[0][0] <= low + timedelta(seconds=1) and not any(state in INVALID for a,b,state in rows
+    valid = current is not None and current not in INVALID and bool(rows) and rows[0][0] <= low + timedelta(seconds=1) and not any(state in INVALID for a,b,state in rows
                                   if a < min(now, high) and b > low)
     present = current is not None and matching(current, zone)
     with transaction.atomic():
@@ -218,6 +218,8 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
             info["departure"] = iso(parts[-1][1]) if parts and not present else None
         if not obj.ha_finalized_at:
             info["error"] = "" if valid else "Standortverlauf unvollständig"
+            if now >= high:
+                info["final_attempted_at"] = iso(now)
         obj.ha_attendance = info
         # Continue observing a matching visit beyond the deadline until departure.
         if present and now >= low and (now <= high + timedelta(minutes=4) or obj.ha_watch_active):
@@ -250,10 +252,29 @@ def live_studio(studio, activation, now, only=None):
     if only:
         qs = base.filter(pk=only).exclude(status="cancelled")
     selected = list(qs)
+    if not only:
+        # One historical recovery attempt for recently missed deadlines; no perpetual polling.
+        overdue = base.filter(scheduled_end__lt=now-TOLERANCE-timedelta(minutes=4),
+            scheduled_end__gte=now-timedelta(days=2), status__in=["scheduled","in_progress"],
+            ha_finalized_at__isnull=True, ha_manual_override=False).exclude(
+                ha_attendance__has_key="final_attempted_at")
+        seen = {l.pk for l in selected}
+        selected.extend(l for l in overdue if l.pk not in seen)
     if not selected:
         return
     ha = HA(studio.owner)
     zones, current = ha.states()
+    for lesson in selected:
+        if not zone_for(lesson, zones):
+            with transaction.atomic():
+                obj = Lesson.objects.select_for_update().get(pk=lesson.pk)
+                info = dict(obj.ha_attendance or {})
+                info.update(error="Keine eindeutige Schülerzone gefunden", checked_at=iso(now))
+                if now >= window(lesson)[1]:
+                    info["final_attempted_at"] = iso(now)
+                obj.ha_attendance = info
+                obj.ha_watch_active = False
+                obj.save(update_fields=["ha_attendance","ha_watch_active","updated_at"])
     selected = [lesson for lesson in selected if zone_for(lesson, zones)]
     if not selected:
         return
@@ -323,7 +344,7 @@ def run_nightly(activated_at):
                         info = dict(obj.ha_attendance or {})
                         info.update(statistics_day=day.isoformat(), total_seconds=seconds(parts),
                                     total_arrival=iso(parts[0][0]) if parts else None,
-                                    total_departure=iso(parts[-1][1]) if parts else None)
+                                    total_departure=iso(parts[-1][1]) if parts and parts[-1][1] < now else None)
                         obj.ha_attendance = info
                         obj.save(update_fields=["ha_attendance","updated_at"])
             except Exception:
