@@ -42,22 +42,25 @@ export default function LessonDeleteDialog({
           )}
         </div>
       </DialogContent>
-      <DialogFooter>
-        <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>Abbrechen</Button>
+      <DialogFooter className="!flex !flex-col !items-stretch gap-3">
         <Button type="button" variant="outline" disabled={busy}
-          className="gap-2 border-red-200 text-red-700 hover:bg-red-50"
+          className="w-full min-w-0 h-auto min-h-11 py-3 px-4 gap-2 whitespace-normal text-center leading-snug border-red-200 text-red-700 hover:bg-red-50"
           onClick={() => onConfirm('this')}>
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-          {target?.isRecurring ? 'Nur diesen Termin löschen' : 'Termin löschen'}
+          {busy ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" /> : <Trash2 className="w-4 h-4 shrink-0" />}
+          <span className="min-w-0 break-words">{target?.isRecurring ? 'Nur diesen Termin löschen' : 'Termin löschen'}</span>
         </Button>
         {target?.isRecurring && (
           <Button type="button" variant="outline" disabled={busy}
-            className="gap-2 border-red-300 bg-red-50 text-red-800 hover:bg-red-100"
+            className="w-full min-w-0 h-auto min-h-11 py-3 px-4 gap-2 whitespace-normal text-center leading-snug border-red-300 bg-red-50 text-red-800 hover:bg-red-100"
             onClick={() => onConfirm('future')}>
-            <Trash2 className="w-4 h-4" />
-            Diesen und alle zukünftigen löschen
+            <Trash2 className="w-4 h-4 shrink-0" />
+            <span className="min-w-0 break-words">Diesen und alle zukünftigen löschen</span>
           </Button>
         )}
+        <Button type="button" variant="ghost" onClick={onClose} disabled={busy}
+          className="w-full min-h-11 text-gray-600 hover:bg-gray-100">
+          Abbrechen
+        </Button>
       </DialogFooter>
     </Dialog>
   )
