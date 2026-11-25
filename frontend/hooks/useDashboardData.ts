@@ -192,6 +192,8 @@ export function useLessons(params?: any) {
 
   useEffect(() => {
     fetchLessons();
+    const timer = window.setInterval(() => { if (!document.hidden) void fetchLessons(); }, 120000);
+    return () => window.clearInterval(timer);
   }, [JSON.stringify(params)]);
 
   const createLesson = async (lessonData: any) => {
