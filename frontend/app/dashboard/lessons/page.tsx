@@ -1,12 +1,13 @@
 'use client'
 
 import { useTranslations, useLocale } from 'next-intl'
-import { useState } from 'react'
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
+import { useState, type FormEvent } from 'react'
+import { addMinutes, format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { useUser } from '@/contexts/UserContext'
 import { useLessons, useUsers, useStudents, useTeachers, useStudios, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
 import ResourceSelector from '@/components/ResourceSelector'
 import LessonDeleteDialog, { type LessonDeleteTarget, type LessonDeleteScope } from '@/components/LessonDeleteDialog'
+import LessonBookingDialog, { type LessonBookingData, type LessonBookingMode } from '@/components/LessonBookingDialog'
 import api from '@/services/api'
 import { toast } from 'react-hot-toast'
 import type { LessonPlan, LessonPlanFormData } from '@/types/lessonPlan'
@@ -42,6 +43,11 @@ interface Lesson {
     student?: string
     teacher?: string
     student_profile_id?: string
+    band?: string
+    room?: string
+    duration_minutes?: number
+    online_meeting_url?: string
+    cancellation_reason?: string
     student_name: string
     teacher_name: string
     student_instrument: string
@@ -63,7 +69,7 @@ export default function LessonsPage() {
   const tr = useTranslations('Lessons')
   const locale = useLocale()
     const { currentUser } = useUser()
-    const { lessons, loading, createLesson, updateLesson, refetch: refetchLessons } = useLessons()
+    const { lessons, loading, refetch: refetchLessons } = useLessons()
     const typedLessons = lessons as Lesson[]
     const { users } = useUsers({ page_size: 100 })
     const { students: studentProfiles } = useStudents({ page_size: 100 })
@@ -111,29 +117,139 @@ export default function LessonsPage() {
     const [tagInput, setTagInput] = useState('')
     const [submitting, setSubmitting] = useState(false)
 
-    // Regular Lesson State
+    // Both screens use the exact same booking form, including recurrence and
+    // contract-based duration behaviour.
     const [showLessonModal, setShowLessonModal] = useState(false)
     const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
     const [lessonSubmitting, setLessonSubmitting] = useState(false)
-    const [isSpecialBooking, setIsSpecialBooking] = useState(false)
+    const [bookingMode, setBookingMode] = useState<LessonBookingMode>('individual')
     const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<LessonDeleteTarget | null>(null)
-    const [lessonData, setLessonData] = useState({
-        student: '',
-        teacher: '',
-        guest_name: '',
-        guest_address: '',
-        summary: '',
-        lesson_type: 'private',
-        status: 'scheduled',
-        scheduled_start: '',
-        duration_minutes: 60,
-        location: '',
-        is_online: false,
+    const blankLesson = (teacher = preferredTeacherId): LessonBookingData => ({
+        student: '', teacher, band: '', room: '', date: '', time: '13:00',
+        duration: 60, lesson_type: 'private', is_online: false,
+        online_meeting_url: '', status: 'scheduled',
+        cancellation_reason: '', summary: '', guest_name: '', guest_address: '',
+        recurrence: 'none', recurrence_until: '',
     })
-    const selectedStudentProfile = studentProfiles.find((student: any) => student.id === lessonData.student)
-    const selectedCityLine = [selectedStudentProfile?.postal_code, selectedStudentProfile?.city].filter(Boolean).join(' ')
-    const selectedAddress = [selectedStudentProfile?.address_line1, selectedCityLine].filter(Boolean).join(', ')
+    const [newBooking, setNewBooking] = useState<LessonBookingData>(() => blankLesson(''))
+
+    const openNewLesson = () => {
+        setEditingLessonId(null)
+        setBookingMode('individual')
+        setNewBooking({
+            ...blankLesson(), date: format(new Date(), 'yyyy-MM-dd'),
+        })
+        setShowLessonModal(true)
+    }
+
+    const openExistingLesson = (lesson: Lesson) => {
+        const start = parseISO(lesson.scheduled_start)
+        const isGuest = Boolean(lesson.guest_name)
+        setEditingLessonId(lesson.id)
+        setBookingMode(
+            isGuest ? 'special' : lesson.band ? 'band'
+            : (lesson.lesson_type === 'workshop' || lesson.lesson_type === 'recital') ? 'event' : 'individual'
+        )
+        setNewBooking({
+            ...blankLesson(lesson.teacher || preferredTeacherId),
+            student: lesson.student_profile_id || lesson.student || '',
+            band: lesson.band || '',
+            room: lesson.room || '',
+            date: format(start, 'yyyy-MM-dd'),
+            time: format(start, 'HH:mm'),
+            duration: lesson.duration_minutes || Math.round(
+                (parseISO(lesson.scheduled_end).getTime() - start.getTime()) / 60000
+            ),
+            lesson_type: lesson.lesson_type || 'private',
+            status: lesson.status || 'scheduled',
+            is_online: Boolean(lesson.is_online),
+            online_meeting_url: lesson.online_meeting_url || '',
+            cancellation_reason: lesson.cancellation_reason || '',
+            guest_name: lesson.guest_name || '',
+            guest_address: lesson.guest_address || '',
+            summary: lesson.summary || '',
+        })
+        setShowLessonModal(true)
+    }
+
+    const saveLessonBooking = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!newBooking.date || !newBooking.time ||
+            (bookingMode === 'individual' && !newBooking.student) ||
+            (bookingMode === 'band' && !newBooking.band) ||
+            (bookingMode === 'special' && !newBooking.guest_name.trim())
+        ) {
+            toast.error('Bitte die erforderlichen Termindaten ausfüllen.')
+            return
+        }
+        setLessonSubmitting(true)
+        try {
+            const start = new Date(`${newBooking.date}T${newBooking.time}`)
+            const end = addMinutes(start, newBooking.duration)
+            const payload: Record<string, any> = {
+                studio: currentUser?.studio?.id || studios?.[0]?.id,
+                teacher: newBooking.teacher || currentUser?.teacher_profile?.id || preferredTeacherId,
+                scheduled_start: start.toISOString(),
+                scheduled_end: end.toISOString(),
+                lesson_type: newBooking.lesson_type,
+                status: newBooking.status,
+                summary: newBooking.summary,
+                guest_name: bookingMode === 'special' ? newBooking.guest_name.trim() : '',
+                guest_address: bookingMode === 'special' ? newBooking.guest_address.trim() : '',
+                is_online: newBooking.is_online,
+                online_meeting_url: newBooking.is_online ? newBooking.online_meeting_url : '',
+            }
+            if (newBooking.status === 'cancelled') {
+                payload.cancellation_reason = newBooking.cancellation_reason
+            }
+            if (bookingMode === 'special') {
+                payload.student = null
+                payload.band = null
+                payload.room = null
+            } else if (bookingMode === 'band') {
+                payload.band = newBooking.band
+                payload.student = null
+            } else if (bookingMode === 'individual') {
+                payload.student = newBooking.student
+                payload.band = null
+            } else {
+                payload.student = newBooking.student || null
+                payload.band = newBooking.band || null
+            }
+
+            if (!editingLessonId && newBooking.recurrence !== 'none') {
+                if (bookingMode !== 'individual' || currentUser?.role !== 'admin') {
+                    toast.error('Wiederholungen sind nur für Schülertermine durch Administratoren vorgesehen.')
+                    return
+                }
+                await api.post('/core/calendar/icloud/series/create/', {
+                    ...payload, frequency: newBooking.recurrence,
+                    until: newBooking.recurrence_until || null,
+                })
+                toast.success('Wiederholungstermin in iCloud und StudioSync angelegt.')
+            } else if (editingLessonId) {
+                await api.patch(`/lessons/${editingLessonId}/`, payload)
+                toast.success('Unterrichtstermin aktualisiert.')
+            } else {
+                await api.post('/lessons/', payload)
+                toast.success('Unterrichtstermin angelegt.')
+            }
+            setShowLessonModal(false)
+            setEditingLessonId(null)
+            await refetchLessons()
+            if (currentUser?.role === 'admin' && currentUser?.preferences?.technical?.icloud_calendar_url) {
+                void api.post('/core/calendar/icloud/sync/')
+                    .then(() => refetchLessons())
+                    .catch(() => toast.error('Der anschließende iCloud-Abgleich ist fehlgeschlagen.'))
+            }
+        } catch (error: any) {
+            const detail = error?.response?.data?.detail || Object.values(error?.response?.data || {})[0]
+            toast.error(typeof detail === 'string' ? detail : 'Unterrichtstermin konnte nicht gespeichert werden.')
+        } finally {
+            setLessonSubmitting(false)
+        }
+    }
 
     const statusLabels: Record<string, string> = {
         all: tr('all'), scheduled: tr('statusScheduled'),
@@ -271,24 +387,7 @@ export default function LessonsPage() {
                 {currentUser && ['admin', 'teacher'].includes(currentUser.role) && (
                     <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3">
                         <Button
-                            onClick={() => {
-                                setEditingLessonId(null)
-                                setIsSpecialBooking(false)
-                                setLessonData({
-                                    student: '',
-                                    teacher: preferredTeacherId,
-                                    guest_name: '',
-                                    guest_address: '',
-                                    summary: '',
-                                    lesson_type: 'private',
-                                    status: 'scheduled',
-                                    scheduled_start: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-                                    duration_minutes: 60,
-                                    location: '',
-                                    is_online: false,
-                                })
-                                setShowLessonModal(true)
-                            }}
+                            onClick={openNewLesson}
                             className="gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 h-12 sm:h-auto"
                         >
                             <Calendar className="w-4 h-4" />
@@ -448,24 +547,7 @@ export default function LessonsPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => {
-                                                            setEditingLessonId(lesson.id)
-                                                            setIsSpecialBooking(Boolean(lesson.guest_name))
-                                                            setLessonData({
-                                                                student: lesson.student_profile_id || lesson.student || '',
-                                                                teacher: lesson.teacher || preferredTeacherId,
-                                                                guest_name: lesson.guest_name || '',
-                                                                guest_address: lesson.guest_address || '',
-                                                                summary: lesson.summary || '',
-                                                                lesson_type: lesson.lesson_type,
-                                                                status: lesson.status,
-                                                                scheduled_start: new Date(new Date(start).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-                                                                duration_minutes: duration,
-                                                                location: lesson.location || '',
-                                                                is_online: lesson.is_online || false,
-                                                            })
-                                                            setShowLessonModal(true)
-                                                        }}
+                                                        onClick={() => openExistingLesson(lesson)}
                                                         className="text-gray-400 hover:text-primary hover:bg-primary/5 active:scale-95"
                                                     >
                                                         <Edit className="w-4 h-4" />
@@ -559,24 +641,7 @@ export default function LessonsPage() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => {
-                                                setEditingLessonId(lesson.id)
-                                                setIsSpecialBooking(Boolean(lesson.guest_name))
-                                                setLessonData({
-                                                    student: lesson.student_profile_id || lesson.student || '',
-                                                    teacher: lesson.teacher || preferredTeacherId,
-                                                    guest_name: lesson.guest_name || '',
-                                                    guest_address: lesson.guest_address || '',
-                                                    summary: lesson.summary || '',
-                                                    lesson_type: lesson.lesson_type,
-                                                    status: lesson.status,
-                                                    scheduled_start: new Date(new Date(start).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
-                                                    duration_minutes: duration,
-                                                    location: lesson.location || '',
-                                                    is_online: lesson.is_online || false,
-                                                })
-                                                setShowLessonModal(true)
-                                            }}
+                                            onClick={() => openExistingLesson(lesson)}
                                             className="text-primary font-black uppercase text-[10px] tracking-widest h-8 px-2"
                                         >
                                             <Edit className="w-3 h-3 mr-1" />
@@ -933,181 +998,27 @@ export default function LessonsPage() {
                 </DialogFooter>
             </Dialog>
 
-            {/* Create/Edit Lesson Modal */}
-            <Dialog open={showLessonModal} onOpenChange={(open) => { setShowLessonModal(open); if (!open) setEditingLessonId(null) }} size="lg">
-                <DialogHeader title={editingLessonId ? tr('editLesson') : tr('createLesson')} />
-                <DialogContent>
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-gray-700 uppercase tracking-wide">
-                                    <input type="checkbox" checked={isSpecialBooking}
-                                        onChange={e => {
-                                            setIsSpecialBooking(e.target.checked)
-                                            setLessonData(previous => ({ ...previous, student: e.target.checked ? '' : previous.student }))
-                                        }} />
-                                    Sondertermin ohne Schülerkonto
-                                </label>
-                                {isSpecialBooking ? (
-                                    <input type="text" placeholder="Vorname und Nachname"
-                                        value={lessonData.guest_name}
-                                        onChange={e => setLessonData({ ...lessonData, guest_name: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900" />
-                                ) : (
-                                    <select required value={lessonData.student}
-                                        onChange={e => {
-                                            const selected = studentProfiles.find((s: any) => s.id === e.target.value)
-                                            setLessonData(previous => ({ ...previous, student: e.target.value, summary: previous.summary || selected?.instrument || '' }))
-                                        }}
-                                        className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900">
-                                        <option value="">{tr('selectStudent')}</option>
-                                        {students.map((student: any) => (
-                                            <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>
-                                        ))}
-                                    </select>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('dateTime')}</label>
-                                <input
-                                    type="datetime-local"
-                                    required
-                                    value={lessonData.scheduled_start}
-                                    onChange={(e) => setLessonData({ ...lessonData, scheduled_start: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('durationMin')}</label>
-                                <input
-                                    type="number"
-                                    required
-                                    min="15"
-                                    step="15"
-                                    value={lessonData.duration_minutes}
-                                    onChange={(e) => setLessonData({ ...lessonData, duration_minutes: Number(e.target.value) })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('type')}</label>
-                                <select
-                                    value={lessonData.lesson_type}
-                                    onChange={(e) => setLessonData({ ...lessonData, lesson_type: e.target.value as any })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
-                                >
-                                    {['private', 'group', 'workshop', 'recital', 'makeup'].map(type => (
-                                        <option key={type} value={type}>{typeLabels[type] || type}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('status')}</label>
-                                <select
-                                    value={lessonData.status}
-                                    onChange={(e) => setLessonData({ ...lessonData, status: e.target.value as any })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary rounded-xl font-semibold text-gray-900 outline-none transition-all"
-                                >
-                                    {['scheduled', 'in_progress', 'completed', 'cancelled', 'no_show'].map(type => (
-                                        <option key={type} value={type}>{statusLabels[type] || type}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">{tr('teachingAddress')}</label>
-                                {isSpecialBooking ? (
-                                    <input type="text" placeholder="Straße, Hausnummer, PLZ, Ort"
-                                        value={lessonData.guest_address}
-                                        onChange={e => setLessonData({ ...lessonData, guest_address: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-gray-900" />
-                                ) : (
-                                    <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-gray-900">
-                                        {lessonData.is_online ? tr('online') : (selectedAddress || tr('addressMissing'))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Notizen / Terminbeschreibung</label>
-                            <textarea rows={3} value={lessonData.summary}
-                                onChange={e => setLessonData({ ...lessonData, summary: e.target.value })}
-                                placeholder="Probestunde, Ersatztermin, weitere Hinweise"
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 resize-y" />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Lehrkraft</label>
-                            <select value={lessonData.teacher}
-                                onChange={e => setLessonData({ ...lessonData, teacher: e.target.value })}
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900">
-                                <option value="">Lehrkraft auswählen</option>
-                                {teachers.map((teacher: any) => (
-                                    <option key={teacher.id} value={teacher.id}>
-                                        {teacher.first_name} {teacher.last_name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                </DialogContent>
-                <DialogFooter>
-                    {editingLessonId && currentUser && ['admin', 'teacher'].includes(currentUser.role) && (
-                        <Button
-                            variant="outline"
-                            className="gap-2 border-red-200 text-red-700 hover:bg-red-50"
-                            disabled={lessonSubmitting || deletingLessonId !== null}
-                            onClick={() => {
-                                const lesson = typedLessons.find(item => item.id === editingLessonId)
-                                if (lesson) void handleDeleteLesson(lesson)
-                            }}
-                        >
-                            {deletingLessonId === editingLessonId
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <Trash2 className="w-4 h-4" />}
-                            Termin löschen
-                        </Button>
-                    )}
-                    <Button variant="ghost" onClick={() => setShowLessonModal(false)} disabled={lessonSubmitting}>{tr('cancel')}</Button>
-                    <Button
-                        disabled={lessonSubmitting || (!isSpecialBooking && !lessonData.student) || (isSpecialBooking && !lessonData.guest_name.trim()) || !lessonData.scheduled_start}
-                        onClick={async () => {
-                            setLessonSubmitting(true)
-                            try {
-                                const start = new Date(lessonData.scheduled_start)
-                                const end = new Date(start.getTime() + lessonData.duration_minutes * 60000)
-                                const payload = {
-                                    studio: currentUser?.studio?.id || studios?.[0]?.id,
-                                    teacher: lessonData.teacher || preferredTeacherId,
-                                    student: isSpecialBooking ? null : lessonData.student,
-                                    guest_name: isSpecialBooking ? lessonData.guest_name.trim() : '',
-                                    guest_address: isSpecialBooking ? lessonData.guest_address.trim() : '',
-                                    summary: lessonData.summary,
-                                    status: lessonData.status,
-                                    lesson_type: lessonData.lesson_type,
-                                    scheduled_start: start.toISOString(),
-                                    scheduled_end: end.toISOString(),
-                                    location: lessonData.location,
-                                    is_online: lessonData.is_online,
-                                }
-                                if (editingLessonId) {
-                                    await updateLesson(editingLessonId, payload)
-                                } else {
-                                    await createLesson(payload)
-                                }
-                                setShowLessonModal(false)
-                            } catch (e) {
-                                console.error('Lesson save issue', e)
-                            } finally {
-                                setLessonSubmitting(false)
-                            }
-                        }}
-                    >
-                        {lessonSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                        {editingLessonId ? tr('saveChanges') : tr('createLesson')}
-                    </Button>
-                </DialogFooter>
-            </Dialog>
+            <LessonBookingDialog
+                open={showLessonModal}
+                onOpenChange={(open) => { setShowLessonModal(open); if (!open) setEditingLessonId(null) }}
+                editingLessonId={editingLessonId}
+                newBooking={newBooking}
+                setNewBooking={setNewBooking}
+                bookingMode={bookingMode}
+                setBookingMode={setBookingMode}
+                bookingLoading={lessonSubmitting}
+                deletingLessonId={deletingLessonId}
+                onSubmit={saveLessonBooking}
+                onDelete={(id) => {
+                    const lesson = typedLessons.find(item => item.id === id)
+                    if (lesson) handleDeleteLesson(lesson)
+                }}
+                students={studentProfiles}
+                teachers={teachers}
+                bands={bands}
+                preferredTeacherId={preferredTeacherId}
+                use24Hour={true}
+            />
 
             <LessonDeleteDialog
                 target={deleteTarget}
