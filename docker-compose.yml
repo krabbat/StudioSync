@@ -41,6 +41,7 @@ services:
     volumes:
       - media_data:/app/media
       - static_data:/app/staticfiles
+      - ha_diagnostics:/app/ha-diagnostics
     environment:
       DEBUG: ${DEBUG:-False}
       DATABASE_URL: postgresql://studio_user:${POSTGRES_PASSWORD:-studio_password}@db:5432/studiosync
@@ -53,6 +54,7 @@ services:
       HA_BASE_URL: ${HA_BASE_URL:-https://musart.myds.me}
       HA_ACCESS_TOKEN: ${HA_ACCESS_TOKEN:-}
       HA_TRACKER_ENTITY_ID: ${HA_TRACKER_ENTITY_ID:-}
+      HA_ATTENDANCE_DIAGNOSTICS: ${HA_ATTENDANCE_DIAGNOSTICS:-1}
       # AWS / Stripe Config
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
@@ -77,6 +79,7 @@ services:
     volumes:
       - media_data:/app/media
       - static_data:/app/staticfiles
+      - ha_diagnostics:/app/ha-diagnostics
     environment:
       DEBUG: ${DEBUG:-False}
       DATABASE_URL: postgresql://studio_user:${POSTGRES_PASSWORD:-studio_password}@db:5432/studiosync
@@ -86,6 +89,7 @@ services:
       HA_BASE_URL: ${HA_BASE_URL:-https://musart.myds.me}
       HA_ACCESS_TOKEN: ${HA_ACCESS_TOKEN:-}
       HA_TRACKER_ENTITY_ID: ${HA_TRACKER_ENTITY_ID:-}
+      HA_ATTENDANCE_DIAGNOSTICS: ${HA_ATTENDANCE_DIAGNOSTICS:-1}
     depends_on:
       db:
         condition: service_healthy
@@ -114,3 +118,4 @@ volumes:
   frontend_next:
   media_data:
   static_data:
+  ha_diagnostics:
