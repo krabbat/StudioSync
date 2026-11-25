@@ -151,6 +151,9 @@ def test_future_deletion_succeeds_when_apple_series_has_no_rrule(linked_series):
     series.remote_hash = _hash(remote.data)
     series.save(update_fields=["ical_data", "remote_hash"])
 
+    from apps.lessons.serializers import LessonListSerializer
+    assert LessonListSerializer(lessons[1]).data["is_recurring"] is True
+
     with (
         patch("apps.lessons.icloud_sync._connect", return_value=context),
         patch("apps.lessons.icloud_sync._discover", return_value=[{"url": CAL_URL}]),
