@@ -1,4 +1,4 @@
-"""Remote Apple deletions must disappear from StudioSync without losing accounting."""
+"""Remote Apple deletions are retained in StudioSync as red cancellations."""
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
@@ -39,12 +39,12 @@ def _remote(raw):
 
 
 @pytest.mark.django_db
-def test_apple_exdate_removes_only_one_future_lesson(
+def test_apple_exdate_marks_one_future_lesson_cancelled(
     admin_user, studio, student, teacher,
 ):
     start = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(days=4)
     first = _remote(_ical(start, student.user.get_full_name()))
-    stats = {"imported": 0, "exported": 0, "deleted": 0, "unassigned": 0, "conflicts": 0}
+    stats = {"imported": 0, "exported": 0, "cancelled": 0, "unassigned": 0, "conflicts": 0}
     series = _import_series(admin_user, studio, CAL_URL, first, stats)
     assert stats["imported"] == 3
     assert Lesson.objects.filter(studio=studio, student=student).count() == 3
@@ -54,21 +54,22 @@ def test_apple_exdate_removes_only_one_future_lesson(
         removed=start + timedelta(days=7),
     )
     _import_series(admin_user, studio, CAL_URL, first, stats)
-    assert stats["deleted"] == 1
-    assert not Lesson.objects.filter(
+    assert stats["cancelled"] == 1
+    cancelled = Lesson.objects.get(
         student=student, scheduled_start=start + timedelta(days=7)
-    ).exists()
+    )
+    assert cancelled.status == "cancelled"
     assert Lesson.objects.filter(student=student, status="scheduled").count() == 2
     link = ICloudCalendarOccurrence.objects.get(
         series=series, recurrence_id=_key(start + timedelta(days=7))
     )
-    assert link.lesson_id is None
-    assert link.synced_signature == "remote-deleted"
+    assert link.lesson_id is not None
+    assert link.synced_signature != "remote-deleted"
 
     # Repeated pulls must not resurrect the removed occurrence.
     _import_series(admin_user, studio, CAL_URL, first, stats)
-    assert stats["deleted"] == 1
-    assert Lesson.objects.filter(student=student).count() == 2
+    assert stats["cancelled"] == 1
+    assert Lesson.objects.filter(student=student).count() == 3
 
 
 @pytest.mark.django_db
@@ -77,7 +78,7 @@ def test_apple_exdate_keeps_paid_lesson_for_teaching_history(
 ):
     start = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(days=3)
     remote = _remote(_ical(start, student.user.get_full_name()))
-    stats = {"imported": 0, "exported": 0, "deleted": 0, "unassigned": 0, "conflicts": 0}
+    stats = {"imported": 0, "exported": 0, "cancelled": 0, "unassigned": 0, "conflicts": 0}
     series = _import_series(admin_user, studio, CAL_URL, remote, stats)
     middle = ICloudCalendarOccurrence.objects.get(
         series=series, recurrence_id=_key(start + timedelta(days=7))
@@ -91,11 +92,11 @@ def test_apple_exdate_keeps_paid_lesson_for_teaching_history(
     middle.refresh_from_db()
     assert middle.is_paid
     assert middle.status == "completed"
-    assert stats["deleted"] == 0
+    assert stats["cancelled"] == 0
 
 
 @pytest.mark.django_db
-def test_missing_apple_series_is_removed_after_two_polls(
+def test_missing_apple_series_is_cancelled_after_two_polls(
     admin_user, studio, student, teacher,
 ):
     from apps.lessons.icloud_sync import _hash
@@ -133,17 +134,17 @@ def test_missing_apple_series_is_removed_after_two_polls(
         patch("apps.lessons.icloud_sync._credentials", return_value=("user@icloud.com", "password")),
     ):
         first = sync_icloud_user(admin_user)
-        assert first["deleted"] == 0
+        assert first["cancelled"] == 0
         assert Lesson.objects.filter(pk=lesson.pk).exists()
         second = sync_icloud_user(admin_user)
-        assert second["deleted"] == 1
-        assert not Lesson.objects.filter(pk=lesson.pk).exists()
+        assert second["cancelled"] == 1
+        assert Lesson.objects.filter(pk=lesson.pk, status="cancelled").exists()
         third = sync_icloud_user(admin_user)
-        assert third["deleted"] == 0
+        assert third["cancelled"] == 0
 
     link.refresh_from_db()
-    assert link.lesson_id is None
-    assert link.synced_signature == "remote-deleted"
+    assert link.lesson_id is not None
+    assert link.synced_signature != "remote-deleted"
 
 
 @pytest.mark.django_db
@@ -187,7 +188,7 @@ def test_missing_apple_series_keeps_completed_paid_lesson(
         patch("apps.lessons.icloud_sync._credentials", return_value=("user@icloud.com", "password")),
     ):
         result = sync_icloud_user(admin_user)
-    assert result["deleted"] == 0
+    assert result["cancelled"] == 0
     lesson.refresh_from_db()
     assert lesson.status == "completed"
     assert lesson.is_paid
