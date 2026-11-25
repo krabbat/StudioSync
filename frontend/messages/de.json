@@ -1197,7 +1197,9 @@
     "loading": "Funktionseinstellungen werden geladen …",
     "adminOnly": "Nur Administratoren dürfen Funktionen verwalten.",
     "saveSuccess": "Funktionseinstellungen gespeichert.",
-    "saveError": "Funktionseinstellungen konnten nicht gespeichert werden."
+    "saveError": "Funktionseinstellungen konnten nicht gespeichert werden.",
+    "teachersName": "Lehrkräfte",
+    "teachersDescription": "Die Lehrkräfteverwaltung im linken Menü ein- oder ausblenden."
   },
   "ApiKeys": {
     "settings": "Einstellungen",
