@@ -40,6 +40,7 @@ from apps.core.views.mail_outbound import (
     MailResourceDownloadView,
     MailSendView,
 )
+from apps.core.views.home_assistant import HomeAssistantConnectionView
 from apps.core.views.icloud_calendar import ICloudCalendarListView, ICloudCalendarWriteTestView
 from apps.core.views.icloud_sync import (
     ICloudSyncView, ICloudSeriesView, ICloudSeriesAssignView, ICloudSeriesCreateView,
@@ -66,6 +67,7 @@ urlpatterns = (
         path("stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
         path("analytics/", DashboardAnalyticsView.as_view(), name="dashboard-analytics"),
         path("reports/export/", ReportsExportView.as_view(), name="reports-export"),
+        re_path(r"^home-assistant/connection/?$", HomeAssistantConnectionView.as_view(), name="home-assistant-connection"),
         re_path(r"^calendar/icloud/calendars/?$", ICloudCalendarListView.as_view(), name="icloud-calendars"),
         re_path(r"^calendar/icloud/test/?$", ICloudCalendarWriteTestView.as_view(), name="icloud-write-test"),
         re_path(r"^calendar/icloud/sync/?$", ICloudSyncView.as_view(), name="icloud-sync"),
