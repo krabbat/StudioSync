@@ -15,6 +15,7 @@ import {
     Package,
     Target,
     Users,
+    UserCheck,
     type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -40,6 +41,7 @@ const FEATURES: FeatureDefinition[] = [
     { key: 'analytics_enabled', icon: BarChart3 },
     { key: 'practice_rooms_enabled', icon: CalendarDays },
     { key: 'documentation_enabled', icon: FileText },
+    { key: 'teachers_enabled', icon: UserCheck },
 ]
 
 export default function FeaturesPage() {
@@ -55,6 +57,7 @@ export default function FeaturesPage() {
         analytics_enabled: { name: t('reportsName'), description: t('reportsDescription') },
         practice_rooms_enabled: { name: t('practiceRoomsName'), description: t('practiceRoomsDescription') },
         documentation_enabled: { name: t('documentationName'), description: t('documentationDescription') },
+        teachers_enabled: { name: t('teachersName'), description: t('teachersDescription') },
     }
     const { currentUser, isLoading: userLoading } = useUser()
     const { flags, isLoading, refresh } = useFeatureFlags()
