@@ -83,3 +83,19 @@ test('time rail and all seven weekday headers use the same fully opaque grey', (
     assert.doesNotMatch(page, /bg-slate-200\/80/)
     assert.equal((page.match(/bg-slate-200(?=[\s"])/g) || []).length, 5)
 })
+
+
+test('cancelled appointments stay red regardless of current color grouping', () => {
+    assert.match(page, /if \(colorMode === "status" \|\| lesson\.status === "cancelled"\) return \{\};/)
+    assert.equal(
+        (page.match(/\(colorMode === "status" \|\| lesson\.status === "cancelled"\)/g) || []).length,
+        2
+    )
+    assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
+})
+
+test('weekday header and time rail share one opaque color value', () => {
+    assert.match(page, /const WEEK_CHROME_COLOR = "#e2e8f0";/)
+    assert.equal((page.match(/style=\{\{ backgroundColor: WEEK_CHROME_COLOR \}\}/g) || []).length, 4)
+    assert.doesNotMatch(page, /bg-slate-200\/80/)
+})
