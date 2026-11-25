@@ -202,7 +202,6 @@ class LessonViewSet(viewsets.ModelViewSet):
         # has been recorded; never remove a local Lesson object.
         studio_owner = lesson.studio.owner
         occurrence = getattr(lesson, "icloud_occurrence", None)
-        was_cancelled = lesson.status == "cancelled"
         updates = {"status": "cancelled"}
         if lesson.cancelled_at is None:
             updates["cancelled_at"] = timezone.now()
