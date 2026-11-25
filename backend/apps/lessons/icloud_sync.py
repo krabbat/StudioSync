@@ -598,7 +598,7 @@ def _sync_icloud_user_impl(user):
     studio = user.owned_studios.order_by("id").first()
     if not studio:
         raise ICloudSetupError("Kein eigenes Studio gefunden.")
-    stats = {"imported": 0, "exported": 0, "unassigned": 0, "conflicts": 0}
+    stats = {"imported": 0, "exported": 0, "deleted": 0, "unassigned": 0, "conflicts": 0}
     with _connect(username, password) as client:
         available = {item["url"] for item in _discover(client)}
         if calendar_url not in available:
@@ -835,7 +835,7 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
         cal = client.calendar(url=calendar_url)
         saved = cal.save_event(ical.to_ical().decode("utf-8"))
         saved.load()
-        stats = {"imported": 0, "exported": 0, "unassigned": 0, "conflicts": 0}
+        stats = {"imported": 0, "exported": 0, "deleted": 0, "unassigned": 0, "conflicts": 0}
         _import_series(user, student.studio, calendar_url, saved, stats)
     return stats
 
