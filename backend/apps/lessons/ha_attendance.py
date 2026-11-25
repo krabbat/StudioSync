@@ -200,7 +200,7 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
     low, high = window(lesson)
     parts = assigned.get(lesson.pk, [])
     amount = seconds(parts)
-    valid = bool(rows) and not any(state in INVALID for a,b,state in rows
+    valid = bool(rows) and rows[0][0] <= low + timedelta(seconds=1) and not any(state in INVALID for a,b,state in rows
                                   if a < min(now, high) and b > low)
     present = current is not None and matching(current, zone)
     with transaction.atomic():
@@ -212,14 +212,15 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
         info = dict(obj.ha_attendance or {})
         info.update(zone=zone[0], zone_name=zone[1], tracker=tracker, checked_at=iso(now),
                     present=present)
-        if rows:
+        if rows and not obj.ha_finalized_at:
             info["attendance_seconds"] = amount
             info["arrival"] = iso(parts[0][0]) if parts else None
             info["departure"] = iso(parts[-1][1]) if parts and not present else None
-        info["error"] = "" if valid else "Standortverlauf unvollständig"
+        if not obj.ha_finalized_at:
+            info["error"] = "" if valid else "Standortverlauf unvollständig"
         obj.ha_attendance = info
         # Continue observing a matching visit beyond the deadline until departure.
-        if present and now >= low and (now <= high or obj.ha_watch_active):
+        if present and now >= low and (now <= high + timedelta(minutes=4) or obj.ha_watch_active):
             obj.ha_watch_active = True
         elif current is not None and current not in INVALID:
             obj.ha_watch_active = False
@@ -242,7 +243,7 @@ def live_studio(studio, activation, now, only=None):
     base = lessons_for(studio, activation)
     # No HA request without a real lesson window or an already tracked visit.
     qs = base.filter(Q(scheduled_start__lte=now+TOLERANCE,
-                       scheduled_end__gte=now-TOLERANCE,
+                       scheduled_end__gte=now-TOLERANCE-timedelta(minutes=4),
                        status__in=["scheduled","in_progress"], ha_finalized_at__isnull=True,
                        ha_manual_override=False)
                      | Q(ha_watch_active=True)).exclude(status="cancelled")
@@ -257,12 +258,12 @@ def live_studio(studio, activation, now, only=None):
     if not selected:
         return
     # Include the final polling tick after the tolerance expires (scheduler jitter).
-    start = max(activation, min(window(l)[0] for l in selected))
+    start = min(window(l)[0] for l in selected)
     end = now
     related = list(base.filter(scheduled_start__lt=end+TOLERANCE,
                    scheduled_end__gt=start-TOLERANCE).exclude(status="cancelled"))
     rows = []
-    if end > start:
+    if end > start and any(not l.ha_finalized_at and not l.ha_manual_override for l in selected):
         try:
             rows = ha.history(start, end)
         except Exception:
