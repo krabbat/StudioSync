@@ -22,6 +22,7 @@ export interface LessonBookingData {
   online_meeting_url: string;
   status: string;
   cancellation_reason: string;
+  cancellation_kind: "" | "student_cancelled" | "teacher_cancelled";
   summary: string;
   guest_name: string;
   guest_address: string;
@@ -480,6 +481,33 @@ export default function LessonBookingDialog({
 
                   {newBooking.status === "cancelled" && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {bookingMode === "individual" && (
+                        <>
+                          <label htmlFor="lesson-cancellation-kind" className="text-xs font-black text-red-400 uppercase tracking-widest">
+                            {tr('cancellationKind')}
+                          </label>
+                          <select
+                            id="lesson-cancellation-kind"
+                            required
+                            value={newBooking.cancellation_kind}
+                            onChange={e => setNewBooking({
+                              ...newBooking,
+                              cancellation_kind: e.target.value as LessonBookingData["cancellation_kind"],
+                            })}
+                            className="w-full rounded-lg border border-red-200 bg-red-50/50 px-3 py-2.5 font-semibold text-gray-800"
+                          >
+                            <option value="">{tr('chooseCancellationKind')}</option>
+                            <option value="student_cancelled">{tr('studentCancelledCredited')}</option>
+                            <option value="teacher_cancelled">{tr('teacherCancelledNotCredited')}</option>
+                          </select>
+                          {newBooking.cancellation_kind && (
+                            <p className="text-xs text-gray-600">
+                              {tr(newBooking.cancellation_kind === 'teacher_cancelled'
+                                ? 'teacherCancellationQuotaNote' : 'studentCancellationQuotaNote')}
+                            </p>
+                          )}
+                        </>
+                      )}
                       <label className="text-xs font-black text-red-400 uppercase tracking-widest">
                         {tr('cancellationReason')}
                       </label>
