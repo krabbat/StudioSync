@@ -1,4 +1,23 @@
 {
+  "LessonCancellation": {
+    "title": "Delete lesson appointment",
+    "recurringExplanation": "This appointment belongs to a recurring iCloud series. Choose which appointments to remove.",
+    "singleExplanation": "This appointment will be removed from iCloud and kept in StudioSync in red as cancelled.",
+    "seriesExplanation": "Delete this and all future appointments ends the recurring series in iCloud. Completed or paid lessons are protected. Only deleting this single appointment leaves a red cancellation record. Later series occurrences are permanently removed from StudioSync.",
+    "permanentExplanation": "Permanent administrator deletion removes this lesson record entirely from StudioSync. A second confirmation is required.",
+    "cancellationKind": "Cancelled by",
+    "chooseCancellationKind": "Please select",
+    "studentCancelledCredited": "Student cancellation – counts toward quota",
+    "teacherCancelledNotCredited": "Teacher cancellation – does not count toward quota",
+    "teacherCancellationQuotaNote": "Teacher cancellation: this lesson does not count toward the 44-unit annual quota.",
+    "studentCancellationQuotaNote": "Student cancellation: this lesson counts toward the annual quota.",
+    "onlyForSingleCancellation": "This choice applies only to cancelling one lesson, not permanent deletion.",
+    "deleteThis": "Delete only this appointment",
+    "deleteSingle": "Delete appointment",
+    "deleteFuture": "Delete this and all future appointments",
+    "deletePermanent": "Permanently delete this appointment (administrator)",
+    "cancel": "Cancel"
+  },
   "Common": {
     "save": "Save",
     "cancel": "Cancel",
