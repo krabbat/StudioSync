@@ -231,9 +231,17 @@ class LessonViewSet(viewsets.ModelViewSet):
         # "Delete" is a cancellation in StudioSync. The corresponding Apple
         # resource is deleted (EXDATE for recurrence) only after this state
         # has been recorded; never remove a local Lesson object.
+        kind = request.query_params.get("cancellation_kind")
+        if kind is not None and kind not in ("student_cancelled", "teacher_cancelled"):
+            return Response(
+                {"cancellation_kind": ["Invalid cancellation category."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         studio_owner = lesson.studio.owner
         occurrence = getattr(lesson, "icloud_occurrence", None)
         updates = {"status": "cancelled"}
+        if kind is not None:
+            updates["cancellation_kind"] = kind
         if lesson.cancelled_at is None:
             updates["cancelled_at"] = timezone.now()
         if lesson.cancelled_by_id is None:
