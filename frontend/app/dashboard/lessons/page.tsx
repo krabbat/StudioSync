@@ -499,7 +499,7 @@ export default function LessonsPage() {
                                     const duration = (end.getTime() - start.getTime()) / (1000 * 60)
 
                                     return (
-                                        <tr key={lesson.id} className="hover:bg-gray-50/30 transition-all group">
+                                        <tr key={lesson.id} className={`transition-all group ${lesson.status === "completed" ? "bg-emerald-50/60 hover:bg-emerald-50" : "hover:bg-gray-50/30"}`}>
                                             <td className="px-6 py-6">
                                                 <input
                                                     type="checkbox"
@@ -584,7 +584,7 @@ export default function LessonsPage() {
                             const duration = (end.getTime() - start.getTime()) / (1000 * 60)
 
                             return (
-                                <div key={lesson.id} className="p-4 space-y-4 hover:bg-gray-50/30 transition-all">
+                                <div key={lesson.id} className={`p-4 space-y-4 transition-all ${lesson.status === "completed" ? "bg-emerald-50/60 hover:bg-emerald-50" : "hover:bg-gray-50/30"}`}>
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="h-10 w-10 shrink-0 rounded-2xl bg-primary/5 flex items-center justify-center text-primary text-xs font-black border border-primary/10">
