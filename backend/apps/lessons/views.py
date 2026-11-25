@@ -203,6 +203,10 @@ class LessonViewSet(viewsets.ModelViewSet):
                 )
 
         if scope == "future":
+            if request.user.role != "admin":
+                raise PermissionDenied(
+                    "Nur Administratoren dürfen zukünftige Serientermine endgültig löschen."
+                )
             from apps.lessons.icloud_sync import end_icloud_series_from_lesson
             from apps.core.views.icloud_calendar import ICloudSetupError
             try:
