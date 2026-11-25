@@ -40,7 +40,7 @@ function GeneralSettingsContents() {
         } else {
             setActiveTab(tab || 'profile')
         }
-    }, [currentUser?.role, searchParams]
+    }, [currentUser?.role, searchParams])
 
     const handleDetectTimezone = async () => {
         setGeoDetecting(true)
