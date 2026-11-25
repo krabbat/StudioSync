@@ -86,9 +86,9 @@ test('time rail and all seven weekday headers use the same fully opaque grey', (
 
 
 test('cancelled appointments stay red regardless of current color grouping', () => {
-    assert.match(page, /if \(colorMode === "status" \|\| lesson\.status === "cancelled" \|\| lesson\.status === "completed"\) return \{\};/)
+    assert.match(page, /if \(colorMode === "status" \|\| lesson\.status === "scheduled" \|\| lesson\.status === "cancelled" \|\| lesson\.status === "completed"\) return \{\};/)
     assert.equal(
-        (page.match(/\(colorMode === "status" \|\| lesson\.status === "cancelled" \|\| lesson\.status === "completed"\)/g) || []).length,
+        (page.match(/\(colorMode === "status" \|\| lesson\.status === "scheduled" \|\| lesson\.status === "cancelled" \|\| lesson\.status === "completed"\)/g) || []).length,
         3
     )
     assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
@@ -103,8 +103,16 @@ test('weekday header and time rail share one opaque color value', () => {
 test('only the calendar colors completed lessons green; planning list styling stays unchanged', () => {
     assert.match(page, /lesson\.status === "completed" \? "bg-emerald-50 border-emerald-400"/)
     assert.match(page, /lesson\.status === "completed" \? "bg-emerald-50 border-emerald-400 text-emerald-800"/)
-    assert.match(page, /lesson\.status === "scheduled" \? "bg-primary\/10 border-primary/)
+    assert.match(page, /lesson\.status === "scheduled" \? "bg-blue-50 border-blue-200 text-blue-700/)
     assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
     assert.match(list, /completed: 'bg-green-50 text-green-700 border-green-200'/)
     assert.doesNotMatch(list, /bg-emerald-50\/60 hover:bg-emerald-50/)
+})
+
+test('scheduled lessons use the planning-list blue in week and month calendar only', () => {
+    assert.match(page, /lesson\.status === "scheduled" \? "bg-blue-50 border-blue-200 text-blue-700 cursor-pointer hover:bg-blue-100"/)
+    assert.match(page, /lesson\.status === "scheduled" \? "bg-blue-50 border-blue-200 text-blue-700"/)
+    assert.match(list, /scheduled: 'bg-blue-50 text-blue-700 border-blue-200'/)
+    assert.match(page, /lesson\.status === "completed" \? "bg-emerald-50 border-emerald-400"/)
+    assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
 })
