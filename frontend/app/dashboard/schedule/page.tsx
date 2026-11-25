@@ -281,6 +281,7 @@ export default function SchedulePage() {
     online_meeting_url: "",
     status: "scheduled",
     cancellation_reason: "",
+    cancellation_kind: "",
     summary: "",
     guest_name: "",
     guest_address: "",
@@ -305,6 +306,7 @@ export default function SchedulePage() {
       online_meeting_url: "",
       status: "scheduled",
       cancellation_reason: "",
+    cancellation_kind: "",
       summary: "",
       guest_name: "",
       guest_address: "",
@@ -329,6 +331,7 @@ export default function SchedulePage() {
       online_meeting_url: lesson.online_meeting_url || "",
       status: lesson.status || "scheduled",
       cancellation_reason: lesson.cancellation_reason || "",
+      cancellation_kind: lesson.cancellation_kind || "",
       summary: lesson.summary || "",
       guest_name: lesson.guest_name || "",
       guest_address: lesson.guest_address || "",
@@ -510,6 +513,10 @@ export default function SchedulePage() {
       toast.error(tr('messagePleaseSelectAStudent'));
       return;
     }
+    if (newBooking.status === "cancelled" && bookingMode === "individual" && !newBooking.cancellation_kind) {
+      toast.error(tr('cancellationKindRequired'));
+      return;
+    }
     if (currentUser?.role !== "student" && bookingMode === "band" && !newBooking.band) {
       toast.error(tr('messagePleaseSelectABand'));
       return;
@@ -534,6 +541,7 @@ export default function SchedulePage() {
 
       if (newBooking.status === "cancelled") {
         payload.cancellation_reason = newBooking.cancellation_reason;
+        payload.cancellation_kind = bookingMode === "individual" ? newBooking.cancellation_kind : "";
       }
 
       if (currentUser?.role === "student") {
