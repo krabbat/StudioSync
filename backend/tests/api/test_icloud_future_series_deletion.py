@@ -185,3 +185,33 @@ def test_future_deletion_removes_previously_cancelled_series_entries(linked_seri
     assert Lesson.objects.filter(pk=lessons[0].pk).exists()
     assert not Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons[1:]]).exists()
     assert ICloudCalendarOccurrence.objects.filter(series=series).count() == 1
+
+
+@pytest.mark.django_db
+def test_future_deletion_trims_rdate_only_recurring_series(linked_series):
+    """An RDATE-only Apple recurrence also supports deleting all later dates."""
+    series, lessons, remote, context = linked_series
+    cal = Calendar.from_ical(remote.data)
+    master = cal.walk("VEVENT")[0]
+    del master["RRULE"]
+    master.add("rdate", [item.scheduled_start for item in lessons[1:]])
+    remote.data = cal.to_ical().decode("utf-8")
+    series.ical_data = remote.data
+    series.remote_hash = _hash(remote.data)
+    series.save(update_fields=["ical_data", "remote_hash"])
+
+    with (
+        patch("apps.lessons.icloud_sync._connect", return_value=context),
+        patch("apps.lessons.icloud_sync._discover", return_value=[{"url": CAL_URL}]),
+        patch("apps.lessons.icloud_sync._credentials", return_value=("test@icloud.com", "secret")),
+    ):
+        deleted = end_icloud_series_from_lesson(lessons[2])
+
+    assert deleted == 2
+    assert Lesson.objects.filter(pk__in=[item.pk for item in lessons[:2]]).count() == 2
+    assert not Lesson.objects.filter(pk__in=[item.pk for item in lessons[2:]]).exists()
+    remaining = _expand(remote.data)
+    assert len(remaining) == 2
+    assert [item["start"] for item in remaining] == [
+        lessons[0].scheduled_start, lessons[1].scheduled_start,
+    ]
