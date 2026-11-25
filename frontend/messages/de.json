@@ -662,6 +662,13 @@
     "genericClient": "Kunde"
   },
   "Schedule": {
+    "cancellationKind": "Absage durch",
+    "chooseCancellationKind": "Bitte auswählen",
+    "studentCancelledCredited": "Schülerabsage – zählt zum Jahreskontingent",
+    "teacherCancelledNotCredited": "Lehrerausfall – zählt nicht zum Jahreskontingent",
+    "teacherCancellationQuotaNote": "Lehrerausfall: Diese Stunde wird nicht auf die 44 Unterrichtseinheiten angerechnet.",
+    "studentCancellationQuotaNote": "Schülerabsage: Diese Stunde wird auf das Jahreskontingent angerechnet.",
+    "cancellationKindRequired": "Bitte auswählen, wer die Stunde abgesagt hat.",
     "synchronizingSchedule": "Kalender wird synchronisiert…",
     "schedule": "Kalender",
     "orchestrateYourWeeklyLessonCalendar": "Unterrichtstermine planen und verwalten.",
