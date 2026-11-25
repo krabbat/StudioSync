@@ -19,6 +19,13 @@ import {
     Target,
     BarChart3,
     Settings,
+    Palette,
+    Mail,
+    Server,
+    Database,
+    Key,
+    Layers,
+    ShieldAlert,
     Building2,
     UserCog,
     UserRound,
@@ -67,6 +74,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
     const t = useTranslations('Sidebar')
+    const tSettings = useTranslations('SettingsHub')
     const pathname = usePathname()
     const { currentUser } = useUser()
     const { flags } = useFeatureFlags()
@@ -133,7 +141,17 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
             roles: ['admin'],
             items: [
                 { name: t('users'), href: '/dashboard/users', icon: UserCog, roles: ['admin'] },
-                { name: t('settings'), href: '/dashboard/settings', icon: Settings, roles: ['admin'] },
+                { name: tSettings('sectionAccount'), href: '/dashboard/settings/general/?tab=profile', icon: UserRound, roles: ['admin'] },
+                { name: tSettings('sectionSecurity'), href: '/dashboard/settings/general/?tab=security', icon: ShieldAlert, roles: ['admin'] },
+                { name: tSettings('sectionStudio'), href: '/dashboard/settings/general/?tab=studio', icon: Building2, roles: ['admin'] },
+                { name: tSettings('sectionAppearance'), href: '/dashboard/settings/general/?tab=appearance', icon: Palette, roles: ['admin'] },
+                { name: tSettings('sectionNotifications'), href: '/dashboard/settings/general/?tab=notifications', icon: Bell, roles: ['admin'] },
+                { name: tSettings('sectionCommunication'), href: '/dashboard/settings/general/?tab=communication', icon: Mail, roles: ['admin'] },
+                { name: tSettings('sectionFeatures'), href: '/dashboard/features/', icon: Layers, roles: ['admin'] },
+                { name: tSettings('sectionApiKeys'), href: '/dashboard/settings/api-keys/', icon: Key, roles: ['admin'] },
+                { name: tSettings('sectionGigVenues'), href: '/dashboard/settings/gig-venues/', icon: MapPin, roles: ['admin'], featureFlag: 'gigs_enabled' },
+                { name: tSettings('sectionTechnical'), href: '/dashboard/settings/general/?tab=technical', icon: Server, roles: ['admin'] },
+                { name: tSettings('sectionMaintenance'), href: '/dashboard/settings/general/?tab=maintenance', icon: Database, roles: ['admin'] },
             ],
         },
         {
