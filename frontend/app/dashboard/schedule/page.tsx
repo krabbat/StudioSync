@@ -534,7 +534,7 @@ export default function SchedulePage() {
         scheduled_start: startDateTime.toISOString(),
         scheduled_end: endDateTime.toISOString(),
         lesson_type: newBooking.lesson_type,
-        status: newBooking.status,
+        ...(!editingLessonId || newBooking.statusTouched ? { status: newBooking.status } : {}),
         summary: newBooking.summary,
         guest_name: bookingMode === "special" ? newBooking.guest_name.trim() : "",
         guest_address: bookingMode === "special" ? newBooking.guest_address.trim() : "",
