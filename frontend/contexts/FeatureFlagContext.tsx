@@ -24,7 +24,7 @@ function mapBackendFeatures(raw: Record<string, boolean>): Partial<FeatureFlags>
     const featureKeys: (keyof FeatureFlags)[] = [
         'billing_enabled', 'inventory_enabled', 'messaging_enabled',
         'resources_enabled', 'goals_enabled', 'bands_enabled',
-        'analytics_enabled', 'practice_rooms_enabled',
+        'gigs_enabled', 'analytics_enabled', 'practice_rooms_enabled',
     ]
     for (const key of featureKeys) {
         const backendKey = key.replace('_enabled', '')
