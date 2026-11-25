@@ -181,7 +181,8 @@ class LessonViewSet(viewsets.ModelViewSet):
         now = timezone.now()
         if not schedule or lesson.ha_manual_override or lesson.ha_finalized_at or lesson.status == "cancelled":
             return Response({"detail": "Keine automatische Prüfung für diesen Termin."}, status=400)
-        activation = stamp(literal_eval(schedule.args))
+        args = literal_eval(schedule.args)
+        activation = stamp(args[0] if isinstance(args, tuple) else args)
         if lesson.scheduled_start < activation or now < window(lesson)[0]:
             return Response({"detail": "Termin liegt außerhalb des Erfassungszeitraums."}, status=400)
         try:
