@@ -96,6 +96,6 @@ test('cancelled appointments stay red regardless of current color grouping', () 
 
 test('weekday header and time rail share one opaque color value', () => {
     assert.match(page, /const WEEK_CHROME_COLOR = "#e2e8f0";/)
-    assert.equal((page.match(/style=\{\{ backgroundColor: WEEK_CHROME_COLOR \}\}/g) || []).length, 4)
+    assert.equal((page.match(/style=\{\{ backgroundColor: WEEK_CHROME_COLOR \}\}/g) || []).length, 5)
     assert.doesNotMatch(page, /bg-slate-200\/80/)
 })
