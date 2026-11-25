@@ -34,6 +34,7 @@ def test_legacy_feature_defaults_hide_bands_gigs_and_reports(
     assert selected["bands"] is False
     assert selected["gigs"] is False
     assert selected["analytics"] is False
+    assert selected["documentation"] is False
     assert selected["billing"] is True
     assert selected["messaging"] is True
     # Reading must not silently modify or discard the original setup settings.
@@ -57,6 +58,7 @@ def test_admin_can_save_feature_visibility_and_reenable_reports(
     assert result.data["features_enabled"]["analytics"] is True
     assert result.data["features_enabled"]["bands"] is False
     assert result.data["features_enabled"]["gigs"] is False
+    assert result.data["features_enabled"]["documentation"] is False
     assert result.data["features_enabled"]["billing"] is True
 
     status_result = authenticated_client.get("/api/core/setup/status/")
@@ -135,3 +137,44 @@ def test_invalid_feature_changes_do_not_overwrite_settings(
     legacy_setup.refresh_from_db()
     assert legacy_setup.features_enabled["analytics"] is True
     assert "features_customized" not in legacy_setup.setup_data
+
+
+@pytest.mark.django_db
+def test_documentation_menu_can_be_temporarily_enabled_without_affecting_modules(
+    authenticated_client, legacy_setup,
+):
+    first = authenticated_client.patch(
+        "/api/core/setup/features/",
+        {"features_enabled": {"documentation": True}},
+        format="json",
+    )
+    assert first.status_code == 200, first.data
+    features = first.data["features_enabled"]
+    assert features["documentation"] is True
+    assert features["bands"] is False
+    assert features["analytics"] is False
+    assert features["billing"] is True
+
+    second = authenticated_client.patch(
+        "/api/core/setup/features/",
+        {"features_enabled": {"documentation": False}},
+        format="json",
+    )
+    assert second.status_code == 200, second.data
+    assert second.data["features_enabled"]["documentation"] is False
+    legacy_setup.refresh_from_db()
+    assert legacy_setup.features_enabled["documentation"] is False
+
+
+@pytest.mark.django_db
+def test_unauthorized_documentation_change_is_forbidden(
+    teacher_authenticated_client, legacy_setup,
+):
+    result = teacher_authenticated_client.patch(
+        "/api/core/setup/features/",
+        {"features_enabled": {"documentation": True}},
+        format="json",
+    )
+    assert result.status_code == 403
+    legacy_setup.refresh_from_db()
+    assert "documentation" not in legacy_setup.features_enabled
