@@ -13,6 +13,14 @@ from apps.resources.models import Resource
 User = get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def isolate_ha_diagnostics(monkeypatch, tmp_path):
+    """Never let simulated attendance events pollute the live Docker log."""
+    monkeypatch.setenv("HA_ATTENDANCE_DIAGNOSTICS", "0")
+    monkeypatch.setenv("HA_ATTENDANCE_LOG_PATH", str(tmp_path / "ha-attendance-test.jsonl"))
+
+
+
 @pytest.fixture
 def api_client():
     """Return an API client for making requests."""
