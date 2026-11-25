@@ -118,7 +118,7 @@ def test_paid_future_lesson_blocks_series_deletion_before_remote_edit(
 ):
     series, lessons, remote, context = linked_series
     Lesson.objects.filter(pk=lessons[2].pk).update(is_paid=True)
-    with pytest.raises(Exception, match="bezahlte"):
+    with pytest.raises(Exception, match="bezahlt"):
         end_icloud_series_from_lesson(lessons[1])
     remote.delete.assert_not_called()
     remote.save.assert_not_called()
