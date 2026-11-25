@@ -160,6 +160,7 @@ urlpatterns = (
         ),
         # Setup Wizard Endpoints (trailing slash optional — Next.js proxy strips trailing slashes)
         re_path(r"^setup/status/?$", setup.check_setup_status, name="setup-status"),
+        re_path(r"^setup/features/?$", setup.update_feature_settings, name="setup-features"),
         re_path(r"^setup/complete/?$", setup.complete_setup_wizard, name="setup-complete"),
         # GDPR Compliance Endpoints
         path("gdpr/export-data/", gdpr.export_my_data, name="gdpr-export-data"),
