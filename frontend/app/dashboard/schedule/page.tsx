@@ -457,11 +457,20 @@ export default function SchedulePage() {
       id: lessonId,
       label: `${selected.student_name || selected.band_name || 'Unterricht'} am ${format(parseISO(selected.scheduled_start), 'dd.MM.yyyy HH:mm')}`,
       isRecurring: Boolean(selected.is_recurring),
+      canPermanentlyDelete: currentUser?.role === 'admin'
+        && !selected.is_paid
+        && !['completed', 'in_progress', 'no_show'].includes(selected.status),
     });
   };
 
   const deleteBooking = async (scope: LessonDeleteScope) => {
     if (!deleteTarget) return;
+    if (scope === 'permanent' && !window.confirm(
+      'Diesen Unterrichtstermin wirklich ENDGÜLTIG aus StudioSync und iCloud löschen? Die Unterrichtsdaten werden dabei unwiderruflich entfernt.'
+    )) return;
+    if (scope === 'future' && !window.confirm(
+      'Diesen Termin UND ALLE zukünftigen Serientermine wirklich ENDGÜLTIG löschen? Diese Einträge werden nicht rot als abgesagt erhalten.'
+    )) return;
     const lessonId = deleteTarget.id;
     setDeletingLessonId(lessonId);
     try {
