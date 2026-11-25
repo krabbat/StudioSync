@@ -24,6 +24,7 @@ export interface FeatureFlags {
   goals_enabled: boolean
   bands_enabled: boolean
   gigs_enabled: boolean
+  documentation_enabled: boolean
   analytics_enabled: boolean
   practice_rooms_enabled: boolean
 }
@@ -101,6 +102,7 @@ export const DEFAULT_FEATURES: FeatureFlags = {
   goals_enabled: true,
   bands_enabled: false,
   gigs_enabled: false,
+  documentation_enabled: false,
   analytics_enabled: false,
   practice_rooms_enabled: false,
 }
@@ -144,6 +146,11 @@ export const FEATURE_DESCRIPTIONS = {
     name: 'Performances',
     description: 'Manage concerts, performances and venue bookings',
     icon: 'MapPin'
+  },
+  documentation_enabled: {
+    name: 'Documentation',
+    description: 'Show the help and documentation link in the menu',
+    icon: 'FileText'
   },
   analytics_enabled: {
     name: 'Analytics & Reports',
