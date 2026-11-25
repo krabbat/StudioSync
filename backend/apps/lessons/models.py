@@ -111,6 +111,13 @@ class Lesson(models.Model):
     actual_start = models.DateTimeField(null=True, blank=True)
     actual_end = models.DateTimeField(null=True, blank=True)
 
+    # HA-derived evidence, separate from the teaching quota and manual entries.
+    ha_attendance = models.JSONField(default=dict, blank=True)
+    ha_finalized_at = models.DateTimeField(null=True, blank=True)
+    ha_manual_override = models.BooleanField(default=False)
+    ha_watch_active = models.BooleanField(default=False, db_index=True)
+
+
     # Recurring reference
     recurring_pattern = models.ForeignKey(
         RecurringPattern, on_delete=models.SET_NULL, null=True, blank=True, related_name="lessons"
