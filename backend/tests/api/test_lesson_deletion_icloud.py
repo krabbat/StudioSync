@@ -220,3 +220,45 @@ def test_deleting_recurring_override_removes_exception_by_identity(
     assert events[0].get("RRULE") is not None
     assert events[0].get("EXDATE") is not None
     assert stats["exported"] == 1
+
+
+@pytest.mark.django_db
+def test_marking_lesson_cancelled_retains_red_local_record_and_removes_apple_occurrence(
+    admin_user, appointment,
+):
+    """Even a normal cancellation in StudioSync must not delete its lesson row."""
+    from apps.lessons.icloud_sync import _lesson_signature
+
+    raw = _event(appointment.scheduled_start, recurring=True)
+    series = ICloudCalendarSeries.objects.create(
+        user=admin_user, studio=appointment.studio,
+        calendar_url=CAL_URL, uid="test-deletion@musart.de",
+        ical_data=raw, remote_hash=_hash(raw),
+        student=appointment.student, teacher=appointment.teacher,
+    )
+    link = ICloudCalendarOccurrence.objects.create(
+        series=series, recurrence_id=_key(appointment.scheduled_start),
+        lesson=appointment, synced_signature=_lesson_signature(appointment),
+    )
+    reason = "Probeunterricht wegen Krankheit abgesagt"
+    Lesson.objects.filter(pk=appointment.pk).update(
+        status="cancelled", cancellation_reason=reason,
+    )
+    remote = MagicMock()
+    remote.data = raw
+    stats = {"exported": 0, "conflicts": 0}
+
+    _push_changes(series, remote, stats)
+
+    appointment.refresh_from_db()
+    link.refresh_from_db()
+    assert appointment.status == "cancelled"
+    assert appointment.cancellation_reason == reason
+    assert Lesson.objects.filter(pk=appointment.pk).exists()
+    assert link.lesson_id == appointment.pk
+    assert link.synced_signature == _lesson_signature(appointment)
+    master = Calendar.from_ical(remote.data).walk("VEVENT")[0]
+    assert master.get("RRULE")
+    assert master.get("EXDATE")
+    remote.delete.assert_not_called()
+    assert stats["exported"] == 1
