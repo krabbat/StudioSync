@@ -662,6 +662,13 @@
     "genericClient": "Generic Client"
   },
   "Schedule": {
+    "cancellationKind": "Cancelled by",
+    "chooseCancellationKind": "Please select",
+    "studentCancelledCredited": "Cancelled by student – counts toward annual quota",
+    "teacherCancelledNotCredited": "Cancelled by teacher – does not count toward annual quota",
+    "teacherCancellationQuotaNote": "Teacher cancellation: this lesson does not count toward the 44-unit annual quota.",
+    "studentCancellationQuotaNote": "Student cancellation: this lesson counts toward the annual quota.",
+    "cancellationKindRequired": "Please select who cancelled the lesson.",
     "synchronizingSchedule": "Synchronizing Schedule...",
     "schedule": "Schedule",
     "orchestrateYourWeeklyLessonCalendar": "Orchestrate your weekly lesson calendar.",
