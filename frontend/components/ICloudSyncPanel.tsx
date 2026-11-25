@@ -97,7 +97,7 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                         <CheckCircle2 className="h-4 w-4 text-green-600" /> Letzter Abgleich
                     </p>
                     <p className="mt-1 text-gray-600">
-                        {last.imported} importiert · {last.exported} exportiert · {last.deleted ?? 0} in iCloud gelöscht ·
+                        {last.imported} importiert · {last.exported} exportiert · {last.deleted ?? 0} aus StudioSync entfernt ·
                         {' '}{last.unassigned} nicht zugeordnet · {last.conflicts} Konflikte
                     </p>
                 </div>
