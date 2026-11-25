@@ -259,7 +259,16 @@ def live_studio(studio, activation, now, only=None):
             ha_finalized_at__isnull=True, ha_manual_override=False).exclude(
                 ha_attendance__has_key="final_attempted_at")
         seen = {l.pk for l in selected}
-        selected.extend(l for l in overdue if l.pk not in seen)
+        recovery = [l for l in overdue if l.pk not in seen]
+        # Reserve the one-time recovery attempt before contacting HA, including outages.
+        for lesson in recovery:
+            with transaction.atomic():
+                obj = Lesson.objects.select_for_update().get(pk=lesson.pk)
+                info = dict(obj.ha_attendance or {})
+                info["final_attempted_at"] = iso(now)
+                obj.ha_attendance = info
+                obj.save(update_fields=["ha_attendance", "updated_at"])
+        selected.extend(recovery)
     if not selected:
         return
     ha = HA(studio.owner)
