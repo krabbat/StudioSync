@@ -83,6 +83,7 @@ class LessonListSerializer(serializers.ModelSerializer):
             "lesson_type",
             "status",
             "cancellation_reason",
+            "cancellation_kind",
             "scheduled_start",
             "scheduled_end",
             "duration_minutes",
@@ -200,6 +201,7 @@ class LessonCreateSerializer(serializers.ModelSerializer):
             "lesson_type",
             "status",
             "cancellation_reason",
+            "cancellation_kind",
             "scheduled_start",
             "scheduled_end",
             "location",
@@ -232,6 +234,17 @@ class LessonCreateSerializer(serializers.ModelSerializer):
                     {"guest_name": "Sondertermine dürfen nur durch Lehrkräfte oder Administratoren angelegt werden."}
                 )
             data["guest_name"] = guest_name
+
+        # Explicit cancellation origin is only meaningful while cancelled.
+        # Clearing a cancellation must also clear its quota classification.
+        effective_status = _lesson_value(data, instance, "status")
+        if effective_status != "cancelled":
+            if data.get("cancellation_kind"):
+                raise serializers.ValidationError({
+                    "cancellation_kind": "A cancellation type requires cancelled status."
+                })
+            if "status" in data:
+                data["cancellation_kind"] = ""
 
         start = _lesson_value(data, instance, "scheduled_start")
         end = _lesson_value(data, instance, "scheduled_end")
