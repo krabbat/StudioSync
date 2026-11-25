@@ -157,10 +157,10 @@ class LessonViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        """Remove one lesson and mirror its deletion to the linked iCloud event.
+        """Cancel the StudioSync lesson; remove only its Apple event.
 
-        An iCloud recurrence keeps the other instances. Its occurrence link has
-        on_delete=SET_NULL so the sync process can send an EXDATE tombstone.
+        Deleting through the UI must never physically delete a lesson row.
+        Keep the pupil, notes, cancellation reason and attendance history.
         """
         self._reject_student_mutation()
         lesson = self.get_object()
@@ -197,45 +197,53 @@ class LessonViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
 
-        # Remember the owner before deleting. Teachers may delete their own
-        # upcoming lessons, but the iCloud credentials belong to the admin.
+        # "Delete" is a cancellation in StudioSync. The corresponding Apple
+        # resource is deleted (EXDATE for recurrence) only after this state
+        # has been recorded; never remove a local Lesson object.
         studio_owner = lesson.studio.owner
         occurrence = getattr(lesson, "icloud_occurrence", None)
-        occurrence_id = occurrence.pk if occurrence else None
-        self.perform_destroy(lesson)
+        was_cancelled = lesson.status == "cancelled"
+        updates = {"status": "cancelled"}
+        if lesson.cancelled_at is None:
+            updates["cancelled_at"] = timezone.now()
+        if lesson.cancelled_by_id is None:
+            updates["cancelled_by"] = request.user
+        Lesson.objects.filter(pk=lesson.pk).update(**updates)
+        for name, value in updates.items():
+            setattr(lesson, name, value)
 
-        if occurrence_id is None:
+        if occurrence is None:
             return Response(
-                {"detail": "Unterrichtstermin gelöscht.", "icloud_synced": True},
+                {"detail": "Unterrichtstermin in StudioSync als abgesagt erhalten.",
+                 "icloud_synced": True},
                 status=status.HTTP_200_OK,
             )
 
+        # This marker expresses *delete in iCloud*, unlike a normal PATCH
+        # changing the teaching status to cancelled.
+        occurrence.synced_signature = "pending-delete"
+        occurrence.save(update_fields=["synced_signature", "updated_at"])
         try:
             from apps.lessons.icloud_sync import sync_icloud_user
             sync_icloud_user(studio_owner)
-            from apps.lessons.models import ICloudCalendarOccurrence
-            synced_link = ICloudCalendarOccurrence.objects.filter(
-                pk=occurrence_id
-            ).first()
-            # A stand-alone iCloud event deletes its series/link entirely.
-            # A recurrence persists as a tombstone marked "deleted".
-            if synced_link is not None and synced_link.synced_signature != "deleted":
+            occurrence.refresh_from_db()
+            if occurrence.synced_signature == "pending-delete":
                 return Response(
-                    {"detail": "Unterrichtstermin in StudioSync gelöscht. "
-                     "Die Entfernung aus iCloud steht noch aus.",
+                    {"detail": "Unterrichtstermin als abgesagt erhalten. "
+                     "Die Löschung in iCloud steht noch aus.",
                      "icloud_synced": False},
                     status=status.HTTP_200_OK,
                 )
             return Response(
-                {"detail": "Unterrichtstermin gelöscht und mit iCloud abgeglichen.",
-                 "icloud_synced": True},
+                {"detail": "Unterrichtstermin in StudioSync als abgesagt erhalten "
+                 "und in iCloud gelöscht.", "icloud_synced": True},
                 status=status.HTTP_200_OK,
             )
         except Exception:
-            logger.exception("Lesson deleted locally but iCloud removal not yet synchronized")
+            logger.exception("Lesson retained as cancelled; iCloud deletion pending")
             return Response(
-                {"detail": "Unterrichtstermin in StudioSync gelöscht. iCloud konnte noch "
-                 "nicht aktualisiert werden; der nächste Abgleich versucht es erneut.",
+                {"detail": "Unterrichtstermin als abgesagt erhalten. "
+                 "Der nächste Abgleich versucht die Löschung in iCloud erneut.",
                  "icloud_synced": False},
                 status=status.HTTP_200_OK,
             )
