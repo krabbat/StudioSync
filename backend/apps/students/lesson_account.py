@@ -78,7 +78,12 @@ def lesson_account_response(student, requested_year=None):
             account is None or classification.year_account_id != account.id
         ):
             classification = None
-        kind = classification.kind if classification else ""
+        # The calendar cancellation selection is authoritative. Legacy
+        # manually classified lessons retain their previous accounting result.
+        kind = (
+            lesson.cancellation_kind if lesson.status == "cancelled" and lesson.cancellation_kind
+            else classification.kind if classification else ""
+        )
         impact = 0
         if lesson.status == "completed":
             delivered += 1
@@ -323,6 +328,12 @@ def apply_lesson_account_change(student, actor, data):
             reason=content["reason"], created_by=actor,
         )
     else:
+        if content["kind"] in ("student_cancelled", "teacher_cancelled"):
+            # Keep manual student-account corrections and the calendar's
+            # visible cancellation criterion synchronized.
+            Lesson.objects.filter(pk=lesson.pk).update(
+                cancellation_kind=content["kind"]
+            )
         TeachingLessonClassification.objects.update_or_create(
             lesson=lesson,
             defaults={
