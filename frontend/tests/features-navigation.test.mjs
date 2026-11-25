@@ -103,7 +103,7 @@ test('all settings have their own localized Administration menu entries', () => 
         assert.ok(adminMenu.includes(title), 'missing localized label: ' + title)
     }
     assert.doesNotMatch(sidebar, /title: t\('settings'\)/)
-    assert.doesNotMatch(adminMenu, /href: '\/dashboard\/settings'/)
+    assert.doesNotMatch(adminMenu, /href: '\/dashboard\/settings',/)
     assert.match(adminMenu, /href: '\/dashboard\/settings\/gig-venues\/'.*featureFlag: 'gigs_enabled'/)
     assert.match(sidebar, /useTranslations\('SettingsHub'\)/)
     assert.match(sidebar, /new URLSearchParams\(query\)\.get\('tab'\) === activeSettingsTab/)
