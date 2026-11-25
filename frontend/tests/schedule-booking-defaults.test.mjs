@@ -2,11 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
-const page = readFileSync(
-    new URL('../app/dashboard/schedule/page.tsx', import.meta.url), 'utf8',
-)
+const source = (file) => readFileSync(new URL('../' + file, import.meta.url), 'utf8')
 
-test('MUSart calendar displays 13:00 to 22:00 without rewriting studio settings', () => {
+const page = source('app/dashboard/schedule/page.tsx')
+const list = source('app/dashboard/lessons/page.tsx')
+const editor = source('components/LessonBookingDialog.tsx')
+
+test('MUSart weekly timetable stays fixed at 13:00–22:00', () => {
     assert.match(page, /const businessStart = 13;/)
     assert.match(page, /const businessEnd = 22;/)
     assert.match(page, /time: bookingDefaults\.time/)
@@ -14,36 +16,60 @@ test('MUSart calendar displays 13:00 to 22:00 without rewriting studio settings'
     assert.match(page, /length: businessEnd - businessStart \}/)
     assert.doesNotMatch(page, /businessEnd - businessStart \+ 1/)
     assert.match(page, /formatGridHour\(businessEnd\)/)
-    assert.match(page, /editingLessonId && newBooking\.time && !timeOptions\.includes\(newBooking\.time\)/)
+    assert.match(editor, /editingLessonId && newBooking\.time && !timeOptions\.includes\(newBooking\.time\)/)
     assert.doesNotMatch(page, /currentStudio\?\.settings\?\.business_start_hour \?\? 8/)
 })
 
-test('new appointments default to the actual Peter Sartori teacher record', () => {
+test('schedule and teaching planning use exactly the same booking component', () => {
+    assert.match(page, /import LessonBookingDialog.*from "@\/components\/LessonBookingDialog"/)
+    assert.match(list, /import LessonBookingDialog.*from '@\/components\/LessonBookingDialog'/)
+    assert.match(page, /<LessonBookingDialog\s/)
+    assert.match(list, /<LessonBookingDialog\s/)
+    assert.match(page, /onSubmit=\{handleBooking\}/)
+    assert.match(list, /onSubmit=\{saveLessonBooking\}/)
+    assert.doesNotMatch(list, /lessonData|setLessonData|isSpecialBooking/)
+    assert.match(editor, /Notizen \/ Terminbeschreibung/)
+    assert.match(editor, /Sondertermin/)
+    assert.match(editor, /newBooking\.cancellation_reason/)
+})
+
+test('new appointments default to the real Peter Sartori teacher record', () => {
     assert.match(page, /toLocaleLowerCase\("de-DE"\) === "peter sartori"/)
-    assert.match(page, /teacher: preferredTeacherId/g)
-    assert.match(page, /teacherManuallyChanged\.current = false/)
-    assert.match(page, /!teacherManuallyChanged\.current/)
-    assert.match(page, /teacherManuallyChanged\.current = true/g)
-    assert.match(page, /showBookingModal && !editingLessonId && preferredTeacherId/)
+    assert.match(list, /toLocaleLowerCase\('de-DE'\) === 'peter sartori'/)
+    assert.match(editor, /teacherManuallyChanged\.current = false/)
+    assert.match(editor, /!teacherManuallyChanged\.current/)
+    assert.match(editor, /teacherManuallyChanged\.current = true/)
+    assert.match(editor, /!editingLessonId && preferredTeacherId/)
 })
 
-test('selecting an individual student reads the existing contract length', () => {
-    assert.match(page, /"\/students\/" \+ encodeURIComponent\(studentId\) \+ "\/contract\/"/)
-    assert.match(page, /data\.contract\?\.lesson_minutes/)
-    assert.match(page, /minutes === 30 \|\| minutes === 45 \|\| minutes === 60/)
-    assert.match(page, /previous\.student === studentId/)
-    assert.match(page, /!showBookingModal \|\| editingLessonId \|\| bookingMode !== "individual"/)
+test('student selection uses the same contract-based lesson length everywhere', () => {
+    assert.match(editor, /"\/students\/" \+ encodeURIComponent\(studentId\) \+ "\/contract\/"/)
+    assert.match(editor, /data\.contract\?\.lesson_minutes/)
+    assert.match(editor, /minutes === 30 \|\| minutes === 45 \|\| minutes === 60/)
+    assert.match(editor, /prev\.student === studentId/)
+    assert.match(editor, /!open \|\| editingLessonId \|\| bookingMode !== "individual"/)
 })
 
-test('editing existing appointments preserves their teacher and duration', () => {
+test('editing existing lessons preserves their teacher, duration and notes', () => {
     assert.match(page, /teacher: lesson\.teacher \|\| ""/)
     assert.match(page, /duration: lesson\.duration_minutes/)
-    assert.match(page, /durationManuallyChanged\.current = true/)
-    assert.match(page, /if \(!active \|\| durationManuallyChanged\.current\) return/)
+    assert.match(list, /duration: lesson\.duration_minutes \|\| Math\.round/)
+    assert.match(list, /summary: lesson\.summary \|\| ''/)
+    assert.match(editor, /durationManuallyChanged\.current = true/)
+    assert.match(editor, /if \(!active \|\| durationManuallyChanged\.current\) return/)
 })
 
-test('new appointments from weekly and monthly grid reset stale editing values', () => {
+test('new appointments from both weekly and monthly views clear edit state', () => {
     const uses = page.match(/resetBooking\(\);\s*setNewBooking\(\(previous\) => \(\{/g) || []
     assert.equal(uses.length, 2)
     assert.match(page, /setEditingLessonId\(null\)/)
+    assert.match(list, /const openNewLesson = \(\) => \{/)
+})
+
+test('alternating hourly backgrounds remain visible in all seven days', () => {
+    assert.match(page, /hour % 2 === 0 \? "bg-slate-100\/80" : "bg-white"/)
+    assert.match(page, /border-b border-slate-200\/70/)
+    assert.match(page, /weekDays\.map\(\(day, dayIdx\) => \{/)
+    assert.match(page, /getMinutes\(parseISO\(lesson\.scheduled_start\)\)/)
+    assert.match(page, /WEEK_HOUR_HEIGHT/)
 })
