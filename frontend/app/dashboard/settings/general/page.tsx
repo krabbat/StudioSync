@@ -20,6 +20,7 @@ function GeneralSettingsContents() {
   const searchParams = useSearchParams()
     const { currentUser, setCurrentUser } = useUser()
     const [activeTab, setActiveTab] = useState('appearance')
+    const [technicalTab, setTechnicalTab] = useState<'mail' | 'caldav' | 'ha'>('mail')
     const [loading, setLoading] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
     const [isImporting, setIsImporting] = useState(false)
@@ -1225,7 +1226,17 @@ function GeneralSettingsContents() {
                     {activeTab === 'technical' && currentUser?.role === 'admin' && (
                         <div className="max-w-3xl">
                             <h2 className="text-lg font-semibold text-gray-900 mb-6">{t('serverTechnicalSettings')}</h2>
-                            <div className="space-y-8">
+                            <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-6" role="tablist" aria-label="Technik">
+                                {([{ id: 'mail', label: 'Mail-Server' }, { id: 'caldav', label: 'CalDAV Kalender' }, { id: 'ha', label: 'Home Assistant API' }] as const).map(tab => (
+                                    <button key={tab.id} type="button" role="tab" id={`technical-tab-${tab.id}`}
+                                        aria-selected={technicalTab === tab.id} aria-controls={`technical-panel-${tab.id}`}
+                                        onClick={() => setTechnicalTab(tab.id)}
+                                        className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${technicalTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div role="tabpanel" id="technical-panel-mail" aria-labelledby="technical-tab-mail" className={technicalTab === 'mail' ? 'space-y-8' : 'hidden'}>
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
                                         <Mail className="w-5 h-5 text-gray-600" />
@@ -1369,7 +1380,11 @@ function GeneralSettingsContents() {
                                     </div>
                                 </div>
 
+                            </div>
+                            <div role="tabpanel" id="technical-panel-caldav" aria-labelledby="technical-tab-caldav" className={technicalTab === 'caldav' ? '' : 'hidden'}>
                                 <ICloudCalendarSettings />
+                            </div>
+                            <div role="tabpanel" id="technical-panel-ha" aria-labelledby="technical-tab-ha" className={technicalTab === 'ha' ? '' : 'hidden'}>
                                 <HomeAssistantConnectionSettings />
 
                             </div>
