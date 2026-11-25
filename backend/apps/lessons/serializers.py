@@ -16,6 +16,13 @@ class LessonListSerializer(serializers.ModelSerializer):
     student_address = serializers.SerializerMethodField()
     band_name = serializers.SerializerMethodField()
 
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+        if request is not None and request.user.role not in ("admin", "teacher"):
+            fields.pop("ha_attendance", None)
+        return fields
+
     def get_student_address(self, obj):
         """Use the student or special appointment's actual address."""
         if not obj.student_id:
@@ -94,6 +101,7 @@ class LessonListSerializer(serializers.ModelSerializer):
             "is_paid",
             "lesson_plan",
             "lesson_plan_title",
+            "ha_attendance",
         ]
 
 
@@ -106,6 +114,14 @@ class LessonDetailSerializer(serializers.ModelSerializer):
     room = serializers.SerializerMethodField()
     duration_minutes = serializers.IntegerField(read_only=True)
     student_address = serializers.SerializerMethodField()
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+        if request is not None and request.user.role not in ("admin", "teacher"):
+            for name in ("ha_attendance", "ha_finalized_at", "ha_manual_override", "ha_watch_active"):
+                fields.pop(name, None)
+        return fields
 
     def get_student_address(self, obj):
         if not obj.student_id:
