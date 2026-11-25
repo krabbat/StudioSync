@@ -778,13 +778,26 @@ def end_icloud_series_from_lesson(lesson):
                 remote.save()
                 remote.load()
 
-        # Only once the remote operation succeeded can local records be removed.
+        # Keep all StudioSync appointments as red cancellation records.
+        # The remote resource or later instances no longer exist in iCloud.
         with transaction.atomic():
-            delete_ids = [entry.lesson_id for entry in future_links if entry.lesson_id]
-            if delete_ids:
-                Lesson.objects.filter(pk__in=delete_ids).delete()
+            for entry in future_links:
+                if not entry.lesson_id:
+                    continue
+                lesson = entry.lesson
+                if lesson.status != "cancelled":
+                    Lesson.objects.filter(pk=lesson.pk).update(
+                        status="cancelled", cancelled_at=timezone.now()
+                    )
+                    lesson.status = "cancelled"
+                entry.synced_signature = _lesson_signature(lesson)
+                entry.save(update_fields=["synced_signature", "updated_at"])
             if delete_entire_resource:
-                series.delete()
+                series.last_error = (
+                    "Terminserie in iCloud gelöscht; Unterrichtstermine in StudioSync als abgesagt erhalten."
+                )
+                series.last_synced_at = timezone.now()
+                series.save(update_fields=["last_error", "last_synced_at", "updated_at"])
             else:
                 series.ical_data = _raw(remote.data)
                 series.remote_hash = _hash(series.ical_data)
@@ -793,9 +806,6 @@ def end_icloud_series_from_lesson(lesson):
                 series.save(update_fields=[
                     "ical_data", "remote_hash", "last_error", "last_synced_at", "updated_at"
                 ])
-                ICloudCalendarOccurrence.objects.filter(
-                    series=series, recurrence_id__gte=cutoff_key
-                ).update(synced_signature="deleted")
     return len(future_links)
 
 
