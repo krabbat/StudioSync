@@ -35,6 +35,7 @@ def test_legacy_feature_defaults_hide_bands_gigs_and_reports(
     assert selected["gigs"] is False
     assert selected["analytics"] is False
     assert selected["documentation"] is False
+    assert selected["teachers"] is False
     assert selected["billing"] is True
     assert selected["messaging"] is True
     # Reading must not silently modify or discard the original setup settings.
@@ -59,6 +60,7 @@ def test_admin_can_save_feature_visibility_and_reenable_reports(
     assert result.data["features_enabled"]["bands"] is False
     assert result.data["features_enabled"]["gigs"] is False
     assert result.data["features_enabled"]["documentation"] is False
+    assert result.data["features_enabled"]["teachers"] is False
     assert result.data["features_enabled"]["billing"] is True
 
     status_result = authenticated_client.get("/api/core/setup/status/")
@@ -178,3 +180,43 @@ def test_unauthorized_documentation_change_is_forbidden(
     assert result.status_code == 403
     legacy_setup.refresh_from_db()
     assert "documentation" not in legacy_setup.features_enabled
+
+
+@pytest.mark.django_db
+def test_teachers_menu_disabled_by_default_and_can_be_reenabled(
+    authenticated_client, legacy_setup,
+):
+    before = authenticated_client.get("/api/core/setup/status/")
+    assert before.status_code == 200
+    assert before.data["features_enabled"]["teachers"] is False
+
+    enabled = authenticated_client.patch(
+        "/api/core/setup/features/",
+        {"features_enabled": {"teachers": True}},
+        format="json",
+    )
+    assert enabled.status_code == 200, enabled.data
+    assert enabled.data["features_enabled"]["teachers"] is True
+    assert enabled.data["features_enabled"]["documentation"] is False
+
+    disabled = authenticated_client.patch(
+        "/api/core/setup/features/",
+        {"features_enabled": {"teachers": False}},
+        format="json",
+    )
+    assert disabled.status_code == 200, disabled.data
+    assert disabled.data["features_enabled"]["teachers"] is False
+
+
+@pytest.mark.django_db
+def test_teacher_cannot_enable_teachers_menu(
+    teacher_authenticated_client, legacy_setup,
+):
+    result = teacher_authenticated_client.patch(
+        "/api/core/setup/features/",
+        {"features_enabled": {"teachers": True}},
+        format="json",
+    )
+    assert result.status_code == 403
+    legacy_setup.refresh_from_db()
+    assert "teachers" not in legacy_setup.features_enabled
