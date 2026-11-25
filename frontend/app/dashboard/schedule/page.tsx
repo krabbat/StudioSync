@@ -380,7 +380,7 @@ export default function SchedulePage() {
   };
 
   const getLessonColorStyles = (lesson: any) => {
-    if (colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed") return {};
+    if (colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed" || lesson.status === "in_progress" || lesson.status === "no_show") return {};
 
     let textToHash = "";
     if (colorMode === "student") {
@@ -895,10 +895,10 @@ export default function SchedulePage() {
                                   title={`${format(parseISO(lesson.scheduled_start), "HH:mm")} – ${format(parseISO(lesson.scheduled_end), "HH:mm")} · ${lesson.student_name || lesson.band_name || "Unterricht"}`}
                                   className={`
                                     absolute inset-x-1 z-10 overflow-hidden p-1 rounded-lg border-l-[3px] shadow-sm hover:shadow-md transition-all cursor-pointer group/card
-                                    ${(colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed") ? (
+                                    ${(colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed" || lesson.status === "in_progress" || lesson.status === "no_show") ? (
                                       lesson.status === "scheduled" ? "bg-blue-50 border-blue-200 text-blue-700 cursor-pointer hover:bg-blue-100" :
                                         lesson.status === "completed" ? "bg-emerald-50 border-emerald-400" :
-                                          lesson.status === "cancelled" ? "bg-red-50 border-red-400" : ""
+                                          lesson.status === "in_progress" ? "bg-purple-50 border-purple-400 text-purple-800" : lesson.status === "no_show" ? "bg-red-50 border-red-500 text-red-800" : lesson.status === "cancelled" ? "bg-red-50 border-red-400" : ""
                                     ) : ""}
                                   `}
                                 >
@@ -1036,10 +1036,10 @@ export default function SchedulePage() {
                             style={getLessonColorStyles(lesson)}
                             className={`
                               px-1.5 py-1 rounded w-full truncate border-l-2 shadow-sm hover:shadow-md cursor-pointer text-left relative
-                              ${(colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed") ? (
+                              ${(colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed" || lesson.status === "in_progress" || lesson.status === "no_show") ? (
                                 lesson.status === "scheduled" ? "bg-blue-50 border-blue-200 text-blue-700" :
                                   lesson.status === "completed" ? "bg-emerald-50 border-emerald-400 text-emerald-800" :
-                                    lesson.status === "cancelled" ? "bg-red-50 border-red-400 text-red-700" : ""
+                                    lesson.status === "in_progress" ? "bg-purple-50 border-purple-400 text-purple-800" : lesson.status === "no_show" ? "bg-red-50 border-red-500 text-red-800" : lesson.status === "cancelled" ? "bg-red-50 border-red-400 text-red-700" : ""
                               ) : ""}
                             `}
                           >
