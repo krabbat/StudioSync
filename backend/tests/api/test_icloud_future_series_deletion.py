@@ -83,7 +83,7 @@ def test_delete_from_second_week_preserves_first_and_truncates_apple(
     assert affected == 3
     assert Lesson.objects.filter(pk=lessons[0].pk).exists()
     for item in lessons[1:]:
-        assert Lesson.objects.filter(pk=item.pk, status="cancelled").exists()
+        assert not Lesson.objects.filter(pk=item.pk).exists()
     remote.save.assert_called_once()
     remote.delete.assert_not_called()
     remaining = _expand(remote.data)
@@ -93,7 +93,7 @@ def test_delete_from_second_week_preserves_first_and_truncates_apple(
     assert series.remote_hash == _hash(remote.data)
     assert ICloudCalendarOccurrence.objects.filter(
         series=series, lesson__isnull=False
-    ).count() == 4
+    ).count() == 1
 
 
 @pytest.mark.django_db
@@ -108,8 +108,8 @@ def test_delete_from_first_week_removes_whole_apple_resource(linked_series):
 
     assert affected == 4
     remote.delete.assert_called_once()
-    assert ICloudCalendarSeries.objects.filter(pk=series.pk).exists()
-    assert Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons], status="cancelled").count() == 4
+    assert not ICloudCalendarSeries.objects.filter(pk=series.pk).exists()
+    assert not Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons]).exists()
 
 
 @pytest.mark.django_db
@@ -137,3 +137,48 @@ def test_future_deletion_refuses_icloud_remote_conflict(linked_series):
     ):
         end_icloud_series_from_lesson(lessons[1])
     assert Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons]).count() == 4
+
+
+@pytest.mark.django_db
+def test_future_deletion_succeeds_when_apple_series_has_no_rrule(linked_series):
+    """Regression: already-truncated or detached series must not reject deletion."""
+    series, lessons, remote, context = linked_series
+    calendar = Calendar.from_ical(remote.data)
+    master = calendar.walk("VEVENT")[0]
+    del master["RRULE"]
+    remote.data = calendar.to_ical().decode("utf-8")
+    series.ical_data = remote.data
+    series.remote_hash = _hash(remote.data)
+    series.save(update_fields=["ical_data", "remote_hash"])
+
+    with (
+        patch("apps.lessons.icloud_sync._connect", return_value=context),
+        patch("apps.lessons.icloud_sync._discover", return_value=[{"url": CAL_URL}]),
+        patch("apps.lessons.icloud_sync._credentials", return_value=("test@icloud.com", "secret")),
+    ):
+        affected = end_icloud_series_from_lesson(lessons[1])
+
+    assert affected == 3
+    assert Lesson.objects.filter(pk=lessons[0].pk).exists()
+    assert not Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons[1:]]).exists()
+    remote.delete.assert_not_called()
+    assert ICloudCalendarOccurrence.objects.filter(series=series).count() == 1
+
+
+@pytest.mark.django_db
+def test_future_deletion_removes_previously_cancelled_series_entries(linked_series):
+    """A deliberate complete-series cleanup must not leave any red ghost lessons."""
+    series, lessons, remote, context = linked_series
+    Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons[1:]]).update(status="cancelled")
+
+    with (
+        patch("apps.lessons.icloud_sync._connect", return_value=context),
+        patch("apps.lessons.icloud_sync._discover", return_value=[{"url": CAL_URL}]),
+        patch("apps.lessons.icloud_sync._credentials", return_value=("test@icloud.com", "secret")),
+    ):
+        count = end_icloud_series_from_lesson(lessons[1])
+
+    assert count == 3
+    assert Lesson.objects.filter(pk=lessons[0].pk).exists()
+    assert not Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons[1:]]).exists()
+    assert ICloudCalendarOccurrence.objects.filter(series=series).count() == 1
