@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 from django_q.models import Schedule
+from apps.lessons.ha_diagnostics import event
 
 
 class Command(BaseCommand):
@@ -27,4 +28,6 @@ class Command(BaseCommand):
             "schedule_type": Schedule.HOURLY,
             "repeats": -1, "next_run": next_hour,
         })
+        transaction.on_commit(lambda: event("schedules_registered", activation=live.args,
+                                             next_run=live.next_run.isoformat()))
         self.stdout.write(self.style.SUCCESS("HA-Anwesenheit: beide Zeitpläne aktiv."))
