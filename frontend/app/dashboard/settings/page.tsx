@@ -70,7 +70,7 @@ const SECTIONS = [
         title: tr('sectionFeatures'),
         description: tr('sectionFeaturesDescription'),
         icon: Layers,
-        href: '/dashboard/settings/features/',
+        href: '/dashboard/features/',
         roles: ['admin'],
     },
     {
