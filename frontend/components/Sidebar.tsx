@@ -133,12 +133,7 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
             roles: ['admin'],
             items: [
                 { name: t('users'), href: '/dashboard/users', icon: UserCog, roles: ['admin'] },
-            ],
-        },
-        {
-            title: t('settings'),
-            items: [
-                { name: t('settings'), href: '/dashboard/settings', icon: Settings, roles: ['admin', 'teacher', 'student'] },
+                { name: t('settings'), href: '/dashboard/settings', icon: Settings, roles: ['admin'] },
             ],
         },
         {
