@@ -116,3 +116,28 @@ test('scheduled lessons use the planning-list blue in week and month calendar on
     assert.match(page, /lesson\.status === "completed" \? "bg-emerald-50 border-emerald-400"/)
     assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
 })
+
+test('calendar cancellation origin is chosen in both entry points and translated', () => {
+    const de = JSON.parse(source('messages/de.json')).Schedule
+    const en = JSON.parse(source('messages/en.json')).Schedule
+    for (const lang of [de, en]) {
+        for (const key of [
+            'cancellationKind', 'chooseCancellationKind',
+            'studentCancelledCredited', 'teacherCancelledNotCredited',
+            'studentCancellationQuotaNote', 'teacherCancellationQuotaNote',
+            'cancellationKindRequired',
+        ]) assert.ok(lang[key], 'Missing cancellation translation: ' + key)
+    }
+    assert.match(editor, /cancellation_kind: "" \| "student_cancelled" \| "teacher_cancelled"/)
+    assert.match(editor, /value=\{newBooking\.cancellation_kind\}/)
+    assert.match(editor, /<option value="teacher_cancelled">/)
+    assert.match(editor, /<option value="student_cancelled">/)
+    assert.match(page, /payload\.cancellation_kind = bookingMode === "individual"/)
+    assert.match(list, /payload\.cancellation_kind = bookingMode === 'individual'/)
+    assert.match(page, /cancellation_kind: lesson\.cancellation_kind \|\| ""/)
+    assert.match(list, /cancellation_kind: lesson\.cancellation_kind \|\| ''/)
+    assert.match(page, /requiresCancellationKind:/)
+    assert.match(list, /requiresCancellationKind:/)
+    assert.match(page, /cancellation_kind: cancellationKind/)
+    assert.match(list, /cancellation_kind: cancellationKind/)
+})
