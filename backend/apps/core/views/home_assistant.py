@@ -1,7 +1,7 @@
 """Read-only Home Assistant connection probe (no teaching status changes).
 
-The access token is supplied to Django via HA_ACCESS_TOKEN in the server
-environment. Neither the token nor raw tracker coordinates leave the backend.
+The access token is stored in technical preferences, with legacy environment
+configuration as fallback. Neither token nor coordinates leave the backend.
 """
 import json
 import os
@@ -33,14 +33,30 @@ class HomeAssistantConnectionView(APIView):
         if request.user.role != "admin" or not request.user.owned_studios.exists():
             raise PermissionDenied("Nur Studio-Administratoren dürfen Home Assistant abfragen.")
 
-        base = os.getenv("HA_BASE_URL", "https://musart.myds.me").strip().rstrip("/")
-        token = os.getenv("HA_ACCESS_TOKEN", "").strip()
-        tracker = os.getenv("HA_TRACKER_ENTITY_ID", "").strip()
-        parts = urlsplit(base)
-        if (parts.scheme != "https" or not parts.hostname or parts.username or
-                parts.password or parts.query or parts.fragment):
+        prefs = request.user.preferences if isinstance(request.user.preferences, dict) else {}
+        cfg = prefs.get("technical") or {}
+        if not isinstance(cfg, dict):
+            cfg = {}
+        default_base = "https://musart.myds.me:8123"
+        env_base = os.getenv("HA_BASE_URL", default_base).strip().rstrip("/")
+        base = str(cfg.get("ha_base_url") or env_base).strip().rstrip("/")
+        token = str(cfg.get("ha_access_token") or "").strip()
+        if not token and base == env_base:
+            token = os.getenv("HA_ACCESS_TOKEN", "").strip()
+        tracker = str(cfg.get("ha_tracker_entity_id") or os.getenv("HA_TRACKER_ENTITY_ID", "")).strip()
+        # Restrict outbound requests to the known MUSart endpoint or an origin
+        # explicitly configured by the server operator. Never follow redirects.
+        try:
+            parts = urlsplit(base)
+            valid = (parts.scheme == "https" and bool(parts.hostname)
+                     and parts.username is None and parts.password is None
+                     and not parts.path and not parts.query and not parts.fragment
+                     and base in {default_base, env_base})
+        except ValueError:
+            valid = False
+        if not valid:
             return Response(
-                {"detail": "Bitte eine gültige HTTPS-Adresse in HA_BASE_URL konfigurieren."},
+                {"detail": "Bitte die freigegebene HTTPS-Adresse von Home Assistant verwenden."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if not token:
@@ -49,7 +65,8 @@ class HomeAssistantConnectionView(APIView):
                 "connected": False,
                 "url": base,
                 "tracker": tracker,
-                "detail": "Home-Assistant-Zugangstoken fehlt auf dem StudioSync-Server.",
+                "token_set": False,
+                "detail": "Bitte den Home-Assistant-Zugriffstoken speichern.",
             })
 
         # No redirects, certificate checks remain enabled; only GET requests.
@@ -105,6 +122,7 @@ class HomeAssistantConnectionView(APIView):
         return Response({
             "configured": True,
             "connected": True,
+            "token_set": True,
             "url": base,
             "tracker": tracker,
             "tracker_found": bool(tracker and any(item["entity_id"] == tracker for item in trackers)),
