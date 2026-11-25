@@ -476,7 +476,14 @@ def _push_changes(series, remote, stats):
     # but its matching resource must disappear from Apple entirely.
     if not recurring:
         links = list(series.occurrences.select_related("lesson"))
-        if links and any(link.synced_signature == "pending-delete" for link in links):
+        if links and any(
+            link.lesson is not None and link.lesson.status == "cancelled"
+            and (
+                link.synced_signature == "pending-delete"
+                or link.synced_signature != _lesson_signature(link.lesson)
+            )
+            for link in links
+        ):
             remote.delete()
             series.last_error = (
                 "Terminserie in iCloud gelöscht; Unterrichtstermin in StudioSync als abgesagt erhalten."
@@ -493,7 +500,13 @@ def _push_changes(series, remote, stats):
     modified_links = []
     for entry in series.occurrences.select_related("lesson"):
         lesson = entry.lesson
-        removed = lesson is not None and entry.synced_signature == "pending-delete"
+        removed = (
+            lesson is not None and lesson.status == "cancelled"
+            and (
+                entry.synced_signature == "pending-delete"
+                or entry.synced_signature != _lesson_signature(lesson)
+            )
+        )
         if lesson is None:
             # Old tombstones from previous deployments must not be re-uploaded.
             continue
