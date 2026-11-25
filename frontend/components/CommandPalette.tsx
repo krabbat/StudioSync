@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { useFeatureFlags } from '@/hooks/useFeatureFlags'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -33,6 +34,7 @@ interface CommandItem {
 export function CommandPalette() {
   const tr = useTranslations('CommandPalette')
   const router = useRouter()
+  const { flags } = useFeatureFlags()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -187,6 +189,17 @@ export function CommandPalette() {
     }
   ]
 
+  const visibleCommands = commands.filter(command => {
+    const featureByCommand: Record<string, boolean> = {
+      billing: flags.billing_enabled,
+      resources: flags.resources_enabled,
+      inventory: flags.inventory_enabled,
+      messages: flags.messaging_enabled,
+      reports: flags.analytics_enabled,
+    }
+    return featureByCommand[command.id] !== false
+  })
+
   return (
     <AnimatePresence>
       {open && (
@@ -235,7 +248,7 @@ export function CommandPalette() {
 
                   {/* Navigation Section */}
                   <Command.Group heading={tr('navigation')} className="text-xs font-semibold text-gray-500 px-2 py-2">
-                    {commands.filter(cmd => ['dashboard', 'students', 'teachers', 'schedule', 'lessons'].includes(cmd.id)).map((item) => (
+                    {visibleCommands.filter(cmd => ['dashboard', 'students', 'teachers', 'schedule', 'lessons'].includes(cmd.id)).map((item) => (
                       <Command.Item
                         key={item.id}
                         value={`${item.title} ${item.subtitle} ${item.keywords?.join(' ')}`}
@@ -257,7 +270,7 @@ export function CommandPalette() {
 
                   {/* Management Section */}
                   <Command.Group heading={tr('management')} className="text-xs font-semibold text-gray-500 px-2 py-2 mt-2">
-                    {commands.filter(cmd => ['billing', 'resources', 'inventory', 'messages'].includes(cmd.id)).map((item) => (
+                    {visibleCommands.filter(cmd => ['billing', 'resources', 'inventory', 'messages'].includes(cmd.id)).map((item) => (
                       <Command.Item
                         key={item.id}
                         value={`${item.title} ${item.subtitle} ${item.keywords?.join(' ')}`}
@@ -279,7 +292,7 @@ export function CommandPalette() {
 
                   {/* Actions Section */}
                   <Command.Group heading={tr('actions')} className="text-xs font-semibold text-gray-500 px-2 py-2 mt-2">
-                    {commands.filter(cmd => ['add-student', 'reports', 'settings', 'logout'].includes(cmd.id)).map((item) => (
+                    {visibleCommands.filter(cmd => ['add-student', 'reports', 'settings', 'logout'].includes(cmd.id)).map((item) => (
                       <Command.Item
                         key={item.id}
                         value={`${item.title} ${item.subtitle} ${item.keywords?.join(' ')}`}
