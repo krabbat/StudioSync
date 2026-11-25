@@ -1,7 +1,8 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useState, useRef, useEffect, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, KeyboardEvent, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { User, Building2, Bell, Palette, Mail, Camera, Wand2, Check, Server, Eye, EyeOff, Save, Loader2, Music, X, Plus, Download, Upload, ShieldAlert, Database, Globe, DollarSign, MapPin, ChevronLeft } from 'lucide-react'
 import { useUser } from '@/contexts/UserContext'
 import api from '@/services/api'
@@ -13,8 +14,9 @@ import { TIMEZONES, CURRENCIES } from '@/types/setup'
 import { detectLocation } from '@/lib/geolocate'
 import Link from 'next/link'
 
-export default function GeneralSettingsPage() {
+function GeneralSettingsContents() {
   const t = useTranslations('GeneralSettings')
+  const searchParams = useSearchParams()
     const { currentUser, setCurrentUser } = useUser()
     const [activeTab, setActiveTab] = useState('appearance')
     const [loading, setLoading] = useState(false)
@@ -30,16 +32,15 @@ export default function GeneralSettingsPage() {
     const [cropImage, setCropImage] = useState<string | null>(null)
     const [geoDetecting, setGeoDetecting] = useState(false)
 
-    // Read ?tab= from URL on mount
+    // Direct Administration links must switch tabs even while this page is mounted.
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search)
-        const tab = params.get('tab')
+        const tab = searchParams.get('tab')
         if (currentUser?.role === 'student') {
             setActiveTab(tab && ['appearance', 'notifications', 'communication'].includes(tab) ? tab : 'appearance')
         } else {
             setActiveTab(tab || 'profile')
         }
-    }, [currentUser?.role])
+    }, [currentUser?.role, searchParams]
 
     const handleDetectTimezone = async () => {
         setGeoDetecting(true)
@@ -1427,5 +1428,13 @@ export default function GeneralSettingsPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function GeneralSettingsPage() {
+    return (
+        <Suspense fallback={<div className="p-6 text-gray-500">…</div>}>
+            <GeneralSettingsContents />
+        </Suspense>
     )
 }
