@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from 'next-intl'
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
 import {
   useLessons,
@@ -12,7 +12,7 @@ import {
 } from "@/hooks/useDashboardData";
 import api from "@/services/api";
 import LessonDeleteDialog, { type LessonDeleteScope, type LessonDeleteTarget } from "@/components/LessonDeleteDialog";
-import LessonBookingDialog from "@/components/LessonBookingDialog";
+import LessonBookingDialog, { type LessonBookingData } from "@/components/LessonBookingDialog";
 import { toast } from "react-hot-toast";
 import {
   format,
@@ -79,26 +79,6 @@ interface ExternalEvent {
 // One hour always occupies exactly 96px in the weekly timetable.
 // The labels and appointment offsets must use this same scale.
 const WEEK_HOUR_HEIGHT = 96;
-
-interface LessonBooking {
-  student: string;
-  teacher: string;
-  band: string;
-  room: string;
-  date: string;
-  time: string;
-  duration: number;
-  lesson_type: string;
-  is_online: boolean;
-  online_meeting_url: string;
-  status: string;
-  cancellation_reason: string;
-  summary: string;
-  guest_name: string;
-  guest_address: string;
-  recurrence: "none" | "weekly" | "biweekly" | "monthly";
-  recurrence_until: string;
-}
 
 export default function SchedulePage() {
   const tr = useTranslations('Schedule')
@@ -287,7 +267,7 @@ export default function SchedulePage() {
     });
   };
 
-  const [newBooking, setNewBooking] = useState<LessonBooking>({
+  const [newBooking, setNewBooking] = useState<LessonBookingData>({
     student: "",
     teacher: preferredTeacherId,
     band: "",
@@ -324,11 +304,11 @@ export default function SchedulePage() {
       online_meeting_url: "",
       status: "scheduled",
       cancellation_reason: "",
-    summary: "",
-    guest_name: "",
-    guest_address: "",
-    recurrence: "none",
-    recurrence_until: "",
+      summary: "",
+      guest_name: "",
+      guest_address: "",
+      recurrence: "none",
+      recurrence_until: "",
     });
     setEditingLessonId(null);
   };
