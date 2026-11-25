@@ -152,6 +152,15 @@ class Lesson(models.Model):
         related_name="cancelled_lessons",
     )
     cancellation_reason = models.TextField(blank=True)
+    # Who cancelled this lesson; independent of the person recording the change.
+    # Teacher cancellations never consume the 44-unit annual tuition quota.
+    CANCELLATION_KIND_CHOICES = [
+        ("student_cancelled", "Student cancellation – credited"),
+        ("teacher_cancelled", "Teacher cancellation – not credited"),
+    ]
+    cancellation_kind = models.CharField(
+        max_length=20, choices=CANCELLATION_KIND_CHOICES, blank=True, default=""
+    )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
