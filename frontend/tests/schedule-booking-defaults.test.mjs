@@ -100,11 +100,11 @@ test('weekday header and time rail share one opaque color value', () => {
     assert.doesNotMatch(page, /bg-slate-200\/80/)
 })
 
-test('completed lessons are light green, scheduled unchanged, and cancelled red', () => {
+test('only the calendar colors completed lessons green; planning list styling stays unchanged', () => {
     assert.match(page, /lesson\.status === "completed" \? "bg-emerald-50 border-emerald-400"/)
     assert.match(page, /lesson\.status === "completed" \? "bg-emerald-50 border-emerald-400 text-emerald-800"/)
     assert.match(page, /lesson\.status === "scheduled" \? "bg-primary\/10 border-primary/)
     assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
-    assert.match(list, /lesson\.status === "completed" \? "bg-emerald-50\/60 hover:bg-emerald-50"/)
-    assert.equal((list.match(/bg-emerald-50\/60 hover:bg-emerald-50/g) || []).length, 2)
+    assert.match(list, /completed: 'bg-green-50 text-green-700 border-green-200'/)
+    assert.doesNotMatch(list, /bg-emerald-50\/60 hover:bg-emerald-50/)
 })
