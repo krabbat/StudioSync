@@ -16,7 +16,7 @@ test('delete dialog preserves the full explanatory texts', () => {
 
 test('destructive buttons never overflow narrow dialog and are stacked', () => {
     assert.match(dialog, /<DialogFooter className="!flex !flex-col !items-stretch gap-3">/)
-    assert.equal((dialog.match(/className="w-full min-w-0 h-auto min-h-11/g) || []).length, 2)
+    assert.equal((dialog.match(/className="w-full min-w-0 h-auto min-h-11/g) || []).length, 3)
     assert.match(dialog, /whitespace-normal text-center leading-snug/)
     assert.match(dialog, /break-words/)
 })
@@ -26,6 +26,9 @@ test('deletion always requires a deliberate choice, including cancel', () => {
     assert.match(dialog, /Diesen und alle zukünftigen löschen/)
     assert.match(dialog, /onConfirm\('this'\)/)
     assert.match(dialog, /onConfirm\('future'\)/)
+    assert.match(dialog, /onConfirm\('permanent'\)/)
+    assert.match(dialog, /target\?\.canPermanentlyDelete/)
+    assert.match(dialog, /Diesen Termin endgültig löschen \(Administrator\)/)
     assert.match(dialog, /onClick=\{onClose\} disabled=\{busy\}/)
     assert.match(dialog, />\s*Abbrechen\s*</)
 })
