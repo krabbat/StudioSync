@@ -11,7 +11,7 @@ type LinkedSeries = {
 }
 type StudentChoice = { id: string; name: string }
 type SyncPayload = {
-    imported: number; exported: number; deleted?: number; unassigned: number; conflicts: number;
+    imported: number; exported: number; cancelled?: number; unassigned: number; conflicts: number;
     students: StudentChoice[]; series: LinkedSeries[]
 }
 
@@ -97,7 +97,7 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                         <CheckCircle2 className="h-4 w-4 text-green-600" /> Letzter Abgleich
                     </p>
                     <p className="mt-1 text-gray-600">
-                        {last.imported} importiert · {last.exported} exportiert · {last.deleted ?? 0} aus StudioSync entfernt ·
+                        {last.imported} importiert · {last.exported} exportiert · {last.cancelled ?? 0} als abgesagt erhalten ·
                         {' '}{last.unassigned} nicht zugeordnet · {last.conflicts} Konflikte
                     </p>
                 </div>
