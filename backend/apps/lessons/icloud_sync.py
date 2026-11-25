@@ -229,21 +229,25 @@ def _set_error(series, message):
     series.save(update_fields=["last_error", "updated_at"])
 
 
-def _remove_icloud_deleted_occurrence(link, stats):
-    """Delete an externally removed lesson, but preserve documented history.
+def _cancel_icloud_deleted_occurrence(link, stats):
+    """Preserve a remotely deleted appointment in StudioSync as red/cancelled.
 
-    The link stays as a remote tombstone. It prevents the next sync from
-    treating the missing lesson as a local deletion and uploading it to Apple.
+    Retain the Lesson and its stable iCloud link so a future poll cannot
+    re-export the removed VEVENT. Never alter documented or paid attendance.
     """
     lesson = link.lesson
-    if lesson and (lesson.is_paid or lesson.status in COMPLETED_STATUSES):
+    if lesson is None:
         return False
-    if lesson:
-        Lesson.objects.filter(pk=lesson.pk).delete()
-        stats["deleted"] = stats.get("deleted", 0) + 1
-    link.lesson = None
-    link.synced_signature = "remote-deleted"
-    link.save(update_fields=["lesson", "synced_signature", "updated_at"])
+    if lesson.is_paid or lesson.status in COMPLETED_STATUSES:
+        return False
+    if lesson.status != "cancelled":
+        Lesson.objects.filter(pk=lesson.pk).update(
+            status="cancelled", cancelled_at=timezone.now()
+        )
+        lesson.status = "cancelled"
+        stats["cancelled"] = stats.get("cancelled", 0) + 1
+    link.synced_signature = _lesson_signature(lesson)
+    link.save(update_fields=["synced_signature", "updated_at"])
     return True
 
 
@@ -266,14 +270,14 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         _lesson_signature(entry.lesson) != entry.synced_signature
     ]
     if not made and remote_hash != series.remote_hash and dirty:
-        # Explicit deletions made in Apple win over pending local edits of
-        # those same occurrences. Other concurrent edits remain conflicts.
+        # An explicit Apple deletion is a local cancellation, including when
+        # the same occurrence had pending edits in StudioSync.
         deleted_recurrences = {
             event["rid"] for event in _expand(raw) if event["cancelled"]
         }
         for link in dirty:
             if link.recurrence_id in deleted_recurrences:
-                _remove_icloud_deleted_occurrence(link, stats)
+                _cancel_icloud_deleted_occurrence(link, stats)
         if any(link.recurrence_id not in deleted_recurrences for link in dirty):
             _set_error(series, "Konflikt: Termin wurde gleichzeitig in Apple und StudioSync geändert.")
             stats["conflicts"] += 1
@@ -334,14 +338,10 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         )
         lesson = link.lesson
         if entry["cancelled"]:
-            # An iCloud EXDATE / cancelled occurrence is a real deletion,
-            # not a StudioSync cancellation status. Keep only documented
-            # or paid lessons for the attendance/accounting history.
-            _remove_icloud_deleted_occurrence(link, stats)
+            # EXDATE / cancelled VEVENT: remove it from Apple, but retain the
+            # StudioSync lesson, unchanged identity, and red cancelled status.
+            _cancel_icloud_deleted_occurrence(link, stats)
             continue
-        if lesson is None and link.synced_signature == "remote-deleted":
-            # A deleted Apple occurrence was explicitly restored later.
-            link.synced_signature = ""
         if (
             remote_is_unchanged
             and lesson is not None
@@ -417,9 +417,9 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         lesson = link.lesson
         if (timezone.now() - timedelta(days=WINDOW_BEFORE) <= lesson.scheduled_start
                 <= timezone.now() + timedelta(days=WINDOW_AFTER)):
-            # Truncated RRULE / removed RECURRENCE-ID: no active appointment
-            # remains in Apple, so remove its unaccounted local copy.
-            _remove_icloud_deleted_occurrence(link, stats)
+            # RRULE truncated in Apple: keep the occurrence as a red cancellation
+            # in StudioSync, including its student and notes.
+            _cancel_icloud_deleted_occurrence(link, stats)
     if collisions:
         shown = collisions[:5]
         if len(collisions) > 5:
@@ -472,28 +472,30 @@ def _push_changes(series, remote, stats):
     cal, master, overrides = _master_and_overrides(raw)
     recurring = bool(master.get("RRULE") or master.get("RDATE"))
 
-    # A stand-alone appointment must disappear from Apple Calendar completely;
-    # a recurrence instance must instead be excluded from its parent series.
+    # A locally deleted stand-alone lesson stays as "cancelled" in StudioSync,
+    # but its matching resource must disappear from Apple entirely.
     if not recurring:
         links = list(series.occurrences.select_related("lesson"))
-        if links and all(
-            link.lesson_id is None and link.synced_signature
-            for link in links
-        ):
+        if links and any(link.synced_signature == "pending-delete" for link in links):
             remote.delete()
-            series.delete()
+            series.last_error = (
+                "Terminserie in iCloud gelöscht; Unterrichtstermin in StudioSync als abgesagt erhalten."
+            )
+            series.last_synced_at = timezone.now()
+            series.save(update_fields=["last_error", "last_synced_at", "updated_at"])
+            for link in links:
+                if link.lesson_id:
+                    link.synced_signature = _lesson_signature(link.lesson)
+                    link.save(update_fields=["synced_signature", "updated_at"])
             stats["exported"] += 1
             return
 
     modified_links = []
     for entry in series.occurrences.select_related("lesson"):
         lesson = entry.lesson
-        removed = (
-            lesson is None
-            and entry.synced_signature
-            and entry.synced_signature not in ("deleted", "remote-deleted")
-        )
-        if lesson is None and not removed:
+        removed = lesson is not None and entry.synced_signature == "pending-delete"
+        if lesson is None:
+            # Old tombstones from previous deployments must not be re-uploaded.
             continue
         if lesson is not None and _lesson_signature(lesson) == entry.synced_signature:
             continue
@@ -505,11 +507,8 @@ def _push_changes(series, remote, stats):
         if removed and recurring:
             recurrence_day = datetime.fromisoformat(entry.recurrence_id).astimezone(LOCAL_TZ)
             master.add("exdate", recurrence_day)
-            # A recurrence exception for the same original date would supersede EXDATE.
             existing = overrides.get(entry.recurrence_id)
             if existing is not None:
-                # Compare by identity: icalendar's equality operator cannot
-                # safely compare VEVENT objects with None.
                 cal.subcomponents[:] = [
                     component for component in cal.subcomponents
                     if component is not existing
@@ -528,7 +527,9 @@ def _push_changes(series, remote, stats):
         else:
             target = master
         if removed:
-            _set_property(target, "STATUS", "CANCELLED")
+            # Never write a cancellation event: this particular iCloud
+            # occurrence is removed from the recurring series via EXDATE.
+            continue
         else:
             if lesson.student_id != series.student_id:
                 _set_error(series, "Schülerwechsel bitte über die Serienzuordnung vornehmen.")
@@ -598,7 +599,7 @@ def _sync_icloud_user_impl(user):
     studio = user.owned_studios.order_by("id").first()
     if not studio:
         raise ICloudSetupError("Kein eigenes Studio gefunden.")
-    stats = {"imported": 0, "exported": 0, "deleted": 0, "unassigned": 0, "conflicts": 0}
+    stats = {"imported": 0, "exported": 0, "cancelled": 0, "unassigned": 0, "conflicts": 0}
     with _connect(username, password) as client:
         available = {item["url"] for item in _discover(client)}
         if calendar_url not in available:
@@ -629,8 +630,8 @@ def _sync_icloud_user_impl(user):
         for series in all_series:
             remote = remote_items.get(series.uid)
             if remote is None:
-                # A missing entire CalDAV resource is confirmed on two
-                # consecutive successful polls (usually within ten minutes).
+                # Require two successful polls for an entirely missing resource.
+                # Never delete its StudioSync lesson records.
                 if series.last_error.startswith("Terminserie in iCloud gelöscht;"):
                     continue
                 if series.last_error != "Terminserie in iCloud fehlt; Löschung wird geprüft.":
@@ -638,10 +639,10 @@ def _sync_icloud_user_impl(user):
                     continue
                 with transaction.atomic():
                     for link in series.occurrences.select_related("lesson"):
-                        _remove_icloud_deleted_occurrence(link, stats)
+                        _cancel_icloud_deleted_occurrence(link, stats)
                     _set_error(
                         series,
-                        "Terminserie in iCloud gelöscht; offene Termine aus StudioSync entfernt."
+                        "Terminserie in iCloud gelöscht; Unterrichtstermine in StudioSync als abgesagt erhalten."
                     )
                 continue
             if series.last_error:
@@ -835,7 +836,7 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
         cal = client.calendar(url=calendar_url)
         saved = cal.save_event(ical.to_ical().decode("utf-8"))
         saved.load()
-        stats = {"imported": 0, "exported": 0, "deleted": 0, "unassigned": 0, "conflicts": 0}
+        stats = {"imported": 0, "exported": 0, "cancelled": 0, "unassigned": 0, "conflicts": 0}
         _import_series(user, student.studio, calendar_url, saved, stats)
     return stats
 
