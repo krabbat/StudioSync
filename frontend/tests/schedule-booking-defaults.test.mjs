@@ -141,3 +141,10 @@ test('calendar cancellation origin is chosen in both entry points and translated
     assert.match(page, /cancellation_kind: cancellationKind/)
     assert.match(list, /cancellation_kind: cancellationKind/)
 })
+
+test('running status is not offered in the shared lesson editor', () => {
+    assert.doesNotMatch(editor, /<option value="in_progress">/)
+    for (const status of ['scheduled', 'completed', 'cancelled', 'no_show']) {
+        assert.match(editor, new RegExp('<option value="' + status + '">'))
+    }
+})
