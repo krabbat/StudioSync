@@ -116,8 +116,10 @@ def test_delete_retains_icloud_tombstone_on_network_failure(
         response = authenticated_client.delete(f"/api/lessons/{appointment.pk}/")
     assert response.status_code == 200
     assert response.data["icloud_synced"] is False
-    assert not Lesson.objects.filter(pk=appointment.pk).exists()
-    assert ICloudCalendarOccurrence.objects.filter(pk=occurrence.pk, lesson__isnull=True).exists()
+    assert Lesson.objects.filter(pk=appointment.pk, status="cancelled").exists()
+    assert ICloudCalendarOccurrence.objects.filter(
+        pk=occurrence.pk, lesson=appointment, synced_signature="pending-delete"
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -131,6 +133,8 @@ def test_deleting_one_recurring_occurrence_adds_exdate_not_whole_series(
         ical_data=raw, remote_hash=_hash(raw),
         student=appointment.student, teacher=appointment.teacher,
     )
+    Lesson.objects.filter(pk=appointment.pk).update(status="cancelled")
+    appointment.status = "cancelled"
     link = ICloudCalendarOccurrence.objects.create(
         series=series, recurrence_id=_key(appointment.scheduled_start),
         lesson=appointment, synced_signature="pending-delete",
@@ -160,9 +164,11 @@ def test_deleting_standalone_event_deletes_apple_event(
         calendar_url=CAL_URL, uid="test-deletion@musart.de",
         ical_data=raw, remote_hash=_hash(raw),
     )
+    Lesson.objects.filter(pk=appointment.pk).update(status="cancelled")
+    appointment.status = "cancelled"
     ICloudCalendarOccurrence.objects.create(
         series=series, recurrence_id=_key(appointment.scheduled_start),
-        synced_signature="previous-state",
+        lesson=appointment, synced_signature="pending-delete",
     )
     remote = MagicMock()
     remote.data = raw
@@ -171,6 +177,7 @@ def test_deleting_standalone_event_deletes_apple_event(
     _push_changes(series, remote, stats)
     remote.delete.assert_called_once()
     assert ICloudCalendarSeries.objects.filter(pk=series.pk).exists()
+    assert Lesson.objects.filter(pk=appointment.pk, status="cancelled").exists()
     assert stats["exported"] == 1
 
 
@@ -195,9 +202,11 @@ def test_deleting_recurring_override_removes_exception_by_identity(
         calendar_url=CAL_URL, uid="test-deletion@musart.de",
         ical_data=raw, remote_hash=_hash(raw),
     )
+    Lesson.objects.filter(pk=appointment.pk).update(status="cancelled")
+    appointment.status = "cancelled"
     ICloudCalendarOccurrence.objects.create(
         series=series, recurrence_id=_key(start),
-        synced_signature="previous-state",
+        lesson=appointment, synced_signature="pending-delete",
     )
     remote = MagicMock()
     remote.data = raw
