@@ -48,6 +48,7 @@ interface Lesson {
     duration_minutes?: number
     online_meeting_url?: string
     cancellation_reason?: string
+    cancellation_kind?: "student_cancelled" | "teacher_cancelled" | ""
     student_name: string
     teacher_name: string
     student_instrument: string
@@ -118,7 +119,7 @@ export default function LessonsPage() {
         student: '', teacher, band: '', room: '', date: '', time: '13:00',
         duration: 60, lesson_type: 'private', is_online: false,
         online_meeting_url: '', status: 'scheduled',
-        cancellation_reason: '', summary: '', guest_name: '', guest_address: '',
+        cancellation_reason: '', cancellation_kind: '', summary: '', guest_name: '', guest_address: '',
         recurrence: 'none', recurrence_until: '',
     })
     const [newBooking, setNewBooking] = useState<LessonBookingData>(() => blankLesson(''))
@@ -155,6 +156,7 @@ export default function LessonsPage() {
             is_online: Boolean(lesson.is_online),
             online_meeting_url: lesson.online_meeting_url || '',
             cancellation_reason: lesson.cancellation_reason || '',
+            cancellation_kind: lesson.cancellation_kind || '',
             guest_name: lesson.guest_name || '',
             guest_address: lesson.guest_address || '',
             summary: lesson.summary || '',
@@ -170,6 +172,10 @@ export default function LessonsPage() {
             (bookingMode === 'special' && !newBooking.guest_name.trim())
         ) {
             toast.error('Bitte die erforderlichen Termindaten ausfüllen.')
+            return
+        }
+        if (newBooking.status === 'cancelled' && bookingMode === 'individual' && !newBooking.cancellation_kind) {
+            toast.error(tr('cancellationKindRequired'))
             return
         }
         setLessonSubmitting(true)
@@ -191,6 +197,7 @@ export default function LessonsPage() {
             }
             if (newBooking.status === 'cancelled') {
                 payload.cancellation_reason = newBooking.cancellation_reason
+                payload.cancellation_kind = bookingMode === 'individual' ? newBooking.cancellation_kind : ''
             }
             if (bookingMode === 'special') {
                 payload.student = null
