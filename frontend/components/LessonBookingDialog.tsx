@@ -472,7 +472,6 @@ export default function LessonBookingDialog({
                         }`}
                     >
                       <option value="scheduled">{tr('scheduled')}</option>
-                      <option value="in_progress">{tr('inProgress')}</option>
                       <option value="completed">{tr('completed')}</option>
                       <option value="cancelled">{tr('cancelled')}</option>
                       <option value="no_show">{tr('noShow')}</option>
