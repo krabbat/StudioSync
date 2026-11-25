@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useResources } from '@/hooks/useDashboardData'
+import { fetchAllLibraryPages, filterLibraryResources, isGlobalLibraryView } from '@/lib/materialLibrary.mjs'
 import api from '@/services/api'
 import { toast } from 'react-hot-toast'
 import {
@@ -147,7 +148,7 @@ function ResourceIcon({ type, size = 'w-5 h-5' }: { type: ResourceType; size?: s
 export default function ResourcesPage() {
   const t = useTranslations('Resources')
     const router = useRouter()
-    const { resources, loading, refetch } = useResources()
+    const { resources, loading, refetch } = useResources(undefined, true)
 
     // Folder state
     const [folders, setFolders] = useState<ResourceFolder[]>([])
@@ -180,8 +181,9 @@ export default function ResourcesPage() {
     const fetchFolders = useCallback(async () => {
         setFoldersLoading(true)
         try {
-            const res = await api.get('/resources/folders/')
-            setFolders(res.data?.results ?? res.data ?? [])
+            const allFolders = await fetchAllLibraryPages(async (page: number) =>
+                (await api.get('/resources/folders/', { params: { page } })).data)
+            setFolders(allFolders)
         } catch {
             // non-fatal
         } finally {
@@ -194,6 +196,8 @@ export default function ResourcesPage() {
     // ── Folder navigation ─────────────────────
 
     const navigateToFolder = (folder: ResourceFolder | null) => {
+        setSearchQuery('')
+        setFilterType('all')
         if (!folder) {
             setActiveFolderId('root')
             setBreadcrumb([])
@@ -408,23 +412,18 @@ export default function ResourcesPage() {
 
     // ── Filter ────────────────────────────────
 
-    const filteredResources = (resources as Resource[]).filter(r => {
-        const matchSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            r.description.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchType = filterType === 'all' || getResourceCategory(r) === filterType
-        const matchFolder = activeFolderId === 'root'
-            ? r.folder === null
-            : r.folder === activeFolderId
-        return matchSearch && matchType && matchFolder
-    })
+    const globalView = isGlobalLibraryView(activeFolderId, filterType, searchQuery)
+    const filteredResources: Resource[] = filterLibraryResources(
+        resources as Resource[], activeFolderId, filterType, searchQuery, getResourceCategory
+    )
 
     const typeFilters: { value: ResourceType | 'all'; label: string }[] = [
-        { value: 'all', label: 'All' },
+        { value: 'all', label: t('filterAll') },
         { value: 'pdf', label: 'PDF' },
         { value: 'audio', label: 'Audio' },
         { value: 'video', label: 'Video' },
-        { value: 'image', label: 'Image' },
-        { value: 'other', label: 'Other' },
+        { value: 'image', label: t('filterImages') },
+        { value: 'other', label: t('filterOther') },
     ]
 
     // ── Loading ───────────────────────────────
@@ -543,9 +542,9 @@ export default function ResourcesPage() {
                                     }`}
                             >
                                 <Home className="w-3.5 h-3.5 shrink-0" />
-                                {t('rootLibrary')}
+                                {t('allMaterials')}
                                 <span className="ml-auto text-[10px] font-bold opacity-50">
-                                    {(resources as Resource[]).filter(r => r.folder === null).length}
+                                    {resources.length}
                                 </span>
                             </button>
 
@@ -627,6 +626,10 @@ export default function ResourcesPage() {
                             ))}
                         </div>
                     </div>
+
+                    <p className="text-xs text-gray-500" aria-live="polite">
+                        {globalView ? t('scopeAllFolders') : t('scopeCurrentFolder')} · {filteredResources.length} {t('fileCountLabel')}
+                    </p>
 
                     {/* Resource grid */}
                     {filteredResources.length > 0 ? (
@@ -730,11 +733,9 @@ export default function ResourcesPage() {
                                     <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-gray-200" />
                                 </div>
                                 <div className="space-y-1 sm:space-y-2">
-                                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 uppercase tracking-tighter">{t('libraryIsEmpty')}</h3>
+                                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 uppercase tracking-tighter">{t('noMatchingMaterials')}</h3>
                                     <p className="text-[11px] sm:text-sm font-medium text-gray-500 max-w-sm mx-auto leading-relaxed">
-                                        {activeFolderId !== 'root'
-                                            ? 'No resources in this folder yet.'
-                                            : 'No resources found in your library.'}
+                                        {globalView ? t('noResultsAllFolders') : t('emptyDirectory')}
                                     </p>
                                 </div>
                                 <Button onClick={() => setShowUploadPanel(true)} className="px-6 sm:px-10 py-5 sm:py-6 rounded-2xl shadow-lg shadow-primary/10 w-full sm:w-auto">
