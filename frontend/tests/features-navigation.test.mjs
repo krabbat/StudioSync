@@ -8,6 +8,7 @@ const sidebar = source('components/Sidebar.tsx')
 const context = source('contexts/FeatureFlagContext.tsx')
 const types = source('types/setup.ts')
 const settings = source('app/dashboard/settings/page.tsx')
+const featureRoute = source('app/dashboard/features/page.tsx')
 const commands = source('components/CommandPalette.tsx')
 const translations = {
     de: JSON.parse(source('messages/de.json')).FeatureSettings,
@@ -75,16 +76,43 @@ test('reports visibility applies to the command palette', () => {
     assert.match(settings, /s\.href !== '\/dashboard\/settings\/gig-venues\/' \|\| flags\.gigs_enabled/)
 })
 
-test('settings appears under Administration and no separate Settings section remains', () => {
+test('all settings have their own localized Administration menu entries', () => {
     const admin = sidebar.indexOf("title: t('admin')")
-    const users = sidebar.indexOf("href: '/dashboard/users'", admin)
-    const settingsLink = sidebar.indexOf("href: '/dashboard/settings'", admin)
     const help = sidebar.indexOf("title: t('help')", admin)
-    assert.ok(admin !== -1 && users > admin && settingsLink > users && help > settingsLink)
-    assert.equal((sidebar.match(/href: '\/dashboard\/settings'/g) || []).length, 1)
+    assert.ok(admin >= 0 && help > admin)
+    const adminMenu = sidebar.slice(admin, help)
+
+    const expected = [
+        ['/dashboard/users', "t('users')"],
+        ['/dashboard/settings/general/?tab=profile', "tSettings('sectionAccount')"],
+        ['/dashboard/settings/general/?tab=security', "tSettings('sectionSecurity')"],
+        ['/dashboard/settings/general/?tab=studio', "tSettings('sectionStudio')"],
+        ['/dashboard/settings/general/?tab=appearance', "tSettings('sectionAppearance')"],
+        ['/dashboard/settings/general/?tab=notifications', "tSettings('sectionNotifications')"],
+        ['/dashboard/settings/general/?tab=communication', "tSettings('sectionCommunication')"],
+        ['/dashboard/features/', "tSettings('sectionFeatures')"],
+        ['/dashboard/settings/api-keys/', "tSettings('sectionApiKeys')"],
+        ['/dashboard/settings/gig-venues/', "tSettings('sectionGigVenues')"],
+        ['/dashboard/settings/general/?tab=technical', "tSettings('sectionTechnical')"],
+        ['/dashboard/settings/general/?tab=maintenance', "tSettings('sectionMaintenance')"],
+    ]
+
+    for (const [url, title] of expected) {
+        const pos = adminMenu.indexOf("href: '" + url + "'")
+        assert.ok(pos >= 0, 'missing direct Administration link: ' + url)
+        assert.ok(adminMenu.includes(title), 'missing localized label: ' + title)
+    }
     assert.doesNotMatch(sidebar, /title: t\('settings'\)/)
-    assert.match(sidebar, /name: t\('settings'\), href: '\/dashboard\/settings', icon: Settings, roles: \['admin'\]/)
-    // All existing settings tabs remain accessible through the existing hub.
-    assert.match(settings, /href: '\/dashboard\/settings\/features\/'/)
+    assert.doesNotMatch(adminMenu, /href: '\/dashboard\/settings'/)
+    assert.match(adminMenu, /href: '\/dashboard\/settings\/gig-venues\/'.*featureFlag: 'gigs_enabled'/)
+    assert.match(sidebar, /useTranslations\('SettingsHub'\)/)
+    assert.match(sidebar, /new URLSearchParams\(query\)\.get\('tab'\) === activeSettingsTab/)
+})
+
+test('feature settings have a working dedicated page route, retained older path and hub link', () => {
+    assert.match(featureRoute, /import FeaturesPage from '\.\.\/settings\/features\/page'/)
+    assert.match(featureRoute, /return <FeaturesPage \/>/)
+    assert.match(settings, /href: '\/dashboard\/features\/'/)
+    assert.match(page, /export default function FeaturesPage/)
     assert.match(settings, /href: '\/dashboard\/settings\/general\/\?tab=technical'/)
 })
