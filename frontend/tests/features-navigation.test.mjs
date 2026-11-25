@@ -9,30 +9,53 @@ const context = source('contexts/FeatureFlagContext.tsx')
 const types = source('types/setup.ts')
 const settings = source('app/dashboard/settings/page.tsx')
 const commands = source('components/CommandPalette.tsx')
+const translations = {
+    de: JSON.parse(source('messages/de.json')).FeatureSettings,
+    en: JSON.parse(source('messages/en.json')).FeatureSettings,
+}
 
-test('feature settings are German and actually save selections', () => {
-    assert.match(page, /<h1[^>]*>Funktionen<\/h1>/)
-    assert.match(page, /Bands und Ensembles/)
-    assert.match(page, /Auftritte/)
-    assert.match(page, /Berichte/)
+test('feature settings are translated through next-intl and persist changes', () => {
+    assert.match(page, /useTranslations\('FeatureSettings'\)/)
+    assert.match(page, /<h1[^>]*>\{t\('title'\)\}<\/h1>/)
     assert.match(page, /role="switch"/)
     assert.match(page, /aria-checked=\{active\}/)
     assert.match(page, /api\.patch\('\/core\/setup\/features\/'/)
     assert.match(page, /await refresh\(\)/)
-    assert.match(page, />\s*Speichern\s*</)
-    assert.match(page, />\s*Verwerfen\s*</)
+    assert.match(page, /\{t\('save'\)\}/)
+    assert.match(page, /\{t\('discard'\)\}/)
     assert.doesNotMatch(page, /All features are now enabled by default/)
 })
 
-test('bands, performances and reports start hidden independently', () => {
+test('all feature options have German and English names and descriptions', () => {
+    const features = [
+        'billing', 'inventory', 'messaging', 'resources', 'goals',
+        'bands', 'gigs', 'reports', 'practiceRooms', 'documentation',
+    ]
+    for (const language of ['de', 'en']) {
+        for (const feature of features) {
+            assert.ok(translations[language][feature + 'Name'], language + ': ' + feature + 'Name')
+            assert.ok(translations[language][feature + 'Description'], language + ': ' + feature + 'Description')
+        }
+        for (const key of ['title', 'introduction', 'active', 'inactive', 'enableFeature',
+            'disableFeature', 'save', 'discard', 'loading', 'adminOnly',
+            'noteAboutVisibility', 'saveSuccess', 'saveError']) {
+            assert.ok(translations[language][key], language + ': ' + key)
+        }
+    }
+    assert.match(page, /documentation_enabled: \{ name: t\('documentationName'\), description: t\('documentationDescription'\) \}/)
+})
+
+test('bands, gigs, reports and docs start hidden independently', () => {
     assert.match(types, /bands_enabled: false/)
     assert.match(types, /gigs_enabled: false/)
     assert.match(types, /analytics_enabled: false/)
-    assert.match(types, /gigs_enabled: boolean/)
-    assert.match(context, /'gigs_enabled', 'analytics_enabled'/)
+    assert.match(types, /documentation_enabled: false/)
+    assert.match(types, /documentation_enabled: boolean/)
+    assert.match(context, /'documentation_enabled'/)
     assert.match(sidebar, /href: '\/dashboard\/bands'.*featureFlag: 'bands_enabled'/)
     assert.match(sidebar, /href: '\/dashboard\/gigs'.*featureFlag: 'gigs_enabled'/)
     assert.match(sidebar, /href: '\/dashboard\/reports'.*featureFlag: 'analytics_enabled'/)
+    assert.match(sidebar, /href: '\/docs'.*featureFlag: 'documentation_enabled'/)
 })
 
 test('studio builder is no longer linked from navigation', () => {
@@ -40,7 +63,7 @@ test('studio builder is no longer linked from navigation', () => {
     assert.match(sidebar, /href: '\/dashboard\/users'/)
 })
 
-test('hidden reports are also removed from the command palette', () => {
+test('reports visibility applies to the command palette', () => {
     assert.match(commands, /reports: flags\.analytics_enabled/)
     assert.match(commands, /visibleCommands\.filter/)
     assert.match(settings, /s\.href !== '\/dashboard\/settings\/gig-venues\/' \|\| flags\.gigs_enabled/)
