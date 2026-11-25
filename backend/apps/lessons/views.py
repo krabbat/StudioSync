@@ -165,7 +165,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         self._reject_student_mutation()
         lesson = self.get_object()
         scope = request.query_params.get("scope", "this")
-        if scope not in ("this", "future"):
+        if scope not in ("this", "future", "permanent"):
             return Response(
                 {"detail": "Ungültige Löschoption."}, status=status.HTTP_400_BAD_REQUEST,
             )
@@ -176,13 +176,40 @@ class LessonViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if scope == "permanent":
+            if request.user.role != "admin":
+                raise PermissionDenied(
+                    "Nur Administratoren dürfen Unterrichtstermine endgültig löschen."
+                )
+            from apps.lessons.icloud_sync import permanently_delete_lesson
+            from apps.core.views.icloud_calendar import ICloudSetupError
+            try:
+                permanently_delete_lesson(lesson)
+                return Response({
+                    "detail": "Unterrichtstermin endgültig aus StudioSync "
+                              "und gegebenenfalls aus iCloud gelöscht.",
+                    "icloud_synced": True,
+                }, status=status.HTTP_200_OK)
+            except ICloudSetupError as exc:
+                return Response(
+                    {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST,
+                )
+            except Exception:
+                logger.exception("Permanent admin deletion failed")
+                return Response(
+                    {"detail": "Die endgültige Löschung ist fehlgeschlagen. "
+                     "Bitte die iCloud-Verbindung prüfen."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
         if scope == "future":
             from apps.lessons.icloud_sync import end_icloud_series_from_lesson
             from apps.core.views.icloud_calendar import ICloudSetupError
             try:
                 count = end_icloud_series_from_lesson(lesson)
                 return Response({
-                    "detail": f"Terminserie ab diesem Zeitpunkt beendet ({count} verknüpfte Termine).",
+                    "detail": f"Terminserie ab diesem Zeitpunkt endgültig gelöscht "
+                              f"({count} Unterrichtstermine); frühere Termine bleiben erhalten.",
                     "icloud_synced": True,
                 }, status=status.HTTP_200_OK)
             except ICloudSetupError as exc:
