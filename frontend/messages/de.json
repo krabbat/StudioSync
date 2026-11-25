@@ -1,4 +1,23 @@
 {
+  "LessonCancellation": {
+    "title": "Unterrichtstermin löschen",
+    "recurringExplanation": "Dieser Termin gehört zu einer wiederkehrenden iCloud-Serie. Wähle, welche Termine entfernt werden sollen.",
+    "singleExplanation": "Dieser einzelne Termin wird in iCloud entfernt und in StudioSync rot als „Abgesagt“ erhalten.",
+    "seriesExplanation": "„Alle zukünftigen“ beendet die Wiederholung ab dem ausgewählten Termin auch in iCloud. Bereits erteilte oder bezahlte Unterrichtsstunden sind geschützt. Nur bei „Nur diesen Termin löschen“ bleibt die Stunde rot als „Abgesagt“ erhalten. Die zukünftigen Serientermine werden dagegen endgültig aus StudioSync entfernt.",
+    "permanentExplanation": "Die administrative endgültige Löschung entfernt den gewählten Datensatz vollständig aus StudioSync. Eine zweite Bestätigung ist erforderlich.",
+    "cancellationKind": "Absage durch",
+    "chooseCancellationKind": "Bitte auswählen",
+    "studentCancelledCredited": "Schülerabsage – wird angerechnet",
+    "teacherCancelledNotCredited": "Lehrerausfall – wird nicht angerechnet",
+    "teacherCancellationQuotaNote": "Lehrerausfall: Diese Stunde zählt nicht zum jährlichen Kontingent von 44 Unterrichtseinheiten.",
+    "studentCancellationQuotaNote": "Schülerabsage: Diese Stunde wird auf das jährliche Kontingent angerechnet.",
+    "onlyForSingleCancellation": "Die Auswahl gilt nur für die Einzelabsage, nicht für eine endgültige Löschung.",
+    "deleteThis": "Nur diesen Termin löschen",
+    "deleteSingle": "Termin löschen",
+    "deleteFuture": "Diesen und alle zukünftigen löschen",
+    "deletePermanent": "Diesen Termin endgültig löschen (Administrator)",
+    "cancel": "Abbrechen"
+  },
   "Common": {
     "save": "Speichern",
     "cancel": "Abbrechen",
