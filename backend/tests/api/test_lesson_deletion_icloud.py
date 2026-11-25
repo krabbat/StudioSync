@@ -262,3 +262,71 @@ def test_marking_lesson_cancelled_retains_red_local_record_and_removes_apple_occ
     assert master.get("EXDATE")
     remote.delete.assert_not_called()
     assert stats["exported"] == 1
+
+
+@pytest.mark.django_db
+def test_admin_can_permanently_purge_already_cancelled_unlinked_lesson(
+    authenticated_client, appointment,
+):
+    Lesson.objects.filter(pk=appointment.pk).update(status="cancelled")
+    response = authenticated_client.delete(
+        f"/api/lessons/{appointment.pk}/?scope=permanent"
+    )
+    assert response.status_code == 200, response.data
+    assert not Lesson.objects.filter(pk=appointment.pk).exists()
+
+
+@pytest.mark.django_db
+def test_admin_permanently_removes_one_cancelled_icloud_series_instance(
+    authenticated_client, admin_user, appointment,
+):
+    raw = _event(appointment.scheduled_start, recurring=True)
+    series = ICloudCalendarSeries.objects.create(
+        user=admin_user, studio=appointment.studio,
+        calendar_url=CAL_URL, uid="test-deletion@musart.de",
+        remote_url=CAL_URL + "test-deletion.ics",
+        ical_data=raw, remote_hash=_hash(raw),
+        student=appointment.student, teacher=appointment.teacher,
+    )
+    link = ICloudCalendarOccurrence.objects.create(
+        series=series, lesson=appointment,
+        recurrence_id=_key(appointment.scheduled_start),
+        synced_signature="previous-fingerprint",
+    )
+    Lesson.objects.filter(pk=appointment.pk).update(status="cancelled")
+    remote = MagicMock()
+    remote.url = series.remote_url
+    remote.data = raw
+    client = MagicMock()
+    client.calendar.return_value.events.return_value = [remote]
+    connection = MagicMock()
+    connection.__enter__.return_value = client
+
+    with (
+        patch("apps.lessons.icloud_sync._connect", return_value=connection),
+        patch("apps.lessons.icloud_sync._discover", return_value=[{"url": CAL_URL}]),
+        patch("apps.lessons.icloud_sync._credentials", return_value=("icloud@example.com", "secret")),
+    ):
+        response = authenticated_client.delete(
+            f"/api/lessons/{appointment.pk}/?scope=permanent"
+        )
+
+    assert response.status_code == 200, response.data
+    assert not Lesson.objects.filter(pk=appointment.pk).exists()
+    link.refresh_from_db()
+    assert link.lesson_id is None
+    assert link.synced_signature == "hard-deleted"
+    assert Calendar.from_ical(remote.data).walk("VEVENT")[0].get("EXDATE")
+    remote.delete.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_admin_cannot_permanently_delete_completed_lesson(
+    authenticated_client, appointment,
+):
+    Lesson.objects.filter(pk=appointment.pk).update(status="completed")
+    response = authenticated_client.delete(
+        f"/api/lessons/{appointment.pk}/?scope=permanent"
+    )
+    assert response.status_code == 400
+    assert Lesson.objects.filter(pk=appointment.pk).exists()
