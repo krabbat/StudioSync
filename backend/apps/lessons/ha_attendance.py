@@ -333,15 +333,22 @@ def run_nightly(activated_at):
             return
         for studio in Studio.objects.select_related("owner"):
             try:
-                lessons = list(lessons_for(studio, activation).filter(
-                    scheduled_start__gte=start, scheduled_start__lt=end).exclude(status="cancelled"))
-                if not lessons or all((l.ha_attendance or {}).get("statistics_day") == day.isoformat() for l in lessons):
+                base = lessons_for(studio, activation).exclude(status="cancelled")
+                lessons = list(base.filter(Q(scheduled_start__gte=start, scheduled_start__lt=end)
+                    | Q(scheduled_start__gte=start-timedelta(days=7), scheduled_start__lt=start,
+                        ha_attendance__statistics_pending=True)))
+                lessons = [l for l in lessons if (l.ha_attendance or {}).get("statistics_pending")
+                    or (l.ha_attendance or {}).get("statistics_day") != l.scheduled_start.astimezone(LOCAL).date().isoformat()]
+                if not lessons:
                     continue
                 ha = HA(studio.owner)
                 zones, _ = ha.states()
                 # Include post-midnight departure up to the nightly run.
-                rows = ha.history(start, now)
-                assigned = allocate(rows, lessons, zones, full=True)
+                history_start = min(start, min(window(l)[0] for l in lessons))
+                related = list(base.filter(scheduled_start__lt=now+TOLERANCE,
+                    scheduled_end__gt=history_start-TOLERANCE))
+                rows = ha.history(history_start, now)
+                assigned = allocate(rows, related, zones, full=True)
                 if any(state in INVALID for _,_,state in rows):
                     continue
                 for lesson in lessons:
@@ -351,7 +358,9 @@ def run_nightly(activated_at):
                     with transaction.atomic():
                         obj = Lesson.objects.select_for_update().get(pk=lesson.pk)
                         info = dict(obj.ha_attendance or {})
-                        info.update(statistics_day=day.isoformat(), total_seconds=seconds(parts),
+                        info.update(statistics_day=lesson.scheduled_start.astimezone(LOCAL).date().isoformat(),
+                                    statistics_pending=bool(parts and parts[-1][1] == now),
+                                    total_seconds=seconds(parts),
                                     total_arrival=iso(parts[0][0]) if parts else None,
                                     total_departure=iso(parts[-1][1]) if parts and parts[-1][1] < now else None)
                         obj.ha_attendance = info
