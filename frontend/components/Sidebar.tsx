@@ -27,7 +27,6 @@ import {
     Music,
     PanelLeftClose,
     PanelLeftOpen,
-    Pencil,
     MapPin,
 } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -111,7 +110,7 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
             items: [
                 { name: t('students'), href: '/dashboard/students', icon: Users, roles: ['admin', 'teacher'] },
                 { name: t('bands'), href: '/dashboard/bands', icon: Music, roles: ['admin', 'teacher', 'student'], featureFlag: 'bands_enabled' },
-                { name: t('gigs'), href: '/dashboard/gigs', icon: MapPin, roles: ['admin', 'teacher', 'student'], featureFlag: 'bands_enabled' },
+                { name: t('gigs'), href: '/dashboard/gigs', icon: MapPin, roles: ['admin', 'teacher', 'student'], featureFlag: 'gigs_enabled' },
                 { name: t('instructors'), href: '/dashboard/teachers', icon: UserCheck, roles: ['admin'] },
                 { name: t('schedule'), href: '/dashboard/schedule', icon: Calendar, roles: ['admin', 'teacher', 'student'] },
                 { name: t('lessons'), href: '/dashboard/lessons', icon: BookOpen, roles: ['admin', 'teacher', 'student'] },
@@ -133,7 +132,6 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
             title: t('admin'),
             roles: ['admin'],
             items: [
-                { name: t('studioBuilder'), href: '/dashboard/studio-builder', icon: Pencil, roles: ['admin'] },
                 { name: t('users'), href: '/dashboard/users', icon: UserCog, roles: ['admin'] },
             ],
         },
