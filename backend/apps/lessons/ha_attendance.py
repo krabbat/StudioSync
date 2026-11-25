@@ -19,6 +19,7 @@ from django.utils import timezone
 from apps.core.models import Studio
 from apps.core.views.home_assistant import _NoRedirect
 from apps.lessons.models import Lesson
+from apps.lessons.ha_diagnostics import event
 
 LOG = logging.getLogger(__name__)
 LOCAL = ZoneInfo("Europe/Berlin")
@@ -210,6 +211,9 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
                 or obj.status == "cancelled"):
             return
         info = dict(obj.ha_attendance or {})
+        previous_status = obj.status
+        previous_watch = obj.ha_watch_active
+        first_check = not info.get("checked_at")
         info.update(zone=zone[0], zone_name=zone[1], tracker=tracker, checked_at=iso(now),
                     present=present)
         if rows and not obj.ha_finalized_at:
@@ -239,6 +243,27 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
                 obj.status = "in_progress"
         obj.save(update_fields=["ha_attendance","ha_watch_active","ha_finalized_at",
                                 "status","actual_start","actual_end","updated_at"])
+        details = dict(studio=str(obj.studio_id), lesson=str(obj.pk), zone=zone[1],
+                       tracker=tracker, scheduled_start=iso(obj.scheduled_start),
+                       scheduled_end=iso(obj.scheduled_end), previous_status=previous_status,
+                       status=obj.status, present=present, history_valid=valid,
+                       attendance_seconds=info.get("attendance_seconds"),
+                       arrival=info.get("arrival"), departure=info.get("departure"),
+                       watch_active=obj.ha_watch_active, manual_override=obj.ha_manual_override,
+                       finalized=bool(obj.ha_finalized_at))
+        def emit():
+            if first_check:
+                event("recording_started", **details, window_start=iso(low), window_end=iso(high))
+            event("attendance_checked", **details)
+            if previous_status != obj.status:
+                event("status_changed", **details,
+                      reason={"in_progress": "zone_present", "completed": "threshold_reached",
+                              "no_show": "threshold_not_reached_at_deadline"}.get(obj.status, "status_update"))
+            if previous_watch != obj.ha_watch_active:
+                event("zone_watch_started" if obj.ha_watch_active else "zone_watch_stopped", **details)
+            if now >= high and not valid and not obj.ha_finalized_at:
+                event("finalization_deferred", **details, reason="invalid_history")
+        transaction.on_commit(emit)
 
 
 def live_studio(studio, activation, now, only=None):
@@ -271,10 +296,14 @@ def live_studio(studio, activation, now, only=None):
         selected.extend(recovery)
     if not selected:
         return
+    event("live_poll_started", studio=str(studio.pk), candidate_count=len(selected),
+          source="manual" if only else "scheduled")
     ha = HA(studio.owner)
     zones, current = ha.states()
     for lesson in selected:
         if not zone_for(lesson, zones):
+            event("zone_missing_or_ambiguous", studio=str(studio.pk), lesson=str(lesson.pk),
+                  scheduled_start=iso(lesson.scheduled_start), scheduled_end=iso(lesson.scheduled_end))
             with transaction.atomic():
                 obj = Lesson.objects.select_for_update().get(pk=lesson.pk)
                 info = dict(obj.ha_attendance or {})
@@ -286,6 +315,7 @@ def live_studio(studio, activation, now, only=None):
                 obj.save(update_fields=["ha_attendance","ha_watch_active","updated_at"])
     selected = [lesson for lesson in selected if zone_for(lesson, zones)]
     if not selected:
+        event("live_poll_finished", studio=str(studio.pk), reason="no_matching_zones")
         return
     # Include the final polling tick after the tolerance expires (scheduler jitter).
     start = min(window(l)[0] for l in selected)
@@ -296,11 +326,23 @@ def live_studio(studio, activation, now, only=None):
     if end > start and any(not l.ha_finalized_at and not l.ha_manual_override for l in selected):
         try:
             rows = ha.history(start, end)
-        except Exception:
+            event("history_received", studio=str(studio.pk), history_start=iso(start),
+                  history_end=iso(end), interval_count=len(rows))
+        except Exception as exc:
+            event("history_failed", studio=str(studio.pk), history_start=iso(start),
+                  history_end=iso(end), error_type=type(exc).__name__, http_status=getattr(exc, "code", None))
             LOG.warning("HA history unavailable for studio %s", studio.pk)
     assigned = allocate(rows, related, zones)
     for lesson in selected:
         update_live(lesson, zone_for(lesson, zones), ha.tracker, current, rows, assigned, now)
+    watch_count = base.filter(ha_watch_active=True).exclude(status="cancelled").count()
+    check_count = base.filter(scheduled_start__lte=now+TOLERANCE,
+                              scheduled_end__gte=now-TOLERANCE-timedelta(minutes=4),
+                              status__in=["scheduled","in_progress"], ha_finalized_at__isnull=True,
+                              ha_manual_override=False).count()
+    event("live_poll_finished", studio=str(studio.pk), remaining_watch_count=watch_count,
+          remaining_check_count=check_count,
+          reason="idle_after_poll" if not watch_count and not check_count else "monitoring_continues")
 
 
 def run_live(activated_at):
@@ -312,7 +354,9 @@ def run_live(activated_at):
         for studio in Studio.objects.select_related("owner"):
             try:
                 live_studio(studio, activation, now)
-            except Exception:
+            except Exception as exc:
+                event("live_poll_failed", studio=str(studio.pk), error_type=type(exc).__name__,
+                      http_status=getattr(exc, "code", None))
                 LOG.warning("HA live check failed for studio %s", studio.pk)
 
 
@@ -328,6 +372,7 @@ def run_nightly(activated_at):
     end = datetime.combine(local.date(), time.min, LOCAL)
     if start >= end:
         return
+    event("nightly_started", statistics_day=day.isoformat())
     with locked(2) as acquired:
         if not acquired:
             return
@@ -341,6 +386,8 @@ def run_nightly(activated_at):
                     or (l.ha_attendance or {}).get("statistics_day") != l.scheduled_start.astimezone(LOCAL).date().isoformat()]
                 if not lessons:
                     continue
+                event("nightly_poll_started", studio=str(studio.pk), candidate_count=len(lessons),
+                      statistics_day=day.isoformat())
                 ha = HA(studio.owner)
                 zones, _ = ha.states()
                 # Include post-midnight departure up to the nightly run.
@@ -350,6 +397,8 @@ def run_nightly(activated_at):
                 rows = ha.history(history_start, now)
                 assigned = allocate(rows, related, zones, full=True)
                 if any(state in INVALID for _,_,state in rows):
+                    event("nightly_deferred", studio=str(studio.pk), reason="invalid_history",
+                          statistics_day=day.isoformat())
                     continue
                 for lesson in lessons:
                     if not zone_for(lesson, zones):
@@ -365,5 +414,12 @@ def run_nightly(activated_at):
                                     total_departure=iso(parts[-1][1]) if parts and parts[-1][1] < now else None)
                         obj.ha_attendance = info
                         obj.save(update_fields=["ha_attendance","updated_at"])
-            except Exception:
+                    event("nightly_result", studio=str(studio.pk), lesson=str(lesson.pk),
+                          zone=zone_for(lesson, zones)[1], statistics_day=info["statistics_day"],
+                          total_seconds=info["total_seconds"], total_arrival=info["total_arrival"],
+                          total_departure=info["total_departure"], statistics_pending=info["statistics_pending"])
+            except Exception as exc:
+                event("nightly_failed", studio=str(studio.pk), error_type=type(exc).__name__,
+                      http_status=getattr(exc, "code", None))
                 LOG.warning("HA nightly statistics failed for studio %s", studio.pk)
+    event("nightly_finished", statistics_day=day.isoformat())
