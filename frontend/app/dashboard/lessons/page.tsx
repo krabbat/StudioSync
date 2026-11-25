@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { useState, type FormEvent } from 'react'
 import { addMinutes, format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { useUser } from '@/contexts/UserContext'
-import { useLessons, useUsers, useStudents, useTeachers, useStudios, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
+import { useLessons, useStudents, useTeachers, useStudios, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
 import ResourceSelector from '@/components/ResourceSelector'
 import LessonDeleteDialog, { type LessonDeleteTarget, type LessonDeleteScope } from '@/components/LessonDeleteDialog'
 import LessonBookingDialog, { type LessonBookingData, type LessonBookingMode } from '@/components/LessonBookingDialog'
@@ -71,22 +71,11 @@ export default function LessonsPage() {
     const { currentUser } = useUser()
     const { lessons, loading, refetch: refetchLessons } = useLessons()
     const typedLessons = lessons as Lesson[]
-    const { users } = useUsers({ page_size: 100 })
     const { students: studentProfiles } = useStudents({ page_size: 100 })
     const { teachers } = useTeachers()
     const { studios } = useStudios()
     const preferredTeacherId = teachers.find((item: any) => [item.first_name, item.last_name].filter(Boolean).join(' ').toLocaleLowerCase('de-DE') === 'peter sartori')?.id || teachers[0]?.id || ''
 
-    // Derive students from users for consistent name rendering
-    const students = users
-        .filter((u: any) => u.role === 'student' && u.student_profile)
-        .map((u: any) => ({
-            id: u.student_profile.id,
-            user: u,
-            first_name: u.first_name,
-            last_name: u.last_name,
-            email: u.email
-        }))
     const { bands } = useBands({ page_size: 100 })
 
     const [selectedLessons, setSelectedLessons] = useState<string[]>([])
