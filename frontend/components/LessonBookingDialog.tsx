@@ -1,7 +1,7 @@
 "use client";
 
 import { type Dispatch, type FormEvent, type SetStateAction, useEffect, useRef } from "react";
-import { addMinutes, format } from "date-fns";
+import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/contexts/UserContext";
 import api from "@/services/api";
