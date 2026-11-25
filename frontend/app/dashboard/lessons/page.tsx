@@ -249,7 +249,7 @@ export default function LessonsPage() {
 
     const statusLabels: Record<string, string> = {
         all: tr('all'), scheduled: tr('statusScheduled'),
-        in_progress: tr('statusInProgress'), completed: tr('statusCompleted'),
+        in_progress: 'Läuft', completed: tr('statusCompleted'),
         cancelled: tr('statusCancelled'), no_show: tr('statusNoShow')
     }
     const typeLabels: Record<string, string> = {
@@ -263,7 +263,7 @@ export default function LessonsPage() {
             in_progress: 'bg-purple-50 text-purple-700 border-purple-200',
             completed: 'bg-green-50 text-green-700 border-green-200',
             cancelled: 'bg-red-50 text-red-700 border-red-200',
-            no_show: 'bg-gray-50 text-gray-700 border-gray-200',
+            no_show: 'bg-red-50 text-red-700 border-red-200',
         }
 
         const key = status?.toLowerCase() || 'scheduled'
