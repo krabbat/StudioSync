@@ -49,7 +49,12 @@ class LessonListSerializer(serializers.ModelSerializer):
         if link is None:
             return False
         content = link.series.ical_data or ""
-        return "RRULE:" in content
+        # An older CalDAV resource may already have been truncated in Apple.
+        # Multiple locally linked instances still form a series for the UI.
+        return (
+            "RRULE:" in content or "RDATE:" in content
+            or link.series.occurrences.count() > 1
+        )
 
     def get_student_profile_id(self, obj):
         """Return the student profile UUID as a plain string for frontend matching."""
