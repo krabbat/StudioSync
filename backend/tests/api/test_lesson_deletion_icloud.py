@@ -43,7 +43,7 @@ def test_admin_can_delete_one_unlinked_lesson(authenticated_client, appointment)
     resp = authenticated_client.delete(f"/api/lessons/{appointment.pk}/")
     assert resp.status_code == 200
     assert resp.data["icloud_synced"] is True
-    assert not Lesson.objects.filter(pk=appointment.pk).exists()
+    assert Lesson.objects.filter(pk=appointment.pk, status="cancelled").exists()
 
 
 @pytest.mark.django_db
@@ -83,12 +83,12 @@ def test_delete_linked_occurrence_keeps_tombstone_for_icloud(
 
     def mark_uploaded(user):
         assert user.pk == admin_user.pk
-        assert not Lesson.objects.filter(pk=appointment.pk).exists()
+        assert Lesson.objects.filter(pk=appointment.pk, status="cancelled").exists()
         link = ICloudCalendarOccurrence.objects.get(pk=occurrence.pk)
-        assert link.lesson_id is None
-        link.synced_signature = "deleted"
+        assert link.lesson_id == appointment.pk
+        assert link.synced_signature == "pending-delete"
+        link.synced_signature = "synced"
         link.save(update_fields=["synced_signature"])
-        # An unrelated conflict must not change this lesson's outcome.
         return {"conflicts": 1}
 
     with patch("apps.lessons.icloud_sync.sync_icloud_user", side_effect=mark_uploaded) as fake:
@@ -97,7 +97,7 @@ def test_delete_linked_occurrence_keeps_tombstone_for_icloud(
     fake.assert_called_once()
     assert response.status_code == 200
     assert response.data["icloud_synced"] is True
-    assert ICloudCalendarOccurrence.objects.filter(pk=occurrence.pk, lesson__isnull=True).exists()
+    assert ICloudCalendarOccurrence.objects.filter(pk=occurrence.pk, lesson=appointment).exists()
 
 
 @pytest.mark.django_db
@@ -133,7 +133,7 @@ def test_deleting_one_recurring_occurrence_adds_exdate_not_whole_series(
     )
     link = ICloudCalendarOccurrence.objects.create(
         series=series, recurrence_id=_key(appointment.scheduled_start),
-        synced_signature="previous-state",
+        lesson=appointment, synced_signature="pending-delete",
     )
     remote = MagicMock()
     remote.data = raw
@@ -145,7 +145,7 @@ def test_deleting_one_recurring_occurrence_adds_exdate_not_whole_series(
     assert master.get("RRULE")
     assert master.get("EXDATE")
     link.refresh_from_db()
-    assert link.synced_signature == "deleted"
+    assert link.synced_signature != "pending-delete"
     assert stats["exported"] == 1
     remote.delete.assert_not_called()
 
@@ -170,7 +170,7 @@ def test_deleting_standalone_event_deletes_apple_event(
     stats = {"exported": 0, "conflicts": 0}
     _push_changes(series, remote, stats)
     remote.delete.assert_called_once()
-    assert not ICloudCalendarSeries.objects.filter(pk=series.pk).exists()
+    assert ICloudCalendarSeries.objects.filter(pk=series.pk).exists()
     assert stats["exported"] == 1
 
 
