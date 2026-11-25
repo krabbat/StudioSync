@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/contexts/UserContext";
 import api from "@/services/api";
+import LessonAttendancePanel from "@/components/LessonAttendancePanel";
 import { Clock, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
@@ -472,11 +473,14 @@ export default function LessonBookingDialog({
                         }`}
                     >
                       <option value="scheduled">{tr('scheduled')}</option>
+                      <option value="in_progress">Läuft</option>
                       <option value="completed">{tr('completed')}</option>
                       <option value="cancelled">{tr('cancelled')}</option>
                       <option value="no_show">{tr('noShow')}</option>
                     </select>
                   </div>
+
+                  {open && currentUser?.role === "admin" && editingLessonId && <LessonAttendancePanel key={editingLessonId} lessonId={editingLessonId} />}
 
                   {newBooking.status === "cancelled" && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
