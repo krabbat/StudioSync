@@ -73,3 +73,13 @@ test('alternating hourly backgrounds remain visible in all seven days', () => {
     assert.match(page, /getMinutes\(parseISO\(lesson\.scheduled_start\)\)/)
     assert.match(page, /WEEK_HOUR_HEIGHT/)
 })
+
+
+test('time rail and all seven weekday headers use the same fully opaque grey', () => {
+    assert.match(page, /<thead className="bg-slate-200 sticky top-0/)
+    assert.match(page, /z-30 bg-slate-200 border-r/)
+    assert.match(page, /min-w-\[140px\] bg-slate-200 border-b/)
+    assert.match(page, /border-r border-slate-300\/60 bg-slate-200 sticky left-0/)
+    assert.doesNotMatch(page, /bg-slate-200\/80/)
+    assert.equal((page.match(/bg-slate-200(?=[\s"])/g) || []).length, 5)
+})
