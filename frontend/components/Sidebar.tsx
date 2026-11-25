@@ -144,7 +144,7 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
         {
             title: t('help'),
             items: [
-                { name: t('documentation'), href: '/docs', icon: FileText, roles: ['admin', 'teacher', 'student'] },
+                { name: t('documentation'), href: '/docs', icon: FileText, roles: ['admin', 'teacher', 'student'], featureFlag: 'documentation_enabled' },
             ],
         },
     ]
