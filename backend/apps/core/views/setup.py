@@ -16,12 +16,73 @@ from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.models import SetupStatus, Student, Studio, Teacher, User
 from apps.core.serializers import SetupWizardCompleteSerializer
+
+
+# Feature visibility is a studio-wide preference; existing setup data remains
+# intact. The MUSart defaults hide bands, performances and reports until
+# the administrator explicitly saves selections on Settings -> Features.
+FEATURE_KEYS = (
+    "billing", "inventory", "messaging", "resources", "goals",
+    "bands", "gigs", "analytics", "practice_rooms",
+)
+FEATURES_INITIAL_OFF = ("bands", "gigs", "analytics")
+
+
+def effective_features(setup):
+    stored = dict(setup.features_enabled or {}) if setup else {}
+    configured = bool(
+        setup and isinstance(setup.setup_data, dict)
+        and setup.setup_data.get("features_customized")
+    )
+    if not configured:
+        stored.update({key: False for key in FEATURES_INITIAL_OFF})
+    else:
+        stored.setdefault("gigs", False)
+    return stored
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def update_feature_settings(request):
+    """Administrator-only saved feature visibility for all studio accounts."""
+    if request.user.role != "admin":
+        return Response(
+            {"detail": "Nur Administratoren können Funktionen verwalten."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    proposed = request.data.get("features_enabled")
+    if not isinstance(proposed, dict) or not proposed:
+        return Response(
+            {"detail": "Bitte gültige Funktionsschalter übermitteln."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    unexpected = sorted(set(proposed) - set(FEATURE_KEYS))
+    invalid = sorted(key for key, val in proposed.items() if type(val) is not bool)
+    if unexpected or invalid:
+        return Response(
+            {"detail": "Ungültige Funktionseinstellungen.", "unknown": unexpected,
+             "invalid_values": invalid},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    with transaction.atomic():
+        setup = SetupStatus.objects.select_for_update().first()
+        if setup is None or not setup.is_completed:
+            return Response(
+                {"detail": "Die Ersteinrichtung ist noch nicht abgeschlossen."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        features = effective_features(setup)
+        features.update(proposed)
+        setup.features_enabled = features
+        setup.setup_data = {**(setup.setup_data or {}), "features_customized": True}
+        setup.save(update_fields=["features_enabled", "setup_data"])
+    return Response({"features_enabled": effective_features(setup)})
 
 
 @api_view(["GET"])
@@ -56,7 +117,7 @@ def check_setup_status(request):
             "setup_required": not setup.is_completed,
             "completed_at": setup.completed_at,
             "setup_version": setup.setup_version,
-            "features_enabled": setup.features_enabled or {},
+            "features_enabled": effective_features(setup),
         }
     )
 
