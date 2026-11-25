@@ -1197,7 +1197,9 @@
     "loading": "Loading feature settings …",
     "adminOnly": "Only administrators can manage features.",
     "saveSuccess": "Feature settings saved.",
-    "saveError": "Could not save feature settings."
+    "saveError": "Could not save feature settings.",
+    "teachersName": "Teachers",
+    "teachersDescription": "Show or hide teacher management in the left navigation."
   },
   "ApiKeys": {
     "settings": "Settings",
