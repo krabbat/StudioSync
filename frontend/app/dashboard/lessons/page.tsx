@@ -6,7 +6,7 @@ import { addMinutes, format, parseISO, isWithinInterval, startOfDay, endOfDay } 
 import { useUser } from '@/contexts/UserContext'
 import { useLessons, useStudents, useTeachers, useStudios, useBands, useLessonPlans, useResources } from '@/hooks/useDashboardData'
 import ResourceSelector from '@/components/ResourceSelector'
-import LessonDeleteDialog, { type LessonDeleteTarget, type LessonDeleteScope } from '@/components/LessonDeleteDialog'
+import LessonDeleteDialog, { type LessonDeleteTarget, type LessonDeleteScope, type LessonCancellationKind } from '@/components/LessonDeleteDialog'
 import LessonBookingDialog, { type LessonBookingData, type LessonBookingMode } from '@/components/LessonBookingDialog'
 import api from '@/services/api'
 import { toast } from 'react-hot-toast'
@@ -331,13 +331,15 @@ export default function LessonsPage() {
             id: lesson.id,
             label: `${lesson.student_name || lesson.guest_name || 'Unterricht'} am ${format(parseISO(lesson.scheduled_start), 'dd.MM.yyyy HH:mm')}`,
             isRecurring: Boolean(lesson.is_recurring),
+            requiresCancellationKind: Boolean(lesson.student_profile_id || lesson.student)
+                && ['private', 'makeup'].includes(lesson.lesson_type),
             canPermanentlyDelete: currentUser?.role === 'admin'
                 && !lesson.is_paid
                 && !['completed', 'in_progress', 'no_show'].includes(lesson.status),
         })
     }
 
-    const confirmDeleteLesson = async (scope: LessonDeleteScope) => {
+    const confirmDeleteLesson = async (scope: LessonDeleteScope, cancellationKind?: LessonCancellationKind) => {
         if (!deleteTarget) return
         if (scope === 'permanent' && !window.confirm(
             'Diesen Unterrichtstermin wirklich ENDGÜLTIG aus StudioSync und iCloud löschen? Die Unterrichtsdaten werden dabei unwiderruflich entfernt.'
@@ -348,7 +350,7 @@ export default function LessonsPage() {
         const lessonId = deleteTarget.id
         setDeletingLessonId(lessonId)
         try {
-            const response = await api.delete(`/lessons/${lessonId}/`, { params: { scope } })
+            const response = await api.delete(`/lessons/${lessonId}/`, { params: { scope, ...(scope === "this" && cancellationKind ? { cancellation_kind: cancellationKind } : {}) } })
             toast.success(response.data?.detail || 'Unterrichtstermin gelöscht.')
             if (response.data?.icloud_synced === false) {
                 toast.error('iCloud ist noch nicht aktualisiert. Bitte den Kalenderabgleich prüfen.')
