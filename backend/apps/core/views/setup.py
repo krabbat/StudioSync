@@ -29,9 +29,9 @@ from apps.core.serializers import SetupWizardCompleteSerializer
 # the administrator explicitly saves selections on Settings -> Features.
 FEATURE_KEYS = (
     "billing", "inventory", "messaging", "resources", "goals",
-    "bands", "gigs", "analytics", "practice_rooms",
+    "bands", "gigs", "analytics", "practice_rooms", "documentation",
 )
-FEATURES_INITIAL_OFF = ("bands", "gigs", "analytics")
+FEATURES_INITIAL_OFF = ("bands", "gigs", "analytics", "documentation")
 
 
 def effective_features(setup):
@@ -44,6 +44,7 @@ def effective_features(setup):
         stored.update({key: False for key in FEATURES_INITIAL_OFF})
     else:
         stored.setdefault("gigs", False)
+        stored.setdefault("documentation", False)
     return stored
 
 
