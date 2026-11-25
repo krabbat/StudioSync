@@ -86,9 +86,9 @@ test('time rail and all seven weekday headers use the same fully opaque grey', (
 
 
 test('cancelled appointments stay red regardless of current color grouping', () => {
-    assert.match(page, /if \(colorMode === "status" \|\| lesson\.status === "cancelled"\) return \{\};/)
+    assert.match(page, /if \(colorMode === "status" \|\| lesson\.status === "cancelled" \|\| lesson\.status === "completed"\) return \{\};/)
     assert.equal(
-        (page.match(/\(colorMode === "status" \|\| lesson\.status === "cancelled"\)/g) || []).length,
+        (page.match(/\(colorMode === "status" \|\| lesson\.status === "cancelled" \|\| lesson\.status === "completed"\)/g) || []).length,
         3
     )
     assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
@@ -98,4 +98,13 @@ test('weekday header and time rail share one opaque color value', () => {
     assert.match(page, /const WEEK_CHROME_COLOR = "#e2e8f0";/)
     assert.equal((page.match(/style=\{\{ backgroundColor: WEEK_CHROME_COLOR \}\}/g) || []).length, 5)
     assert.doesNotMatch(page, /bg-slate-200\/80/)
+})
+
+test('completed lessons are light green, scheduled unchanged, and cancelled red', () => {
+    assert.match(page, /lesson\.status === "completed" \? "bg-emerald-50 border-emerald-400"/)
+    assert.match(page, /lesson\.status === "completed" \? "bg-emerald-50 border-emerald-400 text-emerald-800"/)
+    assert.match(page, /lesson\.status === "scheduled" \? "bg-primary\/10 border-primary/)
+    assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
+    assert.match(list, /lesson\.status === "completed" \? "bg-emerald-50\/60 hover:bg-emerald-50"/)
+    assert.equal((list.match(/bg-emerald-50\/60 hover:bg-emerald-50/g) || []).length, 2)
 })
