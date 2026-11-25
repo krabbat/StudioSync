@@ -713,113 +713,226 @@ def _sync_icloud_user_impl(user):
     return stats
 
 
-def end_icloud_series_from_lesson(lesson):
-    """Delete the selected instance and every subsequent instance of an RRULE.
+def _trim_rdates(master, cutoff_key):
+    """Remove future explicit recurrence dates, retaining earlier RDATEs."""
+    rdates = master.get("RDATE")
+    if not rdates:
+        return
+    items = rdates if isinstance(rdates, list) else [rdates]
+    retained = [
+        value.dt for item in items for value in item.dts
+        if _dt(value.dt) and _key(value.dt) < cutoff_key
+    ]
+    del master["RDATE"]
+    if retained:
+        master.add("rdate", retained)
 
-    The CalDAV edit is performed BEFORE local deletion. A failed remote edit
-    leaves every lesson untouched; historical, completed and paid units survive.
+
+def _remove_late_overrides(cal, cutoff_key):
+    """A detached exception must not survive ending its parent series."""
+    cal.subcomponents[:] = [
+        part for part in cal.subcomponents
+        if not (
+            part.name == "VEVENT" and part.get("RECURRENCE-ID")
+            and _dt(part["RECURRENCE-ID"].dt) is not None
+            and _key(part["RECURRENCE-ID"].dt) >= cutoff_key
+        )
+    ]
+
+
+def end_icloud_series_from_lesson(lesson):
+    """Permanently remove THIS and all later series lessons, not cancellations.
+
+    For a weekly RRULE, shorten Apple's recurrence. RDATE and already-ended
+    master records are handled too. An iCloud failure never deletes local rows.
+    Earlier appointments and completed/paid accounting history are protected.
     """
     link = getattr(lesson, "icloud_occurrence", None)
     if link is None:
         raise ICloudSetupError("Dieser Termin gehört zu keiner iCloud-Terminserie.")
     series = link.series
-    cutoff = datetime.fromisoformat(link.recurrence_id)
     cutoff_key = link.recurrence_id
+    cutoff = datetime.fromisoformat(cutoff_key)
     future_links = list(
         series.occurrences.filter(recurrence_id__gte=cutoff_key).select_related("lesson")
     )
-    protected = [
-        entry.lesson for entry in future_links
-        if entry.lesson is not None and
-        (entry.lesson.is_paid or entry.lesson.status in COMPLETED_STATUSES)
-    ]
-    if protected:
+    if any(
+        entry.lesson is not None and (
+            entry.lesson.is_paid or entry.lesson.status in COMPLETED_STATUSES
+        ) for entry in future_links
+    ):
         raise ICloudSetupError(
-            "Die ausgewählte Terminserie enthält bereits erteilte oder bezahlte "
-            "Unterrichtsstunden. Diese müssen erhalten bleiben."
+            "Ein oder mehrere zukünftige Unterrichtstermine sind bereits erteilt "
+            "oder bezahlt und können nicht endgültig gelöscht werden."
         )
 
     user = series.user
     username, password = _credentials(user)
     calendar_url = _allowed_calendar_url(series.calendar_url)
+    remote_deleted = False
+    remote_data = None
+
     with _icloud_lock(user):
         with _connect(username, password) as client:
             if calendar_url not in {item["url"] for item in _discover(client)}:
                 raise ICloudSetupError("Der hinterlegte iCloud-Kalender ist nicht erreichbar.")
             calendar = client.calendar(url=calendar_url)
-            remote = None
-            for item in calendar.events():
-                if str(item.url) == series.remote_url:
-                    remote = item
-                    break
-            if remote is None:
-                raise ICloudSetupError(
-                    "Die iCloud-Terminserie wurde nicht gefunden. Bitte zuerst synchronisieren."
-                )
-            remote.load()
-            raw = _raw(remote.data)
-            if _hash(raw) != series.remote_hash:
-                raise ICloudSetupError(
-                    "Die iCloud-Terminserie wurde verändert. Bitte zuerst synchronisieren."
-                )
-            cal, master, _ = _master_and_overrides(raw)
-            if not master.get("RRULE"):
-                raise ICloudSetupError(
-                    "Das Löschen aller zukünftigen Termine wird für diese Serie nicht unterstützt."
-                )
-            original_start = _dt(master["DTSTART"].dt)
-            delete_entire_resource = cutoff <= original_start
-
-            if delete_entire_resource:
-                remote.delete()
-            else:
-                # UNTIL must be UTC when DTSTART has a timezone.
-                rule = master["RRULE"]
-                if "COUNT" in rule:
-                    del rule["COUNT"]
-                rule["UNTIL"] = cutoff.astimezone(utc_timezone.utc) - timedelta(seconds=1)
-                # Recurrence overrides after the cutoff no longer belong to the series.
-                cal.subcomponents[:] = [
-                    part for part in cal.subcomponents
-                    if not (
-                        part.name == "VEVENT" and part.get("RECURRENCE-ID")
-                        and _dt(part["RECURRENCE-ID"].dt) is not None
-                        and _key(part["RECURRENCE-ID"].dt) >= cutoff_key
-                    )
-                ]
-                remote.data = cal.to_ical().decode("utf-8")
-                remote.save()
+            remote = next(
+                (item for item in calendar.events() if str(item.url) == series.remote_url),
+                None,
+            )
+            if remote is not None:
                 remote.load()
-
-        # Keep all StudioSync appointments as red cancellation records.
-        # The remote resource or later instances no longer exist in iCloud.
-        with transaction.atomic():
-            for entry in future_links:
-                if not entry.lesson_id:
-                    continue
-                lesson = entry.lesson
-                if lesson.status != "cancelled":
-                    Lesson.objects.filter(pk=lesson.pk).update(
-                        status="cancelled", cancelled_at=timezone.now()
+                raw = _raw(remote.data)
+                if _hash(raw) != series.remote_hash:
+                    raise ICloudSetupError(
+                        "Der iCloud-Kalender wurde verändert. Bitte zuerst synchronisieren."
                     )
-                    lesson.status = "cancelled"
-                entry.synced_signature = _lesson_signature(lesson)
-                entry.save(update_fields=["synced_signature", "updated_at"])
-            if delete_entire_resource:
-                series.last_error = (
-                    "Terminserie in iCloud gelöscht; Unterrichtstermine in StudioSync als abgesagt erhalten."
-                )
-                series.last_synced_at = timezone.now()
-                series.save(update_fields=["last_error", "last_synced_at", "updated_at"])
+                cal, master, _ = _master_and_overrides(raw)
+                first_start = _dt(master["DTSTART"].dt)
+
+                if cutoff <= first_start:
+                    # The selected instance is the master: the whole resource
+                    # lies at or after cutoff and may be removed completely.
+                    remote.delete()
+                    remote_deleted = True
+                else:
+                    rule = master.get("RRULE")
+                    if rule:
+                        if "COUNT" in rule:
+                            del rule["COUNT"]
+                        rule["UNTIL"] = (
+                            cutoff.astimezone(utc_timezone.utc) - timedelta(seconds=1)
+                        )
+                    # A series with only RDATE (or one already truncated in
+                    # Apple) must also allow a future-series deletion.
+                    _trim_rdates(master, cutoff_key)
+                    _remove_late_overrides(cal, cutoff_key)
+                    changed = cal.to_ical().decode("utf-8")
+                    if changed != raw:
+                        remote.data = changed
+                        remote.save()
+                        remote.load()
+                    remote_data = _raw(remote.data)
             else:
-                series.ical_data = _raw(remote.data)
-                series.remote_hash = _hash(series.ical_data)
+                # Apple already has no matching event. The user explicitly
+                # requested permanent removal from StudioSync as well.
+                remote_deleted = True
+
+        with transaction.atomic():
+            ids = [entry.lesson_id for entry in future_links if entry.lesson_id]
+            if ids:
+                Lesson.objects.filter(pk__in=ids).delete()
+            # Remove the retired recurrence identities so the "future"
+            # instances no longer appear in StudioSync.
+            series.occurrences.filter(recurrence_id__gte=cutoff_key).delete()
+            if remote_deleted:
+                if not series.occurrences.exists():
+                    series.delete()
+                else:
+                    series.last_error = (
+                        "Terminserie in iCloud gelöscht; frühere Unterrichtsdaten bleiben erhalten."
+                    )
+                    series.last_synced_at = timezone.now()
+                    series.save(update_fields=["last_error", "last_synced_at", "updated_at"])
+            else:
+                series.ical_data = remote_data
+                series.remote_hash = _hash(remote_data)
                 series.last_error = ""
                 series.last_synced_at = timezone.now()
                 series.save(update_fields=[
-                    "ical_data", "remote_hash", "last_error", "last_synced_at", "updated_at"
+                    "ical_data", "remote_hash", "last_error", "last_synced_at", "updated_at",
                 ])
-    return len(future_links)
+    return len(ids)
+
+
+def permanently_delete_lesson(lesson):
+    """Administrator-only, explicit hard deletion of one lesson and Apple event.
+
+    The API verifies admin rights and protected accounting state first.
+    The CalDAV operation succeeds before the local row is physically removed.
+    """
+    link = getattr(lesson, "icloud_occurrence", None)
+    if link is None:
+        Lesson.objects.filter(pk=lesson.pk).delete()
+        return
+
+    series = link.series
+    user = series.user
+    calendar_url = _allowed_calendar_url(series.calendar_url)
+    username, password = _credentials(user)
+    with _icloud_lock(user):
+        remote_deleted = False
+        remote_data = None
+        with _connect(username, password) as client:
+            if calendar_url not in {item["url"] for item in _discover(client)}:
+                raise ICloudSetupError("Der hinterlegte iCloud-Kalender ist nicht erreichbar.")
+            calendar = client.calendar(url=calendar_url)
+            remote = next(
+                (item for item in calendar.events() if str(item.url) == series.remote_url),
+                None,
+            )
+            if remote is not None:
+                remote.load()
+                raw = _raw(remote.data)
+                if _hash(raw) != series.remote_hash:
+                    raise ICloudSetupError(
+                        "Der iCloud-Termin wurde verändert. Bitte zuerst synchronisieren."
+                    )
+                cal, master, overrides = _master_and_overrides(raw)
+                recurring = bool(master.get("RRULE") or master.get("RDATE"))
+                if not recurring:
+                    # No actual repetition remains in this resource.
+                    # A deleted/absent override has nothing left to remove.
+                    if link.recurrence_id == _key(master["DTSTART"].dt):
+                        remote.delete()
+                        remote_deleted = True
+                    elif link.recurrence_id in overrides:
+                        cal.subcomponents[:] = [
+                            part for part in cal.subcomponents
+                            if part is not overrides[link.recurrence_id]
+                        ]
+                        remote.data = cal.to_ical().decode("utf-8")
+                        remote.save()
+                        remote.load()
+                        remote_data = _raw(remote.data)
+                else:
+                    recurrence_dt = datetime.fromisoformat(link.recurrence_id)
+                    # EXDATE removes only the requested recurrence instance.
+                    master.add("exdate", recurrence_dt.astimezone(LOCAL_TZ))
+                    existing = overrides.get(link.recurrence_id)
+                    if existing is not None:
+                        cal.subcomponents[:] = [
+                            part for part in cal.subcomponents if part is not existing
+                        ]
+                    remote.data = cal.to_ical().decode("utf-8")
+                    remote.save()
+                    remote.load()
+                    remote_data = _raw(remote.data)
+        with transaction.atomic():
+            Lesson.objects.filter(pk=lesson.pk).delete()
+            if remote_deleted:
+                if series.occurrences.count() <= 1:
+                    series.delete()
+                else:
+                    series.last_error = (
+                        "Terminserie in iCloud gelöscht; übrige Unterrichtsdaten bleiben erhalten."
+                    )
+                    series.save(update_fields=["last_error", "updated_at"])
+            else:
+                # Keep a hard-deleted UID/RECURRENCE-ID tombstone so a cached
+                # Apple version cannot recreate the manually purged lesson.
+                link.lesson = None
+                link.synced_signature = "hard-deleted"
+                link.save(update_fields=["lesson", "synced_signature", "updated_at"])
+                if remote_data is not None:
+                    series.ical_data = remote_data
+                    series.remote_hash = _hash(remote_data)
+                    series.last_error = ""
+                    series.last_synced_at = timezone.now()
+                    series.save(update_fields=[
+                        "ical_data", "remote_hash", "last_error", "last_synced_at", "updated_at",
+                    ])
 
 
 def create_icloud_series(user, *, student, teacher, start, end, frequency, until=None, summary=""):
