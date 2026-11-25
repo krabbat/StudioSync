@@ -164,7 +164,8 @@ class LessonViewSet(viewsets.ModelViewSet):
         serializer.instance = current
         data = serializer.validated_data
         if "status" in data and data["status"] != current.status:
-            serializer.save(ha_manual_override=True, ha_watch_active=False)
+            serializer.save(ha_manual_override=True,
+                            ha_watch_active=current.ha_watch_active and data["status"] != "cancelled")
         else:
             serializer.save()
 
