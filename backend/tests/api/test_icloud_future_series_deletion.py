@@ -83,7 +83,7 @@ def test_delete_from_second_week_preserves_first_and_truncates_apple(
     assert affected == 3
     assert Lesson.objects.filter(pk=lessons[0].pk).exists()
     for item in lessons[1:]:
-        assert not Lesson.objects.filter(pk=item.pk).exists()
+        assert Lesson.objects.filter(pk=item.pk, status="cancelled").exists()
     remote.save.assert_called_once()
     remote.delete.assert_not_called()
     remaining = _expand(remote.data)
@@ -92,8 +92,8 @@ def test_delete_from_second_week_preserves_first_and_truncates_apple(
     series.refresh_from_db()
     assert series.remote_hash == _hash(remote.data)
     assert ICloudCalendarOccurrence.objects.filter(
-        series=series, lesson__isnull=True, synced_signature="deleted"
-    ).count() == 3
+        series=series, lesson__isnull=False
+    ).count() == 4
 
 
 @pytest.mark.django_db
@@ -108,8 +108,8 @@ def test_delete_from_first_week_removes_whole_apple_resource(linked_series):
 
     assert affected == 4
     remote.delete.assert_called_once()
-    assert not ICloudCalendarSeries.objects.filter(pk=series.pk).exists()
-    assert not Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons]).exists()
+    assert ICloudCalendarSeries.objects.filter(pk=series.pk).exists()
+    assert Lesson.objects.filter(pk__in=[lesson.pk for lesson in lessons], status="cancelled").count() == 4
 
 
 @pytest.mark.django_db
