@@ -1,4 +1,20 @@
 {
+  "HomeAssistantConnection": {
+    "title": "Home Assistant",
+    "description": "StudioSync can read the existing Home Assistant zones and iPhone trackers through a secure HTTPS connection.",
+    "serverConfiguration": "The server URL and access token are configured only on the StudioSync server through HA_BASE_URL and HA_ACCESS_TOKEN. The token is never stored in the browser.",
+    "check": "Check connection and devices",
+    "failed": "The connection to Home Assistant could not be checked.",
+    "notConnected": "Not connected to Home Assistant.",
+    "connected": "Successfully connected to Home Assistant.",
+    "found": "Found {zones} zones and {trackers} trackers.",
+    "zones": "Zones",
+    "trackers": "Device trackers",
+    "selectedTracker": "Selected tracker: {tracker}",
+    "trackerMissing": "Configured tracker {tracker} was not found.",
+    "trackerNotSelected": "No iPhone tracker selected yet (HA_TRACKER_ENTITY_ID).",
+    "readOnly": "Read-only access. No lesson appointments are changed."
+  },
   "LessonCancellation": {
     "title": "Delete lesson appointment",
     "recurringExplanation": "This appointment belongs to a recurring iCloud series. Choose which appointments to remove.",
