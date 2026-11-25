@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { fetchAllLibraryPages } from "../lib/materialLibrary.mjs";
 import api from "../services/api";
 import { toast } from "react-hot-toast";
 import { useUser } from "../contexts/UserContext";
@@ -364,12 +365,18 @@ export function useStudios(params?: any) {
   return { studios, loading, refetch: fetchStudios };
 }
 
-export function useResources(params?: any) {
+export function useResources(params?: any, fetchAll = false) {
   const [resources, setResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchResources = async () => {
     try {
+      if (fetchAll) {
+        const data = await fetchAllLibraryPages(async (page: number) =>
+          (await api.get("/resources/library/", { params: { ...params, page } })).data);
+        setResources(data);
+        return;
+      }
       const response = await api.get("/resources/library/", { params });
       const data = response.data.results || response.data;
       setResources(Array.isArray(data) ? data : []);
@@ -383,7 +390,7 @@ export function useResources(params?: any) {
 
   useEffect(() => {
     fetchResources();
-  }, [JSON.stringify(params)]);
+  }, [JSON.stringify(params), fetchAll]);
 
   return { resources, loading, refetch: fetchResources };
 }
