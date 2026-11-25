@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useUser, UserRole } from '@/contexts/UserContext'
@@ -18,7 +18,6 @@ import {
     Bell,
     Target,
     BarChart3,
-    Settings,
     Palette,
     Mail,
     Server,
@@ -76,6 +75,13 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
     const t = useTranslations('Sidebar')
     const tSettings = useTranslations('SettingsHub')
     const pathname = usePathname()
+    const [activeSettingsTab, setActiveSettingsTab] = useState('')
+    useEffect(() => {
+        const updateTab = () => setActiveSettingsTab(new URLSearchParams(window.location.search).get('tab') || '')
+        updateTab()
+        window.addEventListener('popstate', updateTab)
+        return () => window.removeEventListener('popstate', updateTab)
+    }, [pathname])
     const { currentUser } = useUser()
     const { flags } = useFeatureFlags()
     const { unreadCount } = useNotifications(60000)
@@ -163,8 +169,15 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
     ]
 
     const isActive = (href: string) => {
-        if (href === '/dashboard') return pathname === href
-        return pathname === href || (pathname?.startsWith(href + '/') ?? false)
+        const [hrefPath, query] = href.split('?')
+        const normalizedPath = (pathname || '').replace(/\/+$/, '')
+        const normalizedHref = hrefPath.replace(/\/+$/, '')
+        if (query) {
+            return normalizedPath === normalizedHref
+                && new URLSearchParams(query).get('tab') === activeSettingsTab
+        }
+        if (normalizedHref === '/dashboard') return normalizedPath === normalizedHref
+        return normalizedPath === normalizedHref || normalizedPath.startsWith(normalizedHref + '/')
     }
 
 
@@ -232,7 +245,12 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
                                     </a>
                                 ) : (
                                     <Link key={item.href} href={item.href}
-                                        onClick={onClose}
+                                        onClick={() => {
+                                            if (item.href.includes('?tab=')) {
+                                                setActiveSettingsTab(new URLSearchParams(item.href.split('?')[1]).get('tab') || '')
+                                            }
+                                            onClose()
+                                        }}
                                         title={!isOpen ? item.name : undefined}
                                         aria-current={active ? 'page' : undefined}
                                         className={`studiosync-sidebar-item ${active ? 'is-active' : ''}`}>
