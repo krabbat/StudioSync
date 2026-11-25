@@ -804,15 +804,15 @@ export default function SchedulePage() {
         <div className="overflow-auto custom-scrollbar flex-1 relative">
           {viewMode === "week" ? (
             <table className="w-full min-w-full md:min-w-[1000px] border-separate border-spacing-0">
-              <thead className="bg-slate-200/80 sticky top-0 z-20">
+              <thead className="bg-slate-200 sticky top-0 z-20">
                 <tr>
-                  <th className="px-2 py-3 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest w-24 sticky left-0 z-30 bg-slate-200/80 border-r border-b border-slate-300/60">
+                  <th className="px-2 py-3 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest w-24 sticky left-0 z-30 bg-slate-200 border-r border-b border-slate-300/60">
                     {tr('time')}
                   </th>
                   {weekDays.map((day, idx) => (
                     <th
                       key={idx}
-                      className={`px-2 py-3 sm:px-4 sm:py-4 text-center min-w-[100px] sm:min-w-[140px] bg-slate-200/80 border-b border-slate-300/60 ${idx < 6 ? "border-r border-slate-300/60" : ""}`}
+                      className={`px-2 py-3 sm:px-4 sm:py-4 text-center min-w-[100px] sm:min-w-[140px] bg-slate-200 border-b border-slate-300/60 ${idx < 6 ? "border-r border-slate-300/60" : ""}`}
                     >
                       <div
                         className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 ${isSameDay(day, new Date()) ? "text-primary" : "text-gray-400"}`}
@@ -831,7 +831,7 @@ export default function SchedulePage() {
               <tbody className="divide-y divide-gray-50">
                 {timeSlots.map((hour) => (
                   <tr key={hour} className={`group h-24 ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}>
-                    <td className="h-24 p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200/80 sticky left-0 z-10 text-center align-top">
+                    <td className="h-24 p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 sticky left-0 z-10 text-center align-top">
                       <div className="relative h-24">
                         <span className="absolute inset-x-0 top-1">{formatGridHour(hour)}</span>
                       </div>
@@ -955,7 +955,7 @@ export default function SchedulePage() {
                 ))}
                 {/* The lower boundary is 22:00, not another bookable 22:00–23:00 slot. */}
                 <tr aria-hidden="true">
-                  <td className="px-2 py-2 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200/80 sticky left-0 text-center">
+                  <td className="px-2 py-2 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 sticky left-0 text-center">
                     {formatGridHour(businessEnd)}
                   </td>
                   <td colSpan={7} className="border-t border-gray-100" />
