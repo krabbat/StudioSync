@@ -89,7 +89,7 @@ test('cancelled appointments stay red regardless of current color grouping', () 
     assert.match(page, /if \(colorMode === "status" \|\| lesson\.status === "cancelled"\) return \{\};/)
     assert.equal(
         (page.match(/\(colorMode === "status" \|\| lesson\.status === "cancelled"\)/g) || []).length,
-        2
+        3
     )
     assert.match(page, /lesson\.status === "cancelled" \? "bg-red-50 border-red-400"/)
 })
