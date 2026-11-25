@@ -2,33 +2,44 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
-const dialog = readFileSync(
-    new URL('../components/LessonDeleteDialog.tsx', import.meta.url),
-    'utf8',
-)
+const source = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8')
+const dialog = source('components/LessonDeleteDialog.tsx')
+const de = JSON.parse(source('messages/de.json')).LessonCancellation
+const en = JSON.parse(source('messages/en.json')).LessonCancellation
 
-test('delete dialog preserves the full explanatory texts', () => {
-    assert.match(dialog, /Dieser Termin gehört zu einer wiederkehrenden iCloud-Serie/)
-    assert.match(dialog, /Wähle, welche Termine entfernt werden sollen/)
-    assert.match(dialog, /„Alle zukünftigen“ beendet die Wiederholung/)
-    assert.match(dialog, /Bereits erteilte oder bezahlte Unterrichtsstunden sind geschützt/)
+test('all delete-dialog explanations and buttons are fully localized', () => {
+    assert.match(dialog, /useTranslations\('LessonCancellation'\)/)
+    const keys = [
+        'title', 'recurringExplanation', 'singleExplanation', 'seriesExplanation',
+        'permanentExplanation', 'cancellationKind', 'chooseCancellationKind',
+        'studentCancelledCredited', 'teacherCancelledNotCredited',
+        'studentCancellationQuotaNote', 'teacherCancellationQuotaNote',
+        'onlyForSingleCancellation', 'deleteThis', 'deleteSingle',
+        'deleteFuture', 'deletePermanent', 'cancel',
+    ]
+    for (const key of keys) {
+        assert.ok(de[key], 'Missing German translation: ' + key)
+        assert.ok(en[key], 'Missing English translation: ' + key)
+    }
+    assert.match(de.recurringExplanation, /Wähle, welche Termine entfernt werden sollen/)
+    assert.match(de.seriesExplanation, /Bereits erteilte oder bezahlte Unterrichtsstunden/)
 })
 
-test('destructive buttons never overflow narrow dialog and are stacked', () => {
+test('destructive buttons never overflow narrow dialog and remain stacked', () => {
     assert.match(dialog, /<DialogFooter className="!flex !flex-col !items-stretch gap-3">/)
     assert.equal((dialog.match(/className="w-full min-w-0 h-auto min-h-11/g) || []).length, 3)
     assert.match(dialog, /whitespace-normal text-center leading-snug/)
     assert.match(dialog, /break-words/)
 })
 
-test('deletion always requires a deliberate choice, including cancel', () => {
-    assert.match(dialog, /Nur diesen Termin löschen/)
-    assert.match(dialog, /Diesen und alle zukünftigen löschen/)
-    assert.match(dialog, /onConfirm\('this'\)/)
+test('single cancellation explicitly chooses between teacher and student responsibility', () => {
+    assert.match(dialog, /requiresCancellationKind/)
+    assert.match(dialog, /cancellationKind/)
+    assert.match(dialog, /<option value="student_cancelled">/)
+    assert.match(dialog, /<option value="teacher_cancelled">/)
+    assert.match(dialog, /Boolean\(target\?\.requiresCancellationKind\) && !cancellationKind/)
+    assert.match(dialog, /onConfirm\('this', cancellationKind \|\| undefined\)/)
     assert.match(dialog, /onConfirm\('future'\)/)
     assert.match(dialog, /onConfirm\('permanent'\)/)
-    assert.match(dialog, /target\?\.canPermanentlyDelete/)
-    assert.match(dialog, /Diesen Termin endgültig löschen \(Administrator\)/)
     assert.match(dialog, /onClick=\{onClose\} disabled=\{busy\}/)
-    assert.match(dialog, />\s*Abbrechen\s*</)
 })
