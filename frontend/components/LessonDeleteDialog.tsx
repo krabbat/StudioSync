@@ -33,14 +33,21 @@ export default function LessonDeleteDialog({
             <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
             {target?.isRecurring
               ? 'Dieser Termin gehört zu einer wiederkehrenden iCloud-Serie. Wähle, welche Termine entfernt werden sollen.'
-              : 'Soll dieser einzelne Termin wirklich dauerhaft gelöscht werden?'}
+              : 'Dieser einzelne Termin wird in iCloud entfernt und in StudioSync rot als „Abgesagt“ erhalten.'}
           </p>
           {target?.isRecurring && (
             <p className="text-xs text-gray-500">
               „Alle zukünftigen“ beendet die Wiederholung ab dem ausgewählten Termin auch in iCloud.
               Bereits erteilte oder bezahlte Unterrichtsstunden sind geschützt.
-              Die betroffenen Termine werden dabei endgültig aus StudioSync entfernt
-              und nicht als „Abgesagt“ markiert.
+              Nur bei „Nur diesen Termin löschen“ bleibt die Stunde rot als „Abgesagt“ erhalten.
+              Die betroffenen zukünftigen Serientermine werden dagegen endgültig aus StudioSync
+              entfernt und nicht als „Abgesagt“ markiert.
+            </p>
+          )}
+          {target?.canPermanentlyDelete && (
+            <p className="text-xs text-red-700">
+              Die administrative endgültige Löschung entfernt den gewählten Datensatz
+              vollständig aus StudioSync. Eine zweite Bestätigung ist erforderlich.
             </p>
           )}
         </div>
