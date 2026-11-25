@@ -439,7 +439,7 @@ export default function SchedulePage() {
       setIcloudIssues((data.series || [])
         .filter((row: any) => Boolean(row.error) && row.error !== 'Schüler zuordnen')
         .map((row: any) => ({ title: row.title, error: row.error })));
-      toast.success('iCloud abgeglichen: ' + data.imported + ' importiert, ' + data.exported + ' exportiert.');
+      toast.success('iCloud abgeglichen: ' + data.imported + ' importiert, ' + data.exported + ' exportiert, ' + (data.deleted ?? 0) + ' entfernt.');
       if (data.unassigned) toast('Nicht zugeordnete Serien: ' + data.unassigned + '. Bitte unter Einstellungen → Technik zuordnen.');
       if (data.conflicts) toast.error('Kalenderkonflikte: ' + data.conflicts + '. Die Einzelheiten stehen unter der Kalenderleiste.');
     } catch (error: any) {
