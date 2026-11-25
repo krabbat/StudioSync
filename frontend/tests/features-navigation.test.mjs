@@ -9,6 +9,7 @@ const context = source('contexts/FeatureFlagContext.tsx')
 const types = source('types/setup.ts')
 const settings = source('app/dashboard/settings/page.tsx')
 const featureRoute = source('app/dashboard/features/page.tsx')
+const general = source('app/dashboard/settings/general/page.tsx')
 const commands = source('components/CommandPalette.tsx')
 const translations = {
     de: JSON.parse(source('messages/de.json')).FeatureSettings,
@@ -115,4 +116,12 @@ test('feature settings have a working dedicated page route, retained older path 
     assert.match(settings, /href: '\/dashboard\/features\/'/)
     assert.match(page, /export default function FeaturesPage/)
     assert.match(settings, /href: '\/dashboard\/settings\/general\/\?tab=technical'/)
+})
+
+test('direct settings links switch existing tabs without a full page remount', () => {
+    assert.match(general, /useSearchParams\(\)/)
+    assert.match(general, /searchParams\.get\('tab'\)/)
+    assert.match(general, /\[currentUser\?\.role, searchParams\]/)
+    assert.match(general, /<Suspense fallback=/)
+    assert.match(sidebar, /new URLSearchParams\(item\.href\.split\('\?'\)\[1\]\)\.get\('tab'\)/)
 })
