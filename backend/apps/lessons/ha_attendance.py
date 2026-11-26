@@ -24,7 +24,7 @@ from apps.lessons.ha_diagnostics import event
 LOG = logging.getLogger(__name__)
 LOCAL = ZoneInfo("Europe/Berlin")
 TOLERANCE = timedelta(minutes=30)
-MIN_SECONDS = 1200
+MIN_SECONDS = 1200  # Legacy constant retained for existing imports
 INVALID = {"unknown", "unavailable", ""}
 DEFAULT_BASE = "https://musart.myds.me:8123"
 
@@ -116,11 +116,18 @@ def intervals(data, start, end, tracker):
 
 
 def subject(lesson):
-    return norm(lesson.student.user.get_full_name() if lesson.student_id else lesson.guest_name)
+    if lesson.student_id:
+        student = lesson.student
+        family = getattr(student, "family", None)
+        if family is not None:
+            return norm(family.ha_zone_entity_id)
+        return norm(student.user.get_full_name())
+    return norm(lesson.guest_name)
 
 
 def zone_for(lesson, zones):
-    matches = zones.get(subject(lesson), [])
+    name = subject(lesson)
+    matches = zones.get(name, []) if name else []
     return matches[0] if len(matches) == 1 else None
 
 
@@ -137,11 +144,13 @@ def allocate(rows, lessons, zones, full=False):
     Full statistics assign each segment to nearest plausible lesson, even beyond its window.
     """
     output = defaultdict(list)
+    def bounds(lesson):
+        return window(lesson) if full else (lesson.scheduled_start, lesson.scheduled_end)
     mapped = [(lesson, zone_for(lesson, zones)) for lesson in lessons]
     for left, right, state in rows:
         candidates = [(lesson, zone) for lesson, zone in mapped
                       if zone and matching(state, zone)
-                      and max(left, window(lesson)[0]) < min(right, window(lesson)[1])]
+                      and max(left, bounds(lesson)[0]) < min(right, bounds(lesson)[1])]
         if not candidates:
             continue
         cuts = {left, right}
@@ -152,12 +161,15 @@ def allocate(rows, lessons, zones, full=False):
         cuts = sorted(cuts)
         for a, b in zip(cuts, cuts[1:]):
             mid = a + (b-a)/2
-            eligible = [lesson for lesson, _ in candidates if full or window(lesson)[0] <= mid < window(lesson)[1]]
+            eligible = [lesson for lesson, _ in candidates if full or lesson.scheduled_start <= mid < lesson.scheduled_end]
             if not eligible:
                 continue
             def distance(lesson):
                 return max((lesson.scheduled_start-mid).total_seconds(),
                            (mid-lesson.scheduled_end).total_seconds(), 0)
+            # An overlapping calendar booking is ambiguous, not evidence for either lesson.
+            if not full and len(eligible) > 1:
+                continue
             eligible.sort(key=lambda lesson: (distance(lesson), lesson.scheduled_start, str(lesson.pk)))
             output[eligible[0].pk].append((a,b))
     return output
@@ -165,6 +177,23 @@ def allocate(rows, lessons, zones, full=False):
 
 def seconds(parts):
     return int(sum((b-a).total_seconds() for a,b in parts))
+
+
+def required_seconds(lesson):
+    # Integer ceiling of two thirds; avoid floating point boundary errors.
+    duration = (lesson.scheduled_end - lesson.scheduled_start).total_seconds()
+    import math
+    return max(1, math.ceil(duration * 2 / 3))
+
+
+def attendance_decision(lesson, now, valid, amount, present):
+    if now >= lesson.scheduled_end:
+        if not valid:
+            return None
+        return "completed" if amount >= required_seconds(lesson) else "no_show"
+    if now >= lesson.scheduled_start and present:
+        return "in_progress"
+    return None
 
 
 def teacher_scope(studio):
@@ -178,7 +207,7 @@ def lessons_for(studio, activation):
     teacher = teacher_scope(studio)
     return Lesson.objects.filter(studio=studio, teacher_id=teacher,
         scheduled_start__gte=activation, is_online=False).filter(
-        Q(student__isnull=False) | ~Q(guest_name="")).select_related("student__user")
+        Q(student__isnull=False) | ~Q(guest_name="")).select_related("student__user", "student__family")
 
 
 @contextmanager
@@ -201,8 +230,11 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
     low, high = window(lesson)
     parts = assigned.get(lesson.pk, [])
     amount = seconds(parts)
-    valid = current is not None and current not in INVALID and bool(rows) and rows[0][0] <= low + timedelta(seconds=1) and not any(state in INVALID for a,b,state in rows
-                                  if a < min(now, high) and b > low)
+    start = lesson.scheduled_start
+    end = min(now, lesson.scheduled_end)
+    valid = (end > start and bool(rows) and rows[0][0] <= start
+             and rows[-1][1] >= end and not any(state in INVALID for a,b,state in rows
+                                               if a < end and b > start))
     present = current is not None and matching(current, zone)
     with transaction.atomic():
         obj = Lesson.objects.select_for_update().get(pk=lesson.pk)
@@ -215,7 +247,8 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
         previous_watch = obj.ha_watch_active
         first_check = not info.get("checked_at")
         info.update(zone=zone[0], zone_name=zone[1], tracker=tracker, checked_at=iso(now),
-                    present=present)
+                    present=present, required_seconds=required_seconds(lesson),
+                    attendance_rule="two_thirds_scheduled_window")
         if rows and not obj.ha_finalized_at:
             info["attendance_seconds"] = amount
             info["arrival"] = iso(parts[0][0]) if parts else None
@@ -231,23 +264,21 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
         elif current is not None and current not in INVALID:
             obj.ha_watch_active = False
         if not obj.ha_manual_override and not obj.ha_finalized_at and obj.status in {"scheduled", "in_progress"}:
-            if now >= obj.scheduled_end and valid and amount >= MIN_SECONDS:
-                obj.status = "completed"
-                obj.ha_finalized_at = now
-                obj.actual_start = parts[0][0]
-                obj.actual_end = parts[-1][1]
-            elif now >= high and valid:
-                obj.status = "no_show"
-                obj.ha_finalized_at = now
-            elif now >= obj.scheduled_start and present:
-                obj.status = "in_progress"
+            decision = attendance_decision(obj, now, valid, amount, present)
+            if decision:
+                obj.status = decision
+                if decision in {"completed", "no_show"}:
+                    obj.ha_finalized_at = now
+                if decision == "completed":
+                    obj.actual_start = parts[0][0]
+                    obj.actual_end = parts[-1][1]
         obj.save(update_fields=["ha_attendance","ha_watch_active","ha_finalized_at",
                                 "status","actual_start","actual_end","updated_at"])
         details = dict(studio=str(obj.studio_id), lesson=str(obj.pk), zone=zone[1],
                        tracker=tracker, scheduled_start=iso(obj.scheduled_start),
                        scheduled_end=iso(obj.scheduled_end), previous_status=previous_status,
                        status=obj.status, present=present, history_valid=valid,
-                       attendance_seconds=info.get("attendance_seconds"),
+                       attendance_seconds=info.get("attendance_seconds"), required_seconds=required_seconds(obj),
                        arrival=info.get("arrival"), departure=info.get("departure"),
                        watch_active=obj.ha_watch_active, manual_override=obj.ha_manual_override,
                        finalized=bool(obj.ha_finalized_at))
@@ -307,7 +338,7 @@ def live_studio(studio, activation, now, only=None):
             with transaction.atomic():
                 obj = Lesson.objects.select_for_update().get(pk=lesson.pk)
                 info = dict(obj.ha_attendance or {})
-                info.update(error="Keine eindeutige Schülerzone gefunden", checked_at=iso(now))
+                info.update(error="Keine eindeutige Unterrichtszone gefunden", checked_at=iso(now))
                 if now >= window(lesson)[1]:
                     info["final_attempted_at"] = iso(now)
                 obj.ha_attendance = info
@@ -334,7 +365,15 @@ def live_studio(studio, activation, now, only=None):
             LOG.warning("HA history unavailable for studio %s", studio.pk)
     assigned = allocate(rows, related, zones)
     for lesson in selected:
-        update_live(lesson, zone_for(lesson, zones), ha.tracker, current, rows, assigned, now)
+        zone = zone_for(lesson, zones)
+        # Overlapping bookings for the same tracker cannot be reliably attributed.
+        conflict = any(other.pk != lesson.pk
+                       and other.scheduled_start < lesson.scheduled_end
+                       and other.scheduled_end > lesson.scheduled_start
+                       for other in related)
+        if conflict:
+            event("calendar_overlap", studio=str(studio.pk), lesson=str(lesson.pk))
+        update_live(lesson, zone, ha.tracker, current, [] if conflict else rows, assigned, now)
     watch_count = base.filter(ha_watch_active=True).exclude(status="cancelled").count()
     check_count = base.filter(scheduled_start__lte=now+TOLERANCE,
                               scheduled_end__gte=now-TOLERANCE-timedelta(minutes=4),
