@@ -325,6 +325,25 @@ class FamilyViewSet(viewsets.ModelViewSet):
             family__isnull=True).select_related("user").order_by("user__last_name", "user__first_name")
         return Response([{"id": str(s.pk), "name": s.user.get_full_name(), "instrument": s.instrument} for s in rows])
 
+    @action(detail=True, methods=["get"], url_path="member-data")
+    def member_data(self, request, pk=None):
+        """Explicit import candidates from assigned students only."""
+        self._require_manager()
+        family = self.get_object()
+        result = []
+        for student in family.students.select_related("user", "billing_profile").filter(studio=family.studio):
+            profile = getattr(student, "billing_profile", None)
+            contacts = []
+            if student.emergency_contact_name:
+                contacts.append({"name": student.emergency_contact_name, "relation": "",
+                    "phone": student.emergency_contact_phone, "email": ""})
+            billing = None
+            if profile:
+                billing = StudentBillingProfileSerializer(profile).data
+            result.append({"id": str(student.pk), "name": student.user.get_full_name(),
+                           "contacts": contacts, "billing": billing})
+        return Response(result)
+
     @action(detail=True, methods=["put"], url_path="members")
     @transaction.atomic
     def members(self, request, pk=None):
