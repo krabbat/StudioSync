@@ -285,8 +285,10 @@ class FamilyViewSet(viewsets.ModelViewSet):
         queryset = Family.objects.select_related(
             "primary_parent", "secondary_parent"
         ).prefetch_related("students__user", "students__teaching_contract").filter(studio__in=studios_for_request(self.request)).order_by("name", "id")
-        if user.role in ("admin", "teacher"):
+        if user.role == "admin":
             return queryset
+        if user.role == "teacher":
+            return queryset.filter(students__primary_teacher__user=user).distinct()
         if user.role == "parent":
             return queryset.filter(models.Q(primary_parent=user) | models.Q(secondary_parent=user))
         if hasattr(user, "student_profile") and user.student_profile.family_id:
@@ -297,7 +299,7 @@ class FamilyViewSet(viewsets.ModelViewSet):
         if self.request.user.role != "admin":
             from rest_framework.exceptions import PermissionDenied
 
-            raise PermissionDenied("Only admins and teachers can change families.")
+            raise PermissionDenied("Nur Administratoren dürfen Familien bearbeiten.")
 
     def create(self, request, *args, **kwargs):
         self._require_manager()
