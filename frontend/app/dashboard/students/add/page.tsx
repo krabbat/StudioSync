@@ -28,6 +28,17 @@ export default function AddStudentPage() {
     const router = useRouter()
     const { currentUser } = useUser()
     const { teachers } = useTeachers()
+    const [families, setFamilies] = useState<{id:string;display_name:string}[]>([])
+    const [familyId, setFamilyId] = useState('')
+    useEffect(() => {
+        if (currentUser?.role !== 'admin') return
+        api.get('/students/families/').then(({data}) => {
+            const rows = data.results || data
+            setFamilies(rows)
+            const requested = new URLSearchParams(window.location.search).get('family')
+            if (requested && rows.some((f: any) => f.id === requested)) setFamilyId(requested)
+        }).catch(() => toast.error('Familien konnten nicht geladen werden.'))
+    }, [currentUser?.role])
     const [primaryTeacherId, setPrimaryTeacherId] = useState('')
     const [teacherChoiceTouched, setTeacherChoiceTouched] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -110,6 +121,7 @@ export default function AddStudentPage() {
             // independently of the student detail endpoint.
             const { data: createdStudent } = await api.post('/students/', {
                 ...formData,
+                ...(familyId ? { family: familyId } : {}),
                 birth_date: formData.birth_date || null,
                 instrument: formData.instruments[0] || formData.instrument.trim(),
                 ...(password ? { password, confirm_password: confirmPassword } : {}),
@@ -342,6 +354,13 @@ export default function AddStudentPage() {
                             </div>
                         </section>
 
+                        {currentUser?.role === 'admin' && <section>
+                            <label htmlFor="student-family" className="block text-sm font-medium mb-2">Familienzugehörigkeit</label>
+                            <select id="student-family" className={inputClass} value={familyId} onChange={e=>setFamilyId(e.target.value)}>
+                                <option value="">Keine Familie</option>
+                                {families.map(f=><option key={f.id} value={f.id}>{f.display_name}</option>)}
+                            </select>
+                        </section>}
                         {/* ── Teacher assignment ── */}
                         <section>
                             <label htmlFor="new-student-teacher" className="block text-sm font-medium text-gray-700 mb-2">
