@@ -774,11 +774,22 @@ function ActivityList({ activities }: { activities: any[] }) {
                 {activity.type === "success" ? "✓" : activity.type === "warning" ? "⚠" : "ℹ"}
               </span>
             </div>
-            <span className="text-sm font-semibold text-gray-900">{activity.text}</span>
+            <div className="min-w-0">
+              <span className="text-sm font-semibold text-gray-900">{activity.text}</span>
+              {activity.scheduled_start && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Termin: {new Date(activity.scheduled_start).toLocaleString("de-DE", {
+                    timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", year: "numeric",
+                    hour: "2-digit", minute: "2-digit"
+                  })} Uhr
+                </p>
+              )}
+            </div>
           </div>
-          <span className="text-xs text-gray-500 font-bold">
-            {new Date(activity.time).toLocaleDateString()}
-          </span>
+          <time dateTime={activity.time} className="ml-3 shrink-0 text-right text-xs text-gray-500 font-bold tabular-nums">
+            {new Date(activity.time).toLocaleDateString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", year: "numeric" })}
+            <span className="block mt-1">{new Date(activity.time).toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" })} Uhr</span>
+          </time>
         </div>
       ))}
     </div>
