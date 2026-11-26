@@ -28,8 +28,11 @@ export default function AddStudentPage() {
     const router = useRouter()
     const { currentUser } = useUser()
     const { teachers } = useTeachers()
-    const [families, setFamilies] = useState<{id:string;display_name:string}[]>([])
+    const [families, setFamilies] = useState<{id:string;display_name:string;address_line1:string;postal_code:string;city:string;contacts:{name:string;first_name?:string;last_name?:string;email:string;phone:string}[]}[]>([])
     const [familyId, setFamilyId] = useState('')
+    const [personIndex, setPersonIndex] = useState('')
+    const [accessMode, setAccessMode] = useState<'none'|'own'>('none')
+    const [loginEmail, setLoginEmail] = useState('')
     useEffect(() => {
         if (currentUser?.role !== 'admin') return
         api.get('/students/families/').then(({data}) => {
@@ -63,7 +66,8 @@ export default function AddStudentPage() {
         instrument: '',
         instruments: [] as string[],
         birth_date: '',
-        emergency_contact_name: '',
+        emergency_contact_first_name: '',
+        emergency_contact_last_name: '',
         emergency_contact_phone: '',
     })
 
@@ -111,7 +115,7 @@ export default function AddStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (password !== confirmPassword) {
+        if (accessMode==='own' && password !== confirmPassword) {
             toast.error(tr('passwordMismatch'))
             return
         }
@@ -124,7 +128,8 @@ export default function AddStudentPage() {
                 ...(familyId ? { family: familyId } : {}),
                 birth_date: formData.birth_date || null,
                 instrument: formData.instruments[0] || formData.instrument.trim(),
-                ...(password ? { password, confirm_password: confirmPassword } : {}),
+                access_mode: accessMode,
+                ...(accessMode==='own' ? { login_email: loginEmail || formData.email, password, confirm_password: confirmPassword } : {}),
                 ...(teacherChoiceTouched || primaryTeacherId
                     ? { primary_teacher: primaryTeacherId || null }
                     : {})
@@ -169,6 +174,9 @@ export default function AddStudentPage() {
         setFormData(prev => ({ ...prev, [e.target.name]: value }))
     }
 
+    const family = families.find(f=>f.id===familyId)
+    const person = family?.contacts?.[Number(personIndex)]
+    const personNames = (p:NonNullable<typeof person>) => ({first_name:p.first_name??(p.name.includes(' ')?p.name.split(' ')[0]:''),last_name:p.last_name??(p.name.includes(' ')?p.name.substring(p.name.indexOf(' ')+1):p.name)})
     const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition'
 
     return (
@@ -250,10 +258,10 @@ export default function AddStudentPage() {
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        {tr('emailAddress')} <span className="text-red-500">*</span>
+                                        Kontakt-E-Mail
                                     </label>
-                                    <input type="text" inputMode="email" autoComplete="email" name="email" required pattern={INTERNATIONAL_EMAIL_PATTERN} title={INTERNATIONAL_EMAIL_HINT} value={formData.email} onChange={handleChange} className={inputClass} placeholder={tr('exampleEmail')} />
-                                    <p className="text-xs text-gray-500 mt-1">{tr('usedForLoginCanBeTheStudentSOrParentSEmailForMinors')}</p>
+                                    <input type="text" inputMode="email" autoComplete="email" name="email" pattern={INTERNATIONAL_EMAIL_PATTERN} title={INTERNATIONAL_EMAIL_HINT} value={formData.email} onChange={handleChange} className={inputClass} placeholder={tr('exampleEmail')} />
+                                    <p className="text-xs text-gray-500 mt-1">Bei Minderjährigen kann die Adresse des Erziehungsberechtigten verwendet werden.</p>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -281,21 +289,23 @@ export default function AddStudentPage() {
                         {/* ── Student login ── */}
                         <section className="space-y-4">
                             <h2 className="text-lg font-semibold text-gray-900">{tr('studentLogin')}</h2>
-                            <p className="text-xs text-gray-500">{tr('studentLoginHint')}</p>
+                            <select className={inputClass} value={accessMode} onChange={e=>setAccessMode(e.target.value as 'none'|'own')}><option value="none">Kein persönlicher Zugang</option><option value="own">Eigener Zugang</option></select>
+                            {accessMode==='own' && <><label className="block text-sm">Login-E-Mail (optional abweichend von Kontakt-E-Mail)<input type="email" className={inputClass} value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/></label>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="new-student-password" className="block text-sm font-medium text-gray-700 mb-1">{tr('newPassword')}</label>
                                     <input id="new-student-password" type="password" autoComplete="new-password"
-                                        value={password} onChange={e => setPassword(e.target.value)}
+                                        required value={password} onChange={e => setPassword(e.target.value)}
                                         className={inputClass} />
                                 </div>
                                 <div>
                                     <label htmlFor="new-student-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">{tr('confirmPassword')}</label>
                                     <input id="new-student-confirm-password" type="password" autoComplete="new-password"
-                                        value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                                        required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                                         className={inputClass} />
                                 </div>
                             </div>
+                            </>}
                         </section>
 
                         {/* ── Musical Details ── */}
@@ -356,10 +366,18 @@ export default function AddStudentPage() {
 
                         {currentUser?.role === 'admin' && <section>
                             <label htmlFor="student-family" className="block text-sm font-medium mb-2">Familienzugehörigkeit</label>
-                            <select id="student-family" className={inputClass} value={familyId} onChange={e=>setFamilyId(e.target.value)}>
+                            <select id="student-family" className={inputClass} value={familyId} onChange={e=>{setFamilyId(e.target.value);setPersonIndex('')}}>
                                 <option value="">Keine Familie</option>
                                 {families.map(f=><option key={f.id} value={f.id}>{f.display_name}</option>)}
                             </select>
+                            {family && <div className="space-y-3 mt-3">
+                                <button type="button" className="border rounded-lg p-2" onClick={()=>setFormData(o=>({...o,address_line1:family.address_line1,postal_code:family.postal_code,city:family.city}))}>Familienanschrift übernehmen</button>
+                                <select className={inputClass} value={personIndex} onChange={e=>setPersonIndex(e.target.value)}><option value="">Familienperson auswählen</option>{(family.contacts||[]).map((p,i)=><option key={i} value={i}>{p.name}</option>)}</select>
+                                {personIndex!=='' && person && <div className="flex flex-wrap gap-2">
+                                    <button type="button" className="border rounded-lg p-2" onClick={()=>setFormData(o=>({...o,...personNames(person),email:person.email,phone:person.phone,address_line1:family.address_line1,postal_code:family.postal_code,city:family.city}))}>Als Schüler übernehmen</button>
+                                    <button type="button" className="border rounded-lg p-2" onClick={()=>{const n=personNames(person);setFormData(o=>({...o,emergency_contact_first_name:n.first_name,emergency_contact_last_name:n.last_name,emergency_contact_phone:person.phone,email:person.email||o.email}))}}>Als Ansprechpartner übernehmen</button>
+                                </div>}
+                            </div>}
                         </section>}
                         {/* ── Teacher assignment ── */}
                         <section>
@@ -408,21 +426,8 @@ export default function AddStudentPage() {
                                 )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            {tr('guardianName')}
-                                            {isMinor && <span className="text-red-500 ml-1">*</span>}
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="emergency_contact_name"
-                                            required={isMinor}
-                                            value={formData.emergency_contact_name}
-                                            onChange={handleChange}
-                                            className={inputClass}
-                                            placeholder={tr('parentOrGuardian')}
-                                        />
-                                    </div>
+                                    <label className="block text-sm">Vorname Ansprechpartner<input className={inputClass} name="emergency_contact_first_name" value={formData.emergency_contact_first_name} onChange={handleChange} required={isMinor}/></label>
+                                    <label className="block text-sm">Nachname Ansprechpartner<input className={inputClass} name="emergency_contact_last_name" value={formData.emergency_contact_last_name} onChange={handleChange} required={isMinor}/></label>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             {tr('guardianPhone')}
