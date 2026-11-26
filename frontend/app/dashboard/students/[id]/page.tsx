@@ -14,6 +14,7 @@ import { toast } from 'react-hot-toast'
 import { formatPhoneNumber, proxyFileUrl } from '@/lib/utils'
 import { useUser } from '@/contexts/UserContext'
 import StudentCommunicationPanel from '@/components/StudentCommunicationPanel'
+import FamilyAssignment from '@/components/FamilyAssignment'
 
 export default function StudentProfilePage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const tr = useTranslations('StudentProfile')
@@ -126,6 +127,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     return (
         <div className="min-h-screen bg-gray-50/50 p-6 md:p-12">
             <div className="max-w-5xl mx-auto space-y-10">
+                {currentUser?.role === 'admin' && <FamilyAssignment studentId={studentId} familyId={student.family || null} onSaved={(family, family_name) => setStudent((old: any) => ({...old, family, family_name}))}/>}
                 {/* Navigation & Actions */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <button
