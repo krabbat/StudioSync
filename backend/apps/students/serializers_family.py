@@ -59,6 +59,12 @@ class FamilySerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["studio", "created_at"]
+        extra_kwargs = {
+            "primary_parent": {"required": False, "allow_null": True},
+            "secondary_parent": {"required": False, "allow_null": True},
+            "name": {"required": False},
+        }
+        validators = []
 
     def validate_name(self, value):
         if not value.strip():
