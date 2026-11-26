@@ -162,7 +162,7 @@ export default function StudentsPage() {
         </nav>
     ) : null
     if (rosterTab === 'families' && currentUser?.role === 'admin') return (
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-12 space-y-6 pt-4">
+        <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 space-y-6 pt-4">
             {rosterTabs}<FamilyManagement/>
         </div>
     )
@@ -176,10 +176,10 @@ export default function StudentsPage() {
     }
 
     return (
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 space-y-6 pt-4">
             {rosterTabs}
             {/* Header */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">
                     <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
                         {t('rosterTitle')}
