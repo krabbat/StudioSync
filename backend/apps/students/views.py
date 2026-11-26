@@ -83,7 +83,7 @@ class StudentViewSet(viewsets.ModelViewSet):
             personal_fields = {
                 "first_name", "last_name", "email", "phone", "birth_date",
                 "address_line1", "postal_code", "city",
-                "emergency_contact_name", "emergency_contact_phone",
+                "emergency_contact_name", "emergency_contact_phone", "emergency_contact_first_name", "emergency_contact_last_name", "contact_email",
             }
             if set(request.data.keys()) - personal_fields:
                 from rest_framework.exceptions import PermissionDenied
@@ -335,7 +335,7 @@ class FamilyViewSet(viewsets.ModelViewSet):
             profile = getattr(student, "billing_profile", None)
             contacts = []
             if student.emergency_contact_name:
-                contacts.append({"name": student.emergency_contact_name, "relation": "",
+                contacts.append({"name": student.emergency_contact_name, "first_name": student.emergency_contact_first_name, "last_name": student.emergency_contact_last_name, "relation": "",
                     "phone": student.emergency_contact_phone, "email": ""})
             billing = None
             if profile:
