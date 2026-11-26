@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import FamilyManagement from '@/components/FamilyManagement'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/contexts/UserContext'
 import { useStudents, useTeachers, useStudentStats, useInstruments } from '@/hooks/useDashboardData'
@@ -82,6 +83,7 @@ export default function StudentsPage() {
     const locale = useLocale()
     const router = useRouter()
     const { currentUser } = useUser()
+    const [rosterTab, setRosterTab] = useState<'students' | 'families'>('students')
     const { teachers } = useTeachers()
 
     // --- State ---
@@ -154,6 +156,16 @@ export default function StudentsPage() {
         )
     }
 
+    const rosterTabs = currentUser?.role === 'admin' ? (
+        <nav className="flex gap-4 border-b border-gray-200" aria-label="Schülerverwaltung">
+            {(['students','families'] as const).map(tab => <button key={tab} onClick={() => { setRosterTab(tab); if (tab === 'students') refresh() }} className={'px-4 py-3 font-semibold border-b-2 '+(rosterTab===tab?'border-primary text-primary':'border-transparent text-gray-500')}>{tab==='students'?'Schüler':'Familien'}</button>)}
+        </nav>
+    ) : null
+    if (rosterTab === 'families' && currentUser?.role === 'admin') return (
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-12 space-y-6 pt-4">
+            {rosterTabs}<FamilyManagement/>
+        </div>
+    )
     if (loading && students.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-in fade-in duration-500">
@@ -165,6 +177,7 @@ export default function StudentsPage() {
 
     return (
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {rosterTabs}
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
                 <div className="space-y-2">
