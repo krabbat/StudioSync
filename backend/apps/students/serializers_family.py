@@ -1,4 +1,3 @@
-import re
 from django.db.models import Q
 from rest_framework import serializers
 from apps.core.tenancy import studio_for_request
@@ -72,9 +71,8 @@ class FamilySerializer(serializers.ModelSerializer):
         return value.strip()
 
     def validate_ha_zone_entity_id(self, value):
-        if value and not re.fullmatch(r"zone\.[a-z0-9_]+", value):
-            raise serializers.ValidationError("Bitte eine HA-Zonen-ID wie zone.familie_mueller eingeben.")
-        return value
+        # Store the visible HA zone name, not a technical entity ID.
+        return value.strip()
 
     def validate_contacts(self, value):
         if not isinstance(value, list) or len(value) > 20:
