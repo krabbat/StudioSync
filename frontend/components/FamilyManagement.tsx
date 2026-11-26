@@ -189,7 +189,34 @@ export default function FamilyManagement() {
         <h2 className="text-2xl font-bold">{selected?.display_name || 'Familie anlegen'}</h2>
         <nav className="flex flex-wrap gap-2 border-b border-gray-200" aria-label="Familienprofil">{tabs.map(([id,label])=><button key={id} disabled={!selected && id!=='overview'} onClick={()=>setTab(id)} className={'px-3 py-2 text-sm font-semibold border-b-2 '+(tab===id?'border-primary text-primary':'border-transparent text-gray-500')+' disabled:opacity-40'}>{label}</button>)}</nav>
         <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-5">
-            {tab==='overview' && <><div className="rounded-lg border border-gray-200 p-4 space-y-2"><label className="block text-sm font-semibold" htmlFor="family-address-source">Anschrift eines Schülers übernehmen</label><div className="flex flex-wrap gap-2"><select id="family-address-source" className={inputClass+' flex-1'} value={addressSource} disabled={addressLoading||addressError} onChange={e=>setAddressSource(e.target.value)}><option value="">{addressLoading?'Schüler werden geladen…':'Schüler auswählen'}</option>{addressStudents.map(s=><option key={s.id} value={s.id}>{s.name} – {s.address_line1}, {s.postal_code} {s.city}</option>)}</select><Button variant="outline" disabled={!addressSource||addressLoading||addressError} onClick={copyAddress}>Anschrift übernehmen</Button></div>{addressError && <p className="text-sm text-red-600">Schüleranschriften konnten nicht geladen werden.</p>}<p className="text-xs text-gray-500">Übernimmt Straße, PLZ und Ort. Schülerdaten und Familienzuordnung werden nicht verändert.</p></div><div className="grid gap-4 md:grid-cols-2">{field('Familienname','name')}{field('Straße und Hausnummer','address_line1')}{field('Postleitzahl','postal_code')}{field('Ort','city')}{field('HA-Zonenname (z. B. Familie Müller)','ha_zone_entity_id')}</div>{selected?.address && <p className="text-sm text-gray-500">Bisherige Anschrift: {selected.address}</p>}<p className="text-sm text-gray-500">Die HA-Zone wird zunächst gespeichert. Die automatische Familienprüfung folgt im nächsten Schritt.</p></>}
+            {tab==='overview' && <>
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        {field('Familienname','name')}
+                        {field('Straße und Hausnummer','address_line1')}
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                        <label className="block text-sm font-semibold text-gray-700" htmlFor="family-address-source">Anschrift eines Schülers übernehmen</label>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <select id="family-address-source" className={inputClass+' min-w-0 flex-1'} value={addressSource} disabled={addressLoading||addressError} onChange={e=>setAddressSource(e.target.value)}>
+                                <option value="">{addressLoading?'Schüler werden geladen…':'Schüler auswählen'}</option>
+                                {addressStudents.map(s=><option key={s.id} value={s.id}>{s.name} – {s.address_line1}, {s.postal_code} {s.city}</option>)}
+                            </select>
+                            <Button variant="outline" disabled={!addressSource||addressLoading||addressError} onClick={copyAddress}>Übernehmen</Button>
+                        </div>
+                        {addressError && <p className="text-sm text-red-600">Schüleranschriften konnten nicht geladen werden.</p>}
+                    </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,3fr)] items-start">
+                    {field('Postleitzahl','postal_code')}
+                    {field('Ort','city')}
+                    <div className="sm:col-span-2 lg:col-span-1 lg:ml-6 lg:pl-6 lg:border-l lg:border-gray-200">
+                        {field('HA-Zonenname','ha_zone_entity_id')}
+                    </div>
+                </div>
+                {selected?.address && <p className="text-sm text-gray-500">Bisherige Anschrift: {selected.address}</p>}
+                <p className="text-sm text-gray-500">Die HA-Zone wird zunächst gespeichert. Die automatische Familienprüfung folgt im nächsten Schritt.</p>
+            </>}
             {tab==='members' && <><p className="text-sm text-gray-600">Schüler auswählen und Familienzuordnung speichern.</p>
                 {memberLoading ? <Loader2 className="animate-spin"/> : memberError ? <p>Schülerliste konnte nicht geladen werden.</p> : <>
                     <div className="relative">
