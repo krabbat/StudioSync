@@ -78,9 +78,10 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
     teacher = serializers.SerializerMethodField()
     login_enabled = serializers.SerializerMethodField()
-    family_name = serializers.CharField(
-        source="family.primary_parent.last_name", read_only=True, allow_null=True
-    )
+    family_name = serializers.SerializerMethodField()
+
+    def get_family_name(self, obj):
+        return str(obj.family) if obj.family_id else None
 
     class Meta:
         model = Student
@@ -158,6 +159,15 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
         if accounts.exists():
             raise serializers.ValidationError("Diese E-Mail-Adresse ist bereits vergeben.")
         return email
+
+    def validate_family(self, family):
+        request = self.context.get("request")
+        if not request or request.user.role != "admin":
+            raise serializers.ValidationError("Nur Administratoren dürfen Familien zuordnen.")
+        studio = self.instance.studio if self.instance else studio_for_request(request)
+        if family and (not studio or family.studio_id != studio.id):
+            raise serializers.ValidationError("Familie gehört nicht zu diesem Studio.")
+        return family
 
     def validate_primary_teacher(self, teacher):
         if teacher is None:
