@@ -11,6 +11,7 @@ import { fetchAllLibraryPages } from '@/lib/materialLibrary.mjs'
 
 type AddressStudent = { id:string; name:string; address_line1:string; postal_code:string; city:string }
 type Contact = { name: string; relation: string; email: string; phone: string }
+type ImportSource = { id:string; name:string; contacts:Contact[]; billing:{recipient_name:string;recipient_email:string;payment_method:string;recipient_address_line1:string;recipient_postal_code:string;recipient_city:string}|null }
 type Member = { id: string; name: string; instrument: string; monthly_amount?: string | null; is_active?: boolean }
 type Family = {
     id: string; name: string; display_name: string; address_line1: string; postal_code: string; city: string;
@@ -42,6 +43,43 @@ export default function FamilyManagement() {
     const [saving, setSaving] = useState(false)
     const [available, setAvailable] = useState<Member[]>([])
     const [memberIds, setMemberIds] = useState<string[]>([])
+    const [memberDropdown, setMemberDropdown] = useState(false)
+    const [memberSearch, setMemberSearch] = useState('')
+    const [importSources, setImportSources] = useState<ImportSource[]>([])
+    const [importId, setImportId] = useState('')
+    const [importLoading, setImportLoading] = useState(false)
+    const [importError, setImportError] = useState(false)
+    useEffect(() => {
+        if (!selected || !['contacts','billing'].includes(tab)) return
+        let live = true
+        setImportSources([]); setImportId(''); setImportLoading(true); setImportError(false)
+        api.get('/students/families/'+selected.id+'/member-data/')
+            .then(({data})=>{if(live){setImportSources(data);if(data.length===1)setImportId(data[0].id)}})
+            .catch(()=>{if(live)setImportError(true)})
+            .finally(()=>{if(live)setImportLoading(false)})
+        return ()=>{live=false}
+    },[selected?.id,tab])
+    const importContactData = () => {
+        const source=importSources.find(s=>s.id===importId)
+        if(!source?.contacts.length)return
+        setDraft(old=>{
+            if(!old)return old
+            const contacts=[...old.contacts]
+            for(const contact of source.contacts){
+                const i=contacts.findIndex(c=>c.name.trim().toLowerCase()===contact.name.trim().toLowerCase())
+                if(i<0)contacts.push(contact)
+                else contacts[i]={...contacts[i],phone:contacts[i].phone||contact.phone,email:contacts[i].email||contact.email,relation:contacts[i].relation||contact.relation}
+            }
+            return {...old,contacts}
+        })
+        toast.success('Ansprechpartner übernommen. Bitte speichern.')
+    }
+    const importBillingData = () => {
+        const b=importSources.find(s=>s.id===importId)?.billing
+        if(!b)return
+        setDraft(old=>old?{...old,billing_recipient_name:b.recipient_name||old.billing_recipient_name,billing_email:b.recipient_email||old.billing_email,payment_method:b.payment_method||old.payment_method}:old)
+        toast.success('Rechnungsdaten übernommen. Bitte speichern.')
+    }
     const [search, setSearch] = useState('')
     const [memberLoading, setMemberLoading] = useState(false)
     const [memberError, setMemberError] = useState(false)
@@ -84,8 +122,8 @@ export default function FamilyManagement() {
             .finally(() => { if (live) setMemberLoading(false) })
         return () => { live = false }
     }, [selected?.id, tab])
-    const open = (f: Family) => { setAddressSource(''); setSelected(f); setDraft(toDraft(f)); setMemberIds(f.students.map(s => s.id)); setTab('overview') }
-    const create = () => { setAddressSource(''); setSelected(null); setDraft({ ...empty, contacts: [] }); setMemberIds([]); setTab('overview') }
+    const open = (f: Family) => { setMemberDropdown(false); setMemberSearch(''); setAddressSource(''); setSelected(f); setDraft(toDraft(f)); setMemberIds(f.students.map(s => s.id)); setTab('overview') }
+    const create = () => { setMemberDropdown(false); setMemberSearch(''); setAddressSource(''); setSelected(null); setDraft({ ...empty, contacts: [] }); setMemberIds([]); setTab('overview') }
     const change = (key: keyof Draft, value: any) => setDraft(old => old ? { ...old, [key]: value } : old)
     const save = async () => {
         if (!draft || !draft.name.trim()) { toast.error('Bitte einen Familiennamen eingeben.'); return }
@@ -130,15 +168,45 @@ export default function FamilyManagement() {
     </section>
     const tabs = [['overview','Übersicht'],['members','Familienmitglieder'],['contacts','Ansprechpartner'],['billing','Rechnungsdaten'],['accounts','Abrechnung'],['communication','Kommunikation']]
     const choices = [...new Map([...(selected?.students || []),...available].map(s=>[s.id,s])).values()]
+    const chosen=choices.filter(s=>memberIds.includes(s.id))
+    const source=importSources.find(s=>s.id===importId)
+    const importPanel=(kind:'contacts'|'billing')=><div className="rounded-lg border border-gray-200 p-4 space-y-2">
+        <label className="block text-sm font-semibold" htmlFor="family-import-source">Daten eines Familienmitglieds übernehmen</label>
+        <div className="flex flex-wrap gap-2">
+            <select id="family-import-source" className={inputClass+' flex-1'} value={importId} disabled={importLoading||importError} onChange={e=>setImportId(e.target.value)}>
+                <option value="">{importLoading?'Schüler werden geladen…':'Schüler auswählen'}</option>
+                {importSources.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <Button variant="outline" disabled={saving||importLoading||!(kind==='contacts'?source?.contacts.length:source?.billing)} onClick={kind==='contacts'?importContactData:importBillingData}>Daten übernehmen</Button>
+        </div>
+        {importError&&<p className="text-sm text-red-600">Schülerdaten konnten nicht geladen werden.</p>}
+        {!importLoading&&!importError&&!importSources.length&&<p className="text-sm text-gray-500">Bitte zuerst Familienmitglieder zuordnen und speichern.</p>}
+        {source&&!(kind==='contacts'?source.contacts.length:source.billing)&&<p className="text-sm text-gray-500">Bei diesem Schüler sind keine entsprechenden Daten hinterlegt.</p>}
+        <p className="text-xs text-gray-500">{kind==='contacts'?'Vorhandene Notfallkontakte werden übernommen. Fehlende Angaben bleiben frei.':'Übernimmt Rechnungsempfänger, Rechnungs-E-Mail und Zahlungsart. Die Familienanschrift bleibt unverändert.'}</p>
+    </div>
     return <section className="space-y-5">
         <button className="flex items-center gap-2 text-sm text-gray-600" onClick={()=>{setDraft(null);setSelected(null)}}><ArrowLeft className="w-4 h-4"/>Zurück zu Familien</button>
         <h2 className="text-2xl font-bold">{selected?.display_name || 'Familie anlegen'}</h2>
         <nav className="flex flex-wrap gap-2 border-b border-gray-200" aria-label="Familienprofil">{tabs.map(([id,label])=><button key={id} disabled={!selected && id!=='overview'} onClick={()=>setTab(id)} className={'px-3 py-2 text-sm font-semibold border-b-2 '+(tab===id?'border-primary text-primary':'border-transparent text-gray-500')+' disabled:opacity-40'}>{label}</button>)}</nav>
         <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-5">
             {tab==='overview' && <><div className="rounded-lg border border-gray-200 p-4 space-y-2"><label className="block text-sm font-semibold" htmlFor="family-address-source">Anschrift eines Schülers übernehmen</label><div className="flex flex-wrap gap-2"><select id="family-address-source" className={inputClass+' flex-1'} value={addressSource} disabled={addressLoading||addressError} onChange={e=>setAddressSource(e.target.value)}><option value="">{addressLoading?'Schüler werden geladen…':'Schüler auswählen'}</option>{addressStudents.map(s=><option key={s.id} value={s.id}>{s.name} – {s.address_line1}, {s.postal_code} {s.city}</option>)}</select><Button variant="outline" disabled={!addressSource||addressLoading||addressError} onClick={copyAddress}>Anschrift übernehmen</Button></div>{addressError && <p className="text-sm text-red-600">Schüleranschriften konnten nicht geladen werden.</p>}<p className="text-xs text-gray-500">Übernimmt Straße, PLZ und Ort. Schülerdaten und Familienzuordnung werden nicht verändert.</p></div><div className="grid gap-4 md:grid-cols-2">{field('Familienname','name')}{field('Straße und Hausnummer','address_line1')}{field('Postleitzahl','postal_code')}{field('Ort','city')}{field('HA-Zonenname (z. B. Familie Müller)','ha_zone_entity_id')}</div>{selected?.address && <p className="text-sm text-gray-500">Bisherige Anschrift: {selected.address}</p>}<p className="text-sm text-gray-500">Die HA-Zone wird zunächst gespeichert. Die automatische Familienprüfung folgt im nächsten Schritt.</p></>}
-            {tab==='members' && <><p className="text-sm text-gray-600">Bestehende Schüler ausdrücklich zuordnen. Verträge und Kontingente bleiben unverändert.</p>{memberLoading ? <Loader2 className="animate-spin"/> : memberError ? <p>Schülerliste konnte nicht geladen werden.</p> : <div className="space-y-2">{choices.map(s=><div key={s.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg"><label className="flex gap-3 items-center"><input type="checkbox" checked={memberIds.includes(s.id)} onChange={e=>setMemberIds(old=>e.target.checked?[...old,s.id]:old.filter(x=>x!==s.id))}/><span>{s.name} <small className="text-gray-500">{s.instrument}</small></span></label><Link className="text-sm text-primary" href={'/dashboard/students/'+s.id}>Profil</Link></div>)}{!choices.length && <p className="text-sm text-gray-500">Keine verfügbaren Schüler.</p>}</div>}<div className="flex flex-wrap gap-3"><Button disabled={saving||memberLoading||memberError} onClick={()=>void saveMembers()}>Zuordnung speichern</Button><Button variant="outline" onClick={()=>router.push('/dashboard/students/add?family='+selected?.id)}>Neuen Schüler anlegen</Button></div></>}
-            {tab==='contacts' && <>{draft.contacts.map((contact,i)=><div key={i} className="border rounded-lg p-4 grid gap-3 md:grid-cols-2"><div className="flex justify-between md:col-span-2"><strong>Ansprechpartner {i+1}</strong><button aria-label="Ansprechpartner entfernen" onClick={()=>change('contacts',draft.contacts.filter((_,j)=>i!==j))}><X className="w-4 h-4"/></button></div>{([['name','Name'],['relation','Beziehung zum Schüler'],['email','E-Mail'],['phone','Telefon']] as const).map(([k,label])=><label key={k} className="space-y-1 text-sm"><span>{label}</span><input className={inputClass} type={k==='email'?'email':'text'} value={contact[k]} onChange={e=>change('contacts',draft.contacts.map((x,j)=>i===j?{...x,[k]:e.target.value}:x))}/></label>)}</div>)}<Button variant="outline" onClick={()=>change('contacts',[...draft.contacts,{name:'',relation:'',email:'',phone:''}])}><Plus className="w-4 h-4 mr-2"/>Ansprechpartner hinzufügen</Button></>}
-            {tab==='billing' && <><div className="grid md:grid-cols-2 gap-4">{field('Rechnungsempfänger','billing_recipient_name')}{field('Rechnungs-E-Mail','billing_email','email')}<label className="space-y-1 text-sm font-semibold">Zahlungsart<select className={inputClass} value={draft.payment_method} onChange={e=>change('payment_method',e.target.value)}><option value="bank_transfer">Banküberweisung</option><option value="paypal">PayPal</option><option value="cash">Barzahlung</option></select></label></div><p className="text-sm text-gray-500">Gemeinsame Rechnungsanschrift: Familienanschrift. Sammelrechnungen werden erst in der nächsten Abrechnungs-Ausbaustufe aktiviert.</p></>}
+            {tab==='members' && <><p className="text-sm text-gray-600">Schüler auswählen und Familienzuordnung speichern.</p>
+                {memberLoading ? <Loader2 className="animate-spin"/> : memberError ? <p>Schülerliste konnte nicht geladen werden.</p> : <>
+                    <div className="relative">
+                        <button type="button" aria-expanded={memberDropdown} onClick={()=>setMemberDropdown(v=>!v)} className={inputClass+' flex justify-between items-center text-left'}><span>Schüler auswählen ({memberIds.length})</span><span aria-hidden="true">⌄</span></button>
+                        {memberDropdown&&<div className="absolute z-20 mt-1 w-full rounded-xl border bg-white shadow-lg p-3 space-y-2">
+                            <input className={inputClass} placeholder="Schüler suchen…" value={memberSearch} onChange={e=>setMemberSearch(e.target.value)}/>
+                            <div className="max-h-64 overflow-y-auto space-y-1">
+                                {choices.filter(s=>s.name.toLowerCase().includes(memberSearch.toLowerCase())).map(s=><label key={s.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg"><input type="checkbox" checked={memberIds.includes(s.id)} onChange={e=>setMemberIds(old=>e.target.checked?[...old,s.id]:old.filter(x=>x!==s.id))}/><span>{s.name} <small className="text-gray-500">{s.instrument}</small></span></label>)}
+                            </div>
+                            <Button variant="outline" onClick={()=>setMemberDropdown(false)}>Auswahl übernehmen</Button>
+                        </div>}
+                    </div>
+                    <div className="space-y-2">{chosen.map(s=><div key={s.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg"><span>{s.name} <small className="text-gray-500">{s.instrument}</small></span><div className="flex items-center gap-4"><Link className="text-sm text-primary" href={'/dashboard/students/'+s.id}>Profil</Link><button aria-label={s.name+' entfernen'} onClick={()=>setMemberIds(old=>old.filter(x=>x!==s.id))}><X className="w-4 h-4"/></button></div></div>)}{!chosen.length&&<p className="text-sm text-gray-500">Noch keine Schüler ausgewählt.</p>}</div>
+                </>}
+                <div className="flex flex-wrap gap-3"><Button disabled={saving||memberLoading||memberError} onClick={()=>{setMemberDropdown(false);void saveMembers()}}>Zuordnung speichern</Button><Button variant="outline" onClick={()=>router.push('/dashboard/students/add?family='+selected?.id)}>Neuen Schüler anlegen</Button></div></>}
+            {tab==='contacts' && <>{importPanel('contacts')}{draft.contacts.map((contact,i)=><div key={i} className="border rounded-lg p-4 grid gap-3 md:grid-cols-2"><div className="flex justify-between md:col-span-2"><strong>Ansprechpartner {i+1}</strong><button aria-label="Ansprechpartner entfernen" onClick={()=>change('contacts',draft.contacts.filter((_,j)=>i!==j))}><X className="w-4 h-4"/></button></div>{([['name','Name'],['relation','Beziehung zum Schüler'],['email','E-Mail'],['phone','Telefon']] as const).map(([k,label])=><label key={k} className="space-y-1 text-sm"><span>{label}</span><input className={inputClass} type={k==='email'?'email':'text'} value={contact[k]} onChange={e=>change('contacts',draft.contacts.map((x,j)=>i===j?{...x,[k]:e.target.value}:x))}/></label>)}</div>)}<Button variant="outline" onClick={()=>change('contacts',[...draft.contacts,{name:'',relation:'',email:'',phone:''}])}><Plus className="w-4 h-4 mr-2"/>Ansprechpartner hinzufügen</Button></>}
+            {tab==='billing' && <>{importPanel('billing')}<div className="grid md:grid-cols-2 gap-4">{field('Rechnungsempfänger','billing_recipient_name')}{field('Rechnungs-E-Mail','billing_email','email')}<label className="space-y-1 text-sm font-semibold">Zahlungsart<select className={inputClass} value={draft.payment_method} onChange={e=>change('payment_method',e.target.value)}><option value="bank_transfer">Banküberweisung</option><option value="paypal">PayPal</option><option value="cash">Barzahlung</option></select></label></div><p className="text-sm text-gray-500">Gemeinsame Rechnungsanschrift: Familienanschrift. Sammelrechnungen werden erst in der nächsten Abrechnungs-Ausbaustufe aktiviert.</p></>}
             {tab==='accounts' && <><p className="text-sm text-gray-500">Sammelabrechnung noch nicht aktiv. Die bestehenden Einzelrechnungen bleiben unverändert.</p>{selected?.students.map(s=><div key={s.id} className="flex justify-between border-b py-2"><Link href={'/dashboard/students/'+s.id}>{s.name}</Link><span>{s.monthly_amount ? money(Number(s.monthly_amount)) : 'Kein Vertrag'}</span></div>)}</>}
             {tab==='communication' && <p className="text-sm text-gray-500">Die familienbezogene Mailzuordnung folgt in einer späteren Ausbaustufe. Bestehender Schriftverkehr bleibt bei den Schülern verfügbar.</p>}
             {['overview','contacts','billing'].includes(tab) && <Button disabled={saving} onClick={()=>void save()}><Save className="w-4 h-4 mr-2"/>Speichern</Button>}
