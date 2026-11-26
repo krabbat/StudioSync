@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone as utc
 from unittest.mock import patch
+from types import SimpleNamespace
 
 import pytest
 from django.utils import timezone
@@ -7,6 +8,7 @@ from django.utils import timezone
 from apps.core.models import TeachingContract
 from apps.lessons.ha_attendance import (
     allocate, intervals, live_studio, norm, run_nightly, seconds, window,
+    attendance_decision, required_seconds, zone_for,
 )
 from apps.lessons.models import Lesson
 from apps.students.lesson_account import lesson_account_response
@@ -53,8 +55,8 @@ def test_late_arrival_live_completion_and_stop_on_departure(studio, teacher, stu
     lesson = make_lesson(studio, teacher, student, start)
     activation = start - 60*MIN
     name = norm(student.user.get_full_name())
-    changes = [(start-30*MIN,start+15*MIN,"not_home"),
-               (start+15*MIN,start+70*MIN,name),
+    changes = [(start-30*MIN,start+10*MIN,"not_home"),
+               (start+10*MIN,start+70*MIN,name),
                (start+70*MIN,start+100*MIN,"not_home")]
     with patch("apps.lessons.ha_attendance.HA") as client:
         ha = client.return_value
@@ -64,7 +66,7 @@ def test_late_arrival_live_completion_and_stop_on_departure(studio, teacher, stu
         assert lesson.status == "in_progress"
         live_studio(studio, activation, start+30*MIN)
         lesson.refresh_from_db()
-        assert lesson.status == "in_progress"
+        assert lesson.status == "completed"
         live_studio(studio, activation, start+35*MIN)
         lesson.refresh_from_db()
         assert lesson.status == "completed"
@@ -91,7 +93,7 @@ def test_short_visit_no_show_counted_once_and_manual_correction(studio, teacher,
     changes = [(start-30*MIN,start,name),
                (start,start+timedelta(seconds=1199),name),
                (start+timedelta(seconds=1199),start+90*MIN,"not_home")]
-    # Only 19:59 total in the tolerance window.
+    # Only 19:59 within the scheduled lesson.
     changes[0] = (start-30*MIN,start,"not_home")
     day = timezone.localdate()
     TeachingContract.objects.create(student=student, contract_start_date=day-timedelta(days=2),
@@ -156,3 +158,63 @@ def test_nightly_counts_full_visit_without_changing_status(studio, teacher, stud
     assert lesson.status == "scheduled"
     assert lesson.ha_attendance["total_seconds"] == 5400
     assert lesson.ha_attendance["statistics_day"] == "2026-11-26"
+
+
+def virtual_lesson(pk, start, minutes, name, family=None):
+    return SimpleNamespace(pk=pk, student_id=pk, student=SimpleNamespace(
+        user=SimpleNamespace(get_full_name=lambda: name), family=family),
+        scheduled_start=start, scheduled_end=start+minutes*MIN)
+
+
+@pytest.mark.parametrize("minutes,minimum", [(30,20),(45,30),(60,40)])
+def test_two_thirds_exact_boundary(minutes, minimum):
+    start = datetime(2026,11,27,16,tzinfo=utc.utc)
+    lesson = virtual_lesson(1,start,minutes,"Test")
+    assert required_seconds(lesson) == minimum*60
+    assert attendance_decision(lesson,lesson.scheduled_end,True,minimum*60,False) == "completed"
+    assert attendance_decision(lesson,lesson.scheduled_end,True,minimum*60-1,False) == "no_show"
+    assert attendance_decision(lesson,lesson.scheduled_end,False,0,False) is None
+
+
+def test_family_continuous_visit_and_scheduled_boundaries():
+    start = datetime(2026,11,27,16,tzinfo=utc.utc)
+    family = SimpleNamespace(ha_zone_entity_id="Familie Böhm")
+    first = virtual_lesson(1,start,45,"Test A",family)
+    second = virtual_lesson(2,start+45*MIN,30,"Test B",family)
+    zone = ("zone.familie_bohm","Familie Böhm")
+    zones = {norm(zone[1]):[zone]}
+    assert zone_for(first,zones) == zone_for(second,zones) == zone
+    rows = [(start-5*MIN,start+85*MIN,norm(zone[1]))]
+    assigned = allocate(rows,[first,second],zones)
+    assert seconds(assigned[1]) == 2700
+    assert seconds(assigned[2]) == 1800
+    assert sum(seconds(p) for p in allocate(rows,[first,second],zones,full=True).values()) == 5400
+    rows = [(start+16*MIN,start+65*MIN,norm(zone[1]))]
+    assigned = allocate(rows,[first,second],zones)
+    assert seconds(assigned[1]) == 1740
+    assert seconds(assigned[2]) == 1200
+    assert attendance_decision(first,first.scheduled_end,True,1740,True) == "no_show"
+    assert attendance_decision(second,second.scheduled_end,True,1200,False) == "completed"
+
+
+def test_family_zone_missing_or_ambiguous_never_falls_back():
+    start = datetime(2026,11,27,16,tzinfo=utc.utc)
+    family = SimpleNamespace(ha_zone_entity_id="")
+    lesson = virtual_lesson(1,start,30,"Test",family)
+    zones = {"test":[("zone.test","Test")]}
+    assert zone_for(lesson,zones) is None
+    family.ha_zone_entity_id = "Test"
+    zones["test"].append(("zone.test2","Test"))
+    assert zone_for(lesson,zones) is None
+    lesson.student.family = None
+    zones["test"].pop()
+    assert zone_for(lesson,zones) == ("zone.test","Test")
+
+
+def test_no_credit_before_or_after_scheduled_time():
+    start = datetime(2026,11,27,16,tzinfo=utc.utc)
+    lesson = virtual_lesson(1,start,45,"Test")
+    zones = {"test":[("zone.test","Test")]}
+    rows = [(start-30*MIN,start+10*MIN,"test"),
+            (start+45*MIN,start+75*MIN,"test")]
+    assert seconds(allocate(rows,[lesson],zones)[1]) == 600
