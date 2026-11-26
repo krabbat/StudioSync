@@ -32,7 +32,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     const [confirmNewPassword, setConfirmNewPassword] = useState('')
     const [passwordSaving, setPasswordSaving] = useState(false)
     const [editingLogin, setEditingLogin] = useState(false)
-    const [profileTab, setProfileTab] = useState<'profile' | 'communication'>('profile')
+    const [profileTab, setProfileTab] = useState<'profile' | 'communication' | 'family'>('profile')
 
     useEffect(() => {
         const fetchStudent = async () => {
@@ -127,7 +127,6 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     return (
         <div className="min-h-screen bg-gray-50/50 p-6 md:p-12">
             <div className="max-w-5xl mx-auto space-y-10">
-                {currentUser?.role === 'admin' && <FamilyAssignment studentId={studentId} familyId={student.family || null} onSaved={(family, family_name) => setStudent((old: any) => ({...old, family, family_name}))}/>}
                 {/* Navigation & Actions */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <button
@@ -229,11 +228,18 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                             onClick={() => setProfileTab('communication')}>
                             <Mail className="w-4 h-4 inline mr-2" />Kommunikation
                         </button>
+                        <button type="button" aria-pressed={profileTab === 'family'}
+                            className={profileTab === 'family'
+                                ? 'rounded-xl bg-primary text-primary-foreground px-5 py-3 font-bold'
+                                : 'rounded-xl bg-white border border-gray-200 px-5 py-3 font-bold'}
+                            onClick={() => setProfileTab('family')}>Familie</button>
                     </nav>
                 )}
 
                 {profileTab === 'communication' && currentUser?.role === 'admin' ? (
                     <StudentCommunicationPanel studentId={studentId} />
+                ) : profileTab === 'family' && currentUser?.role === 'admin' ? (
+                    <FamilyAssignment studentId={studentId} familyId={student.family || null} onSaved={(family, family_name) => setStudent((old: any) => ({...old, family, family_name}))}/>
                 ) : (
                 <>
                 {/* Detailed Info Grid */}
