@@ -600,6 +600,15 @@ class StudentSerializer(serializers.ModelSerializer):
         queryset=Teacher.objects.all(), source="primary_teacher", write_only=True, required=False, allow_null=True
     )
 
+    def validate_family(self, family):
+        request = self.context.get("request")
+        if not request or request.user.role != "admin":
+            raise serializers.ValidationError("Nur Administratoren dürfen Familien zuordnen.")
+        studio = self.instance.studio if self.instance else studio_for_request(request)
+        if family and (not studio or family.studio_id != studio.id):
+            raise serializers.ValidationError("Familie gehört nicht zu diesem Studio.")
+        return family
+
     class Meta:
         model = Student
         fields = [
