@@ -7,7 +7,9 @@ import { Plus, Users, Save, ArrowLeft, Loader2, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
 import { Button } from '@/components/ui/button'
+import { fetchAllLibraryPages } from '@/lib/materialLibrary.mjs'
 
+type AddressStudent = { id:string; name:string; address_line1:string; postal_code:string; city:string }
 type Contact = { name: string; relation: string; email: string; phone: string }
 type Member = { id: string; name: string; instrument: string; monthly_amount?: string | null; is_active?: boolean }
 type Family = {
@@ -23,7 +25,10 @@ const inputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 
 const err = (e: any) => {
     const data = e?.response?.data
     if (typeof data?.detail === 'string') return data.detail
-    if (data && typeof data === 'object') return Object.values(data).flat().map(String).join(' ')
+    if (data && typeof data === 'object') {
+        const labels: Record<string,string> = {name:'Familienname', primary_parent:'Elternkonto', secondary_parent:'Zweites Elternkonto', ha_zone_entity_id:'HA-Zone', address_line1:'Straße', postal_code:'Postleitzahl', city:'Ort', billing_email:'Rechnungs-E-Mail', contacts:'Ansprechpartner', non_field_errors:'Formular'}
+        return Object.entries(data).map(([key,value]) => (labels[key] || key) + ': ' + [value].flat().map(v=>v === 'This field is required.' ? 'Pflichtfeld.' : String(v)).join(' ')).join(' · ')
+    }
     return 'Änderung konnte nicht gespeichert werden.'
 }
 
@@ -41,6 +46,26 @@ export default function FamilyManagement() {
     const [memberLoading, setMemberLoading] = useState(false)
     const [memberError, setMemberError] = useState(false)
     const [loadError, setLoadError] = useState(false)
+    const [addressStudents, setAddressStudents] = useState<AddressStudent[]>([])
+    const [addressSource, setAddressSource] = useState('')
+    const [addressLoading, setAddressLoading] = useState(false)
+    const [addressError, setAddressError] = useState(false)
+    useEffect(() => {
+        if (!draft || tab !== 'overview') return
+        let live = true
+        setAddressLoading(true); setAddressError(false)
+        fetchAllLibraryPages(async (page:number) => (await api.get('/students/', {params:{page}})).data)
+            .then((rows:AddressStudent[]) => { if(live) setAddressStudents(rows.filter(s=>s.address_line1 || s.postal_code || s.city)) })
+            .catch(()=>{if(live) setAddressError(true)})
+            .finally(()=>{if(live) setAddressLoading(false)})
+        return ()=>{live=false}
+    }, [Boolean(draft), tab])
+    const copyAddress = () => {
+        const s = addressStudents.find(x=>x.id===addressSource)
+        if (!s) return
+        setDraft(old=>old ? {...old,address_line1:s.address_line1||'',postal_code:s.postal_code||'',city:s.city||''}:old)
+        toast.success('Schüleranschrift übernommen.')
+    }
 
     const load = async () => {
         setLoading(true); setLoadError(false)
@@ -59,14 +84,16 @@ export default function FamilyManagement() {
             .finally(() => { if (live) setMemberLoading(false) })
         return () => { live = false }
     }, [selected?.id, tab])
-    const open = (f: Family) => { setSelected(f); setDraft(toDraft(f)); setMemberIds(f.students.map(s => s.id)); setTab('overview') }
-    const create = () => { setSelected(null); setDraft({ ...empty, contacts: [] }); setMemberIds([]); setTab('overview') }
+    const open = (f: Family) => { setAddressSource(''); setSelected(f); setDraft(toDraft(f)); setMemberIds(f.students.map(s => s.id)); setTab('overview') }
+    const create = () => { setAddressSource(''); setSelected(null); setDraft({ ...empty, contacts: [] }); setMemberIds([]); setTab('overview') }
     const change = (key: keyof Draft, value: any) => setDraft(old => old ? { ...old, [key]: value } : old)
     const save = async () => {
         if (!draft || !draft.name.trim()) { toast.error('Bitte einen Familiennamen eingeben.'); return }
+        if (draft.ha_zone_entity_id && !/^zone\.[a-z0-9_]+$/.test(draft.ha_zone_entity_id.trim())) { toast.error('HA-Zone: Bitte die Entity-ID aus Home Assistant eingeben, z. B. zone.familie_mueller, oder das Feld leer lassen.'); return }
         setSaving(true)
         try {
-            const response = selected ? await api.patch('/students/families/' + selected.id + '/', draft) : await api.post('/students/families/', draft)
+            const payload = {...draft, ha_zone_entity_id: draft.ha_zone_entity_id.trim()}
+            const response = selected ? await api.patch('/students/families/' + selected.id + '/', payload) : await api.post('/students/families/', payload)
             const f: Family = response.data
             setFamilies(old => [...old.filter(x => x.id !== f.id), f].sort((a,b) => a.display_name.localeCompare(b.display_name,'de')))
             setSelected(f); setDraft(toDraft(f)); setMemberIds(f.students.map(s => s.id))
@@ -109,7 +136,7 @@ export default function FamilyManagement() {
         <h2 className="text-2xl font-bold">{selected?.display_name || 'Familie anlegen'}</h2>
         <nav className="flex flex-wrap gap-2 border-b border-gray-200" aria-label="Familienprofil">{tabs.map(([id,label])=><button key={id} disabled={!selected && id!=='overview'} onClick={()=>setTab(id)} className={'px-3 py-2 text-sm font-semibold border-b-2 '+(tab===id?'border-primary text-primary':'border-transparent text-gray-500')+' disabled:opacity-40'}>{label}</button>)}</nav>
         <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-5">
-            {tab==='overview' && <><div className="grid gap-4 md:grid-cols-2">{field('Familienname','name')}{field('Straße und Hausnummer','address_line1')}{field('Postleitzahl','postal_code')}{field('Ort','city')}{field('HA-Zonen-ID (z. B. zone.familie_mueller)','ha_zone_entity_id')}</div>{selected?.address && <p className="text-sm text-gray-500">Bisherige Anschrift: {selected.address}</p>}<p className="text-sm text-gray-500">Die HA-Zone wird zunächst gespeichert. Die automatische Familienprüfung folgt im nächsten Schritt.</p></>}
+            {tab==='overview' && <><div className="rounded-lg border border-gray-200 p-4 space-y-2"><label className="block text-sm font-semibold" htmlFor="family-address-source">Anschrift eines Schülers übernehmen</label><div className="flex flex-wrap gap-2"><select id="family-address-source" className={inputClass+' flex-1'} value={addressSource} disabled={addressLoading||addressError} onChange={e=>setAddressSource(e.target.value)}><option value="">{addressLoading?'Schüler werden geladen…':'Schüler auswählen'}</option>{addressStudents.map(s=><option key={s.id} value={s.id}>{s.name} – {s.address_line1}, {s.postal_code} {s.city}</option>)}</select><Button variant="outline" disabled={!addressSource||addressLoading||addressError} onClick={copyAddress}>Anschrift übernehmen</Button></div>{addressError && <p className="text-sm text-red-600">Schüleranschriften konnten nicht geladen werden.</p>}<p className="text-xs text-gray-500">Übernimmt Straße, PLZ und Ort. Schülerdaten und Familienzuordnung werden nicht verändert.</p></div><div className="grid gap-4 md:grid-cols-2">{field('Familienname','name')}{field('Straße und Hausnummer','address_line1')}{field('Postleitzahl','postal_code')}{field('Ort','city')}{field('HA-Zonen-ID (z. B. zone.familie_mueller)','ha_zone_entity_id')}</div>{selected?.address && <p className="text-sm text-gray-500">Bisherige Anschrift: {selected.address}</p>}<p className="text-sm text-gray-500">Die HA-Zone wird zunächst gespeichert. Die automatische Familienprüfung folgt im nächsten Schritt.</p></>}
             {tab==='members' && <><p className="text-sm text-gray-600">Bestehende Schüler ausdrücklich zuordnen. Verträge und Kontingente bleiben unverändert.</p>{memberLoading ? <Loader2 className="animate-spin"/> : memberError ? <p>Schülerliste konnte nicht geladen werden.</p> : <div className="space-y-2">{choices.map(s=><div key={s.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg"><label className="flex gap-3 items-center"><input type="checkbox" checked={memberIds.includes(s.id)} onChange={e=>setMemberIds(old=>e.target.checked?[...old,s.id]:old.filter(x=>x!==s.id))}/><span>{s.name} <small className="text-gray-500">{s.instrument}</small></span></label><Link className="text-sm text-primary" href={'/dashboard/students/'+s.id}>Profil</Link></div>)}{!choices.length && <p className="text-sm text-gray-500">Keine verfügbaren Schüler.</p>}</div>}<div className="flex flex-wrap gap-3"><Button disabled={saving||memberLoading||memberError} onClick={()=>void saveMembers()}>Zuordnung speichern</Button><Button variant="outline" onClick={()=>router.push('/dashboard/students/add?family='+selected?.id)}>Neuen Schüler anlegen</Button></div></>}
             {tab==='contacts' && <>{draft.contacts.map((contact,i)=><div key={i} className="border rounded-lg p-4 grid gap-3 md:grid-cols-2"><div className="flex justify-between md:col-span-2"><strong>Ansprechpartner {i+1}</strong><button aria-label="Ansprechpartner entfernen" onClick={()=>change('contacts',draft.contacts.filter((_,j)=>i!==j))}><X className="w-4 h-4"/></button></div>{([['name','Name'],['relation','Beziehung zum Schüler'],['email','E-Mail'],['phone','Telefon']] as const).map(([k,label])=><label key={k} className="space-y-1 text-sm"><span>{label}</span><input className={inputClass} type={k==='email'?'email':'text'} value={contact[k]} onChange={e=>change('contacts',draft.contacts.map((x,j)=>i===j?{...x,[k]:e.target.value}:x))}/></label>)}</div>)}<Button variant="outline" onClick={()=>change('contacts',[...draft.contacts,{name:'',relation:'',email:'',phone:''}])}><Plus className="w-4 h-4 mr-2"/>Ansprechpartner hinzufügen</Button></>}
             {tab==='billing' && <><div className="grid md:grid-cols-2 gap-4">{field('Rechnungsempfänger','billing_recipient_name')}{field('Rechnungs-E-Mail','billing_email','email')}<label className="space-y-1 text-sm font-semibold">Zahlungsart<select className={inputClass} value={draft.payment_method} onChange={e=>change('payment_method',e.target.value)}><option value="bank_transfer">Banküberweisung</option><option value="paypal">PayPal</option><option value="cash">Barzahlung</option></select></label></div><p className="text-sm text-gray-500">Gemeinsame Rechnungsanschrift: Familienanschrift. Sammelrechnungen werden erst in der nächsten Abrechnungs-Ausbaustufe aktiviert.</p></>}
