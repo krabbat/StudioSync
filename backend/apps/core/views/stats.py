@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
-from django.db.models import Count, Sum
+from django.db.models import Case, Count, DateTimeField, F, Sum, When
+from django.db.models.functions import Coalesce
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
@@ -14,6 +15,44 @@ from apps.billing.payment_status import payment_totals
 from apps.core.models import Student, Teacher
 from apps.core.tenancy import studio_for_request
 from apps.lessons.models import Lesson
+
+
+def recent_lesson_activity(qs):
+    """Collapse planned occurrences by series, retaining distinct lesson outcomes."""
+    seen = set()
+    result = []
+    for lesson in qs.iterator(chunk_size=100):
+        series_id = None
+        if lesson.status == "scheduled":
+            if lesson.recurring_pattern_id:
+                series_id = ("pattern", lesson.recurring_pattern_id)
+            elif getattr(lesson, "icloud_occurrence", None):
+                series_id = ("icloud", lesson.icloud_occurrence.series_id)
+        key = series_id or ("lesson", lesson.pk)
+        if key in seen:
+            continue
+        seen.add(key)
+        other_party = (lesson.student.user.get_full_name() if lesson.student_id
+                       else lesson.band.name if lesson.band_id else lesson.guest_name or "Unbekannt")
+        labels = {
+            "scheduled": ("Unterricht geplant", "info"),
+            "completed": ("Unterricht abgeschlossen", "success"),
+            "cancelled": ("Unterricht abgesagt", "warning"),
+            "no_show": ("Nicht erschienen", "warning"),
+        }
+        label, icon = labels[lesson.status]
+        if series_id:
+            label = "Serientermine geplant"
+        result.append({
+            "id": str(lesson.pk),
+            "text": f"{label}: {other_party}",
+            "time": lesson.activity_time,
+            "type": icon,
+            "scheduled_start": None if series_id else lesson.scheduled_start,
+        })
+        if len(result) == 5:
+            break
+    return result
 
 
 class DashboardStatsView(APIView):
@@ -222,62 +261,32 @@ class DashboardStatsView(APIView):
                 },
             }
 
-        # RECENT ACTIVITY (Common)
-        # Fetch recent completed lessons or updates
-        qs = (
-            Lesson.objects.select_related("student__user", "teacher__user")
-            .filter(status__in=["completed", "cancelled", "scheduled"])
-            .order_by("-updated_at")
-        )
+        # Recent activity: scheduling a series is one action, not one per occurrence.
+        # HA evidence refreshes updated_at, so use creation/finalization timestamps
+        # where available rather than treating every tracker poll as an activity.
+        qs = Lesson.objects.select_related(
+            "student__user", "teacher__user", "band", "icloud_occurrence"
+        ).filter(status__in=["completed", "cancelled", "scheduled", "no_show"]).annotate(
+            activity_time=Case(
+                When(status="scheduled", then=F("created_at")),
+                When(status__in=["completed", "no_show"],
+                     then=Coalesce("ha_finalized_at", "updated_at")),
+                When(status="cancelled", then=Coalesce("cancelled_at", "updated_at")),
+                default=F("updated_at"), output_field=DateTimeField(),
+            )
+        ).order_by("-activity_time", "-id")
 
-        # Filter visibility
         if user.role == "admin":
             studio = studio_for_request(request)
-            if studio:
-                qs = qs.filter(studio=studio)
+            qs = qs.filter(studio=studio) if studio else qs.none()
         elif user.role == "teacher" and hasattr(user, "teacher_profile"):
             qs = qs.filter(teacher=user.teacher_profile)
         elif user.role == "student" and hasattr(user, "student_profile"):
             qs = qs.filter(student=user.student_profile)
+        else:
+            qs = qs.none()
 
-        recent_lessons = qs[:5]
-
-        activity_data = []
-        for lesson in recent_lessons:
-            action_text = ""
-            icon_type = "info"
-
-            # Determine display name based on who is asking
-            other_party = "Unknown"
-            if user.role == "student":
-                if lesson.teacher and lesson.teacher.user:
-                    other_party = lesson.teacher.user.get_full_name()
-                display_text = f"lesson with {other_party}"
-            else:
-                if lesson.student and lesson.student.user:
-                    other_party = lesson.student.user.get_full_name()
-                display_text = f"lesson with {other_party}"
-
-            if lesson.status == "completed":
-                action_text = f"Completed {display_text}"
-                icon_type = "success"
-            elif lesson.status == "cancelled":
-                action_text = f"Cancelled {display_text}"
-                icon_type = "warning"
-            elif lesson.status == "scheduled":
-                action_text = f"Scheduled {display_text}"
-                icon_type = "info"
-
-            activity_data.append(
-                {
-                    "id": str(lesson.id),
-                    "text": action_text,
-                    "time": lesson.updated_at,
-                    "type": icon_type,
-                }
-            )
-
-        stats["recent_activity"] = activity_data
+        stats["recent_activity"] = recent_lesson_activity(qs)
 
         return Response(stats)
 
