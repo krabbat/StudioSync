@@ -418,6 +418,22 @@ export default function AddStudentPage() {
                                     )}
                                 </h2>
 
+                                {family && (family.contacts || []).length > 0 && (
+                                    <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+                                        <label htmlFor="guardian-family-source" className="block text-sm font-medium">Ansprechpartner aus der Familie übernehmen</label>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <select id="guardian-family-source" className={inputClass+' flex-1'} value={personIndex} onChange={e=>setPersonIndex(e.target.value)}>
+                                                <option value="">Ansprechpartner auswählen</option>
+                                                {(family.contacts||[]).map((p,i)=><option key={i} value={i}>{[p.first_name,p.last_name].filter(Boolean).join(' ')||p.name}{p.phone?' – '+p.phone:''}</option>)}
+                                            </select>
+                                            <button type="button" disabled={personIndex===''||!person} className="border rounded-lg px-4 py-2 disabled:opacity-50" onClick={()=>{
+                                                if(!person||personIndex==='')return
+                                                const n=personNames(person)
+                                                setFormData(o=>({...o,emergency_contact_first_name:n.first_name,emergency_contact_last_name:n.last_name,emergency_contact_phone:person.phone||''}))
+                                            }}>Daten übernehmen</button>
+                                        </div>
+                                    </div>
+                                )}
                                 {ageUnknown && (
                                     <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
                                         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
