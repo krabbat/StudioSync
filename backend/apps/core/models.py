@@ -252,7 +252,7 @@ class Family(models.Model):
 
     # Parents
     primary_parent = models.ForeignKey(
-        User, on_delete=models.PROTECT, related_name="primary_parent_families"
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name="primary_parent_families"
     )
     secondary_parent = models.ForeignKey(
         User,
@@ -261,6 +261,17 @@ class Family(models.Model):
         blank=True,
         related_name="secondary_parent_families",
     )
+
+    name = models.CharField(max_length=200, blank=True)
+    address_line1 = models.CharField(max_length=255, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    ha_zone_entity_id = models.CharField(max_length=255, blank=True)
+    contacts = models.JSONField(default=list, blank=True)
+    billing_recipient_name = models.CharField(max_length=200, blank=True)
+    payment_method = models.CharField(max_length=20, default="bank_transfer", choices=[
+        ("bank_transfer", "Banküberweisung"), ("paypal", "PayPal"), ("cash", "Barzahlung")
+    ])
 
     # Shared info (can override individual student info)
     emergency_contact_name = models.CharField(max_length=200, blank=True)
@@ -279,7 +290,7 @@ class Family(models.Model):
         verbose_name_plural = "Families"
 
     def __str__(self):
-        return f"Family of {self.primary_parent.last_name}"
+        return self.name or (f"Familie {self.primary_parent.last_name}" if self.primary_parent_id else "Familie")
 
 
 class BandManager(models.Manager):
