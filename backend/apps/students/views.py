@@ -287,12 +287,8 @@ class FamilyViewSet(viewsets.ModelViewSet):
         ).prefetch_related("students__user", "students__teaching_contract").filter(studio__in=studios_for_request(self.request)).order_by("name", "id")
         if user.role == "admin":
             return queryset
-        if user.role == "teacher":
-            return queryset.filter(students__primary_teacher__user=user).distinct()
-        if user.role == "parent":
-            return queryset.filter(models.Q(primary_parent=user) | models.Q(secondary_parent=user))
-        if hasattr(user, "student_profile") and user.student_profile.family_id:
-            return queryset.filter(pk=user.student_profile.family_id)
+        # Expanded profiles contain private billing and contact data. Only admins
+        # may access this management API; existing account relationships remain intact.
         return queryset.none()
 
     def _require_manager(self):
