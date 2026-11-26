@@ -729,7 +729,7 @@ class SetupWizardCompleteSerializer(serializers.Serializer):
 class SignedDocumentSerializer(serializers.ModelSerializer):
     """Serializer for signed documents"""
 
-    family_name = serializers.ReadOnlyField(source="family.primary_parent.get_full_name")
+    family_name = serializers.ReadOnlyField(source="family.__str__")
     signed_by_name = serializers.ReadOnlyField(source="signed_by.get_full_name")
 
     class Meta:
