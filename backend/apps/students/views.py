@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import models, transaction
 
 from rest_framework import filters, permissions, status, viewsets
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -277,13 +277,14 @@ class FamilyViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = FamilySerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ["primary_parent__last_name", "primary_parent__email"]
+    search_fields = ["name", "primary_parent__last_name", "primary_parent__email", "students__user__last_name"]
+    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
         queryset = Family.objects.select_related(
             "primary_parent", "secondary_parent"
-        ).prefetch_related("students__user").filter(studio__in=studios_for_request(self.request))
+        ).prefetch_related("students__user", "students__teaching_contract").filter(studio__in=studios_for_request(self.request)).order_by("name", "id")
         if user.role in ("admin", "teacher"):
             return queryset
         if user.role == "parent":
@@ -293,7 +294,7 @@ class FamilyViewSet(viewsets.ModelViewSet):
         return queryset.none()
 
     def _require_manager(self):
-        if self.request.user.role not in ("admin", "teacher"):
+        if self.request.user.role != "admin":
             from rest_framework.exceptions import PermissionDenied
 
             raise PermissionDenied("Only admins and teachers can change families.")
@@ -318,6 +319,37 @@ class FamilyViewSet(viewsets.ModelViewSet):
         self._require_manager()
         return super().partial_update(request, *args, **kwargs)
 
+    @action(detail=True, methods=["get"], url_path="available-students")
+    def available_students(self, request, pk=None):
+        self._require_manager()
+        family = self.get_object()
+        rows = Student.objects.filter(studio=family.studio, user__role="student",
+            family__isnull=True).select_related("user").order_by("user__last_name", "user__first_name")
+        return Response([{"id": str(s.pk), "name": s.user.get_full_name(), "instrument": s.instrument} for s in rows])
+
+    @action(detail=True, methods=["put"], url_path="members")
+    @transaction.atomic
+    def members(self, request, pk=None):
+        self._require_manager()
+        family = Family.objects.select_for_update().get(pk=self.get_object().pk)
+        ids = request.data.get("student_ids")
+        if not isinstance(ids, list):
+            raise ValidationError({"student_ids": "Bitte eine Schülerliste übermitteln."})
+        from uuid import UUID
+        try:
+            ids = {UUID(str(value)) for value in ids}
+        except (ValueError, TypeError):
+            raise ValidationError({"student_ids": "Ungültige Schüler-ID."})
+        rows = list(Student.objects.select_for_update().filter(
+            models.Q(pk__in=ids) | models.Q(family=family),
+            studio=family.studio, user__role="student"))
+        selected = [s for s in rows if s.pk in ids]
+        if len(selected) != len(ids) or any(s.family_id not in (None, family.pk) for s in selected):
+            raise ValidationError({"student_ids": "Schüler gehört einem anderen Studio oder einer anderen Familie an."})
+        Student.objects.filter(family=family).exclude(pk__in=ids).update(family=None)
+        Student.objects.filter(pk__in=ids, studio=family.studio).update(family=family)
+        return Response(self.get_serializer(Family.objects.get(pk=family.pk)).data)
+
     def destroy(self, request, *args, **kwargs):
         self._require_manager()
-        return super().destroy(request, *args, **kwargs)
+        raise ValidationError("Familien können in dieser Ausbaustufe nicht gelöscht werden.")
