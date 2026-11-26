@@ -79,12 +79,17 @@ class FamilySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Bitte maximal 20 Ansprechpartner angeben.")
         result = []
         for entry in value:
-            if not isinstance(entry, dict) or set(entry) - {"name", "relation", "email", "phone"}:
+            if not isinstance(entry, dict) or set(entry) - {"name", "first_name", "last_name", "relation", "email", "phone"}:
                 raise serializers.ValidationError("Ungültige Ansprechpartnerdaten.")
             clean = {}
-            for key in ("name", "relation", "email", "phone"):
+            for key in ("name", "first_name", "last_name", "relation", "email", "phone"):
                 field = serializers.EmailField(allow_blank=True, max_length=254) if key == "email" else serializers.CharField(allow_blank=True, max_length=200)
                 clean[key] = field.run_validation(entry.get(key, ""))
+            if not (clean["first_name"] or clean["last_name"]):
+                parts = clean["name"].split(maxsplit=1)
+                clean["first_name"] = parts[0] if len(parts)==2 else ""
+                clean["last_name"] = parts[-1] if parts else ""
+            clean["name"] = " ".join(x for x in (clean["first_name"], clean["last_name"]) if x)
             if not clean["name"]:
                 raise serializers.ValidationError("Jeder Ansprechpartner benötigt einen Namen.")
             result.append(clean)
