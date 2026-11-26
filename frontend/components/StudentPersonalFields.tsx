@@ -7,13 +7,13 @@ import { INTERNATIONAL_EMAIL_PATTERN, INTERNATIONAL_EMAIL_HINT } from '@/lib/int
 export type StudentPersonalData = {
     first_name: string; last_name: string; email: string; phone: string
     birth_date: string; address_line1: string; postal_code: string; city: string
-    emergency_contact_name: string; emergency_contact_phone: string
+    emergency_contact_name: string; emergency_contact_first_name: string; emergency_contact_last_name: string; emergency_contact_phone: string
 }
 
 export const emptyStudentPersonal: StudentPersonalData = {
     first_name: '', last_name: '', email: '', phone: '', birth_date: '',
     address_line1: '', postal_code: '', city: '',
-    emergency_contact_name: '', emergency_contact_phone: ''
+    emergency_contact_name: '', emergency_contact_first_name: '', emergency_contact_last_name: '', emergency_contact_phone: ''
 }
 
 export function toGermanDate(iso: string): string {
@@ -74,7 +74,7 @@ export default function StudentPersonalFields({ value, onChange }: {
         required = false, autoComplete?: string
     ) => (
         <label key={key} className="block space-y-1 text-sm font-medium text-gray-700">
-            {t(key)}
+            {key==='emergency_contact_first_name'?'Vorname Ansprechpartner':key==='emergency_contact_last_name'?'Nachname Ansprechpartner':t(key)}
             <input type={type === 'email' ? 'text' : type} name={key} value={value[key] || ''} required={required}
                 inputMode={type === 'email' ? 'email' : undefined}
                 pattern={type === 'email' ? INTERNATIONAL_EMAIL_PATTERN : undefined}
@@ -93,7 +93,7 @@ export default function StudentPersonalFields({ value, onChange }: {
                     {field('first_name', 'text', true, 'given-name')}
                     {field('last_name', 'text', true, 'family-name')}
                 </div>
-                {field('email', 'email', true, 'email')}
+                {field('email', 'email', false, 'email')}
                 {field('phone', 'tel', false, 'tel')}
                 <BirthDateField value={value.birth_date} onChange={birth_date => onChange({ birth_date })} />
             </section>
@@ -108,7 +108,8 @@ export default function StudentPersonalFields({ value, onChange }: {
             <section className="space-y-4">
                 <h2 className="text-lg font-bold text-gray-900">{t('emergency')}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {field('emergency_contact_name', 'text', isMinor)}
+                    {field('emergency_contact_first_name', 'text', isMinor)}
+                    {field('emergency_contact_last_name', 'text', isMinor)}
                     {field('emergency_contact_phone', 'tel', isMinor)}
                 </div>
             </section>
