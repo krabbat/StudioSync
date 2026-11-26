@@ -410,6 +410,9 @@ class Student(models.Model):
 
     # Medical/emergency information
     emergency_contact_name = models.CharField(max_length=200, blank=True)
+    emergency_contact_first_name = models.CharField(max_length=100, blank=True)
+    emergency_contact_last_name = models.CharField(max_length=100, blank=True)
+    contact_email = models.EmailField(blank=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True)
     medical_notes = models.TextField(blank=True)
 
