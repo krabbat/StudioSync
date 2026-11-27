@@ -89,6 +89,21 @@ export default function SchedulePage() {
   const { currentUser } = useUser();
   const hasIcloudCalendar = currentUser?.role === "admin" && Boolean(currentUser?.preferences?.technical?.icloud_calendar_url);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const tick = () => {
+      const next = new Date();
+      setNow(previous => previous && Math.floor(previous.getTime() / 60000) === Math.floor(next.getTime() / 60000) ? previous : next);
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [colorMode, setColorMode] = useState<"status" | "student" | "instrument">("status");
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -130,6 +145,12 @@ export default function SchedulePage() {
   // MUSart calendar hours: 13:00 to 22:00; do not alter studio settings.
   const businessStart = 13;
   const businessEnd = 22;
+  const nowHour = now ? getHours(now) : -1;
+  const nowOffset = now ? getMinutes(now) / 60 * WEEK_HOUR_HEIGHT : 0;
+  const showNowLine = now !== null && viewMode === "week"
+    && isSameDay(startOfWeek(now, { weekStartsOn: 1 }), weekStart)
+    && nowHour >= businessStart && nowHour < businessEnd;
+  const nowLabel = now ? format(now, "HH:mm") : "";
 
   // Resolve the teacher by name rather than relying on a fixed database ID.
   const preferredTeacherId = teachers.find((teacher: any) =>
@@ -792,7 +813,7 @@ export default function SchedulePage() {
                  <col className="w-[52px] sm:w-[72px]" />
                  {weekDays.map((day) => <col key={day.toISOString()} />)}
                </colgroup>
-              <thead className="bg-slate-200 sticky top-0 z-20" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
+              <thead className="bg-slate-200 sticky top-0 z-40" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                 <tr>
                   <th className="px-1 h-14 py-1 align-middle text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest z-30 bg-slate-200 border-r border-b border-slate-300/60" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                     {tr('time')}
@@ -822,7 +843,13 @@ export default function SchedulePage() {
                   <tr key={hour} className={`group h-[84px] ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}>
                     <td className="h-[84px] p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 z-10 text-center align-top" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                       <div className="relative h-[84px]">
-                        <span className="absolute inset-x-0 top-1">{formatGridHour(hour)}</span>
+                        <span className={`absolute inset-x-0 top-1 ${showNowLine && ((hour === nowHour && nowOffset < 22) || (hour === nowHour + 1 && nowOffset > WEEK_HOUR_HEIGHT - 12)) ? "invisible" : ""}`}>{formatGridHour(hour)}</span>
+                        {showNowLine && hour === nowHour && (
+                          <>
+                            <div aria-hidden="true" className="no-print pointer-events-none absolute left-0 -right-px z-30 h-0.5 bg-red-600" style={{ top: nowOffset }} />
+                            <span className="no-print pointer-events-none absolute left-1 z-30 -translate-y-1/2 rounded bg-red-600 px-1 py-0.5 text-[10px] sm:text-xs font-bold leading-none tabular-nums text-white" style={{ top: hour === businessStart ? Math.max(8, nowOffset) : nowOffset }}>{nowLabel}</span>
+                          </>
+                        )}
                       </div>
                     </td>
                     {weekDays.map((day, dayIdx) => {
@@ -848,6 +875,9 @@ export default function SchedulePage() {
                           className={`h-[84px] p-0 align-top border-b border-slate-200/70 transition-colors hover:bg-indigo-50/40 ${dayIdx < 6 ? "border-r border-slate-200/70" : ""} ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}
                         >
                           <div className="relative h-[84px] overflow-visible">
+                              {showNowLine && hour === nowHour && (
+                                <div aria-hidden="true" className="no-print pointer-events-none absolute left-0 -right-px z-30 h-0.5 bg-red-600" style={{ top: nowOffset }} />
+                              )}
                               {slotLessons.map((lesson: any) => (
                                 <div
                                   key={lesson.id}
@@ -1058,6 +1088,19 @@ export default function SchedulePage() {
 
       {/* Calendar actions, visible in the first viewport */}
       <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 shrink-0 no-print">
+          {["admin", "teacher", "student"].includes(currentUser?.role || "") && (
+            <Button
+              onClick={() => {
+                resetBooking();
+                setShowBookingModal(true);
+              }}
+              size="sm"
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              {tr('newBooking')}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -1110,26 +1153,6 @@ export default function SchedulePage() {
           </Button>
       </div>
       </section>
-
-      {/* Additional actions below the first viewport */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 no-print">
-        <div className="space-y-2">
-          <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{tr('schedule')}</h1>
-          <p className="text-gray-500 font-medium max-w-lg">{tr('orchestrateYourWeeklyLessonCalendar')}</p>
-        </div>
-          {["admin", "teacher", "student"].includes(currentUser?.role || "") && (
-            <Button
-              onClick={() => {
-                resetBooking();
-                setShowBookingModal(true);
-              }}
-              className="gap-2 w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4" />
-              {tr('newBooking')}
-            </Button>
-          )}
-      </header>
 
       {icloudIssues.length > 0 && (
         <section role="alert" className="no-print rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
