@@ -106,6 +106,7 @@ class Lesson(models.Model):
     teaching_group = models.ForeignKey("core.TeachingGroup", null=True, blank=True,
         on_delete=models.PROTECT, related_name="lessons")
     group_name_snapshot = models.CharField(max_length=200, blank=True)
+    group_ha_zone = models.CharField(max_length=255, blank=True)
 
     # Lesson details
     lesson_type = models.CharField(max_length=20, choices=LESSON_TYPE_CHOICES, default="private")
@@ -452,6 +453,7 @@ class ICloudCalendarSeries(models.Model):
     remote_url = models.URLField(max_length=2000, blank=True)
     ical_data = models.TextField(blank=True)
     remote_hash = models.CharField(max_length=64, blank=True)
+    group_booking = models.JSONField(default=dict, blank=True)
     title = models.CharField(max_length=500, blank=True)
     location = models.CharField(max_length=500, blank=True)
     student = models.ForeignKey(
