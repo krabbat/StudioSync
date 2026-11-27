@@ -1,6 +1,7 @@
 from django.db.models import Q
 from rest_framework import serializers
 from apps.core.tenancy import studio_for_request
+from apps.core.international_email import InternationalEmailField
 
 from apps.core.models import Family, Student, User
 
@@ -38,6 +39,7 @@ class FamilySerializer(serializers.ModelSerializer):
     primary_parent_details = ParentSerializer(source="primary_parent", read_only=True)
     secondary_parent_details = ParentSerializer(source="secondary_parent", read_only=True)
     students = FamilyMemberSerializer(many=True, read_only=True)
+    billing_email = InternationalEmailField(required=False, allow_blank=True)
     display_name = serializers.CharField(source="__str__", read_only=True)
 
     class Meta:
@@ -84,7 +86,7 @@ class FamilySerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Ungültige Ansprechpartnerdaten.")
             clean = {}
             for key in ("name", "first_name", "last_name", "relation", "email", "phone"):
-                field = serializers.EmailField(allow_blank=True, max_length=254) if key == "email" else serializers.CharField(allow_blank=True, max_length=200)
+                field = InternationalEmailField(allow_blank=True) if key == "email" else serializers.CharField(allow_blank=True, max_length=200)
                 clean[key] = field.run_validation(entry.get(key, ""))
             if not (clean["first_name"] or clean["last_name"]):
                 parts = clean["name"].split(maxsplit=1)
