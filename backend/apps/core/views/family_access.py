@@ -272,7 +272,7 @@ class FamilyPortalStudentView(APIView):
         account = lesson_account_response(student)
         # Only customer-facing totals, not private correction notes or tracker diagnostics.
         summary = {**account.get("summary",{}), "quota":account.get("quota",44)} if account.get("available") else None
-        lessons = Lesson.objects.filter(student=student,studio=student.studio).order_by("-scheduled_start")[:100]
+        lessons = Lesson.objects.filter(studio=student.studio).filter(Q(student=student)|Q(participants__student=student)).distinct().order_by("-scheduled_start")[:100]
         invoices = student_invoices(student)[:100]
         resources = allowed_resources(student).order_by("title")[:200]
         return Response({"id":str(student.pk),"name":student.user.get_full_name(),
