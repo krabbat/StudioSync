@@ -7,7 +7,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.core.models import Family, Student, Teacher, TeachingContract
+from apps.core.models import Family, FamilyAccess, Student, Teacher, TeachingContract
 from apps.core.tenancy import studio_for_request, studios_for_request
 from apps.students.serializers import (
     StudentCreateUpdateSerializer,
@@ -286,7 +286,7 @@ class FamilyViewSet(viewsets.ModelViewSet):
             "primary_parent", "secondary_parent"
         ).prefetch_related("students__user", "students__teaching_contract").filter(studio__in=studios_for_request(self.request)).order_by("name", "id")
         if user.role == "admin":
-            return queryset
+            return queryset.filter(archived_at__isnull=True)
         # Expanded profiles contain private billing and contact data. Only admins
         # may access this management API; existing account relationships remain intact.
         return queryset.none()
@@ -363,10 +363,29 @@ class FamilyViewSet(viewsets.ModelViewSet):
         selected = [s for s in rows if s.pk in ids]
         if len(selected) != len(ids) or any(s.family_id not in (None, family.pk) for s in selected):
             raise ValidationError({"student_ids": "Schüler gehört einem anderen Studio oder einer anderen Familie an."})
+        removed = list(Student.objects.filter(family=family).exclude(pk__in=ids))
+        for student in removed:
+            for grant in FamilyAccess.objects.filter(family=family, students=student):
+                grant.students.remove(student)
+            FamilyAccess.objects.filter(family=family,user_id=student.user_id).delete()
         Student.objects.filter(family=family).exclude(pk__in=ids).update(family=None)
         Student.objects.filter(pk__in=ids, studio=family.studio).update(family=family)
         return Response(self.get_serializer(Family.objects.get(pk=family.pk)).data)
 
+    @action(detail=True, methods=["post"], url_path="archive")
+    @transaction.atomic
+    def archive(self, request, pk=None):
+        self._require_manager()
+        from django.utils import timezone
+        family = Family.objects.select_for_update().get(pk=self.get_object().pk)
+        family.access_grants.all().delete()
+        family.students.update(family=None)
+        family.primary_parent = None
+        family.secondary_parent = None
+        family.archived_at = timezone.now()
+        family.save(update_fields=["primary_parent","secondary_parent","archived_at","updated_at"])
+        return Response(status=204)
+
     def destroy(self, request, *args, **kwargs):
         self._require_manager()
-        raise ValidationError("Familien können in dieser Ausbaustufe nicht gelöscht werden.")
+        raise ValidationError({"code":"archive_required"})
