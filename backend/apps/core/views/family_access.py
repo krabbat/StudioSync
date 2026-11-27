@@ -273,6 +273,10 @@ class FamilyPortalStudentView(APIView):
         # Only customer-facing totals, not private correction notes or tracker diagnostics.
         summary = {**account.get("summary",{}), "quota":account.get("quota",44)} if account.get("available") else None
         lessons = Lesson.objects.filter(studio=student.studio).filter(Q(student=student)|Q(participants__student=student)).distinct().order_by("-scheduled_start")[:100]
+        group_statuses = dict(student.group_participations.values_list("lesson_id","status"))
+        def individual_status(lesson):
+            value=group_statuses.get(lesson.pk,"inherit")
+            return lesson.status if value=="inherit" else "cancelled" if value in ("student_cancelled","teacher_cancelled") else value
         invoices = student_invoices(student)[:100]
         resources = allowed_resources(student).order_by("title")[:200]
         return Response({"id":str(student.pk),"name":student.user.get_full_name(),
@@ -281,7 +285,7 @@ class FamilyPortalStudentView(APIView):
             "address":[student.address_line1,student.postal_code,student.city],
             "contract":TeachingContractSerializer(contract).data if contract else None,
             "summary":summary,
-            "lessons":[{"id":str(l.pk),"start":l.scheduled_start,"end":l.scheduled_end,"status":l.status} for l in lessons],
+            "lessons":[{"id":str(l.pk),"start":l.scheduled_start,"end":l.scheduled_end,"status":individual_status(l)} for l in lessons],
             "invoices":[invoice_share(i,student) for i in invoices],
             "resources":[{"id":str(r.pk),"title":r.title,"has_file":bool(r.file),"url":r.external_url} for r in resources]})
 
