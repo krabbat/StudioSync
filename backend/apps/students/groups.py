@@ -17,7 +17,7 @@ class TeachingGroupSerializer(serializers.ModelSerializer):
         fields = ["id","name","members","student_ids"]
 
     def get_members(self, obj):
-        return [{"id":str(s.pk),"name":s.user.get_full_name(),"is_active":s.is_active}
+        return [{"id":str(s.pk),"name":s.user.get_full_name(),"first_name":s.user.first_name,"instrument":s.instrument,"is_active":s.is_active}
                 for s in obj.members.select_related("user").order_by("user__last_name","user__first_name")]
 
     def validate_student_ids(self, ids):
