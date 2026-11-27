@@ -18,13 +18,13 @@ from django.db.models import Q
 from django.utils import timezone
 from icalendar import Calendar, Event
 
-from apps.core.models import Student, Teacher, User
+from apps.core.models import Student, Teacher, User, Family, TeachingGroup
 from apps.core.views.icloud_calendar import (
     ICloudSetupError, _allowed_calendar_url, _connect, _credentials, _discover,
     _settings,
 )
 from apps.lessons.models import (
-    ICloudCalendarOccurrence, ICloudCalendarSeries, Lesson,
+    ICloudCalendarOccurrence, ICloudCalendarSeries, Lesson, LessonParticipant,
 )
 
 WINDOW_BEFORE = 35
@@ -65,7 +65,33 @@ def _lesson_signature(lesson):
     # fields does not make every old appointment look locally modified.
     if lesson.guest_name or lesson.guest_address:
         values.extend([lesson.guest_name or "", lesson.guest_address or ""])
+    if lesson.teaching_family_id or lesson.teaching_group_id:
+        values.extend([str(lesson.teaching_family_id or ""), str(lesson.teaching_group_id or ""),
+                       lesson.group_ha_zone, lesson.group_name_snapshot])
     return _hash(json.dumps(values, ensure_ascii=False))
+
+
+def group_snapshot(lesson):
+    if not (lesson.teaching_family_id or lesson.teaching_group_id):
+        return {}
+    return {"family":str(lesson.teaching_family_id or ""), "group":str(lesson.teaching_group_id or ""),
+            "name":lesson.group_name_snapshot, "zone":lesson.group_ha_zone,
+            "members":[{"id":str(p.student_id),"name":p.name_snapshot} for p in lesson.participants.all()]}
+
+
+def group_fields(series):
+    booking = series.group_booking
+    if not booking:
+        return {}
+    family = Family.objects.filter(pk=booking["family"],studio=series.studio).first() if booking["family"] else None
+    group = TeachingGroup.objects.filter(pk=booking["group"],studio=series.studio).first() if booking["group"] else None
+    if bool(family) == bool(group):
+        raise ICloudSetupError("Ungültige Gruppen-Zuordnung.")
+    ids = [m["id"] for m in booking["members"]]
+    if len(ids)<2 or Student.objects.filter(studio=series.studio,pk__in=ids).count()!=len(ids):
+        raise ICloudSetupError("Ungültige Gruppen-Teilnehmerliste.")
+    return {"teaching_family":family,"teaching_group":group,"group_name_snapshot":booking["name"],
+            "group_ha_zone":booking["zone"],"lesson_type":"group"}
 
 
 def _master_and_overrides(content):
@@ -181,7 +207,7 @@ def _resolve_student(series, master):
     return _student_from_title(series.studio, series.title)
 
 
-def _conflict(lesson, student, teacher, start, end):
+def _conflict(lesson, student, teacher, start, end, participant_ids=()):
     """Return the actual blocking lesson, not only a boolean.
 
     Any overlapping lesson with the same teacher OR student is a collision.
@@ -190,7 +216,7 @@ def _conflict(lesson, student, teacher, start, end):
     overlapping = Lesson.objects.filter(
         studio=teacher.studio, status__in=["scheduled", "in_progress"],
         scheduled_start__lt=end, scheduled_end__gt=start,
-    ).filter(Q(teacher=teacher) | (Q(student=student) if student else Q(pk__isnull=True)))
+    ).filter(Q(teacher=teacher) | (Q(student=student)|Q(participants__student=student) if student else Q(pk__isnull=True)) | Q(student_id__in=participant_ids) | Q(participants__student_id__in=participant_ids)).distinct()
     if lesson is not None:
         overlapping = overlapping.exclude(pk=lesson.pk)
     return overlapping.select_related(
@@ -315,12 +341,19 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         _raw(master.get("LOCATION", "")).strip()
         or _raw(master.get("X-STUDIOSYNC-GUEST-ADDRESS", "")).strip()
     )[:500]
-    if guest_name:
+    grouped = bool(series.group_booking)
+    if not grouped and master.get("X-STUDIOSYNC-GROUP-BOOKING"):
+        _set_error(series, "Gruppentermin ohne lokale Zuordnung; bitte in StudioSync prüfen.")
+        stats["unassigned"] += 1
+        return series
+    fields = group_fields(series) if grouped else {}
+    participant_ids = [m["id"] for m in series.group_booking.get("members", [])]
+    if grouped or guest_name:
         series.student = None
     elif not series.student_id:
         series.student = _resolve_student(series, master)
     series.save()
-    if (not series.student_id and not guest_name) or not series.teacher_id:
+    if (not series.student_id and not guest_name and not grouped) or not series.teacher_id:
         _set_error(series, "Schüler zuordnen" if not series.student_id and not guest_name else "Keine Lehrkraft vorhanden")
         stats["unassigned"] += 1
         return series
@@ -357,14 +390,15 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             continue
         if not lesson and not entry["cancelled"]:
             # Attach an existing local lesson before creating a new one.
-            matching = Lesson.objects.filter(
+            matching = None if grouped else Lesson.objects.filter(
                 studio=studio, student=series.student, teacher=series.teacher,
+                teaching_family__isnull=True, teaching_group__isnull=True,
                 guest_name=guest_name, scheduled_start=start, scheduled_end=end,
             ).exclude(icloud_occurrence__isnull=False).first()
             if matching:
                 lesson = matching
             else:
-                blocking = _conflict(None, series.student, series.teacher, start, end)
+                blocking = _conflict(None, series.student, series.teacher, start, end, participant_ids)
                 if blocking:
                     collisions.append(_collision_detail(series, entry, blocking))
                     stats["conflicts"] += 1
@@ -374,10 +408,15 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                     guest_name=guest_name, guest_address=guest_address,
                     scheduled_start=start, scheduled_end=end, status="scheduled",
                     location=entry["location"][:200], summary=entry["description"][:5000],
-                    lesson_type="private",
+                    **(fields if grouped else {"lesson_type":"private"}),
                 )
                 # Never call save(): that would send one email per imported lesson.
-                Lesson.objects.bulk_create([lesson])
+                with transaction.atomic():
+                    Lesson.objects.bulk_create([lesson])
+                    if grouped:
+                        LessonParticipant.objects.bulk_create([LessonParticipant(lesson=lesson,student_id=m["id"],name_snapshot=m["name"]) for m in series.group_booking["members"]])
+                    link.lesson=lesson
+                    link.save()
                 stats["imported"] += 1
             link.lesson = lesson
         if lesson:
@@ -390,7 +429,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                 link.synced_signature = _lesson_signature(lesson)
             else:
                 blocking = (
-                    _conflict(lesson, series.student, series.teacher, start, end)
+                    _conflict(lesson, series.student, series.teacher, start, end, list(lesson.participants.values_list("student_id",flat=True)) if grouped else ())
                     if not entry["cancelled"] else None
                 )
                 if blocking:
@@ -437,12 +476,14 @@ def _ical_for_lesson(lesson):
     event.add("dtstamp", timezone.now())
     event.add("dtstart", lesson.scheduled_start.astimezone(LOCAL_TZ))
     event.add("dtend", lesson.scheduled_end.astimezone(LOCAL_TZ))
-    event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else (lesson.guest_name or "MUSart Unterricht"))
+    event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else (lesson.group_name_snapshot or lesson.guest_name or "MUSart Unterricht"))
     event.add("location", lesson.guest_address or lesson.location or "")
     if lesson.guest_name and not lesson.student_id:
         event.add("X-STUDIOSYNC-GUEST-NAME", lesson.guest_name)
         if lesson.guest_address:
             event.add("X-STUDIOSYNC-GUEST-ADDRESS", lesson.guest_address)
+    if lesson.teaching_family_id or lesson.teaching_group_id:
+        event.add("X-STUDIOSYNC-GROUP-BOOKING", "1")
     if lesson.summary:
         event.add("description", lesson.summary)
     if lesson.student_id:
@@ -672,7 +713,7 @@ def _sync_icloud_user_impl(user):
         local_lessons = Lesson.objects.filter(
             studio=studio, scheduled_start__gte=low, scheduled_start__lte=high,
         ).filter(
-            Q(student__isnull=False) | ~Q(guest_name="")
+            Q(student__isnull=False) | ~Q(guest_name="") | Q(teaching_family__isnull=False) | Q(teaching_group__isnull=False)
         ).exclude(icloud_occurrence__isnull=False).select_related("student__user", "teacher")
         for lesson in local_lessons:
             if lesson.status == "cancelled":
@@ -694,6 +735,7 @@ def _sync_icloud_user_impl(user):
                     defaults={
                         "studio": studio, "student": lesson.student,
                         "teacher": lesson.teacher, "title": str(master.get("SUMMARY", "")),
+                        "group_booking":group_snapshot(lesson),
                     },
                 )
                 record.remote_url = str(created.url)
@@ -945,11 +987,13 @@ def permanently_delete_lesson(lesson):
                     ])
 
 
-def create_icloud_series(user, *, student, teacher, start, end, frequency, until=None, summary=""):
+def create_icloud_series(user, *, student, teacher, start, end, frequency, until=None, summary="", group_booking=None):
     """Create a real VEVENT recurrence in Apple and import its instances."""
     if frequency not in {"weekly", "biweekly", "monthly"}:
         raise ICloudSetupError("Ungültige Wiederholungsregel.")
-    if student.studio_id != teacher.studio_id or student.studio.owner_id != user.id:
+    group_booking = group_booking or {}
+    studio = teacher.studio
+    if studio.owner_id != user.id or (student and student.studio_id != studio.pk) or (not student and not group_booking):
         raise ICloudSetupError("Schüler und Lehrkraft müssen zum eigenen Studio gehören.")
     if end <= start:
         raise ICloudSetupError("Das Terminende muss nach dem Beginn liegen.")
@@ -964,10 +1008,13 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
     event.add("dtstamp", timezone.now())
     event.add("dtstart", start.astimezone(LOCAL_TZ))
     event.add("dtend", end.astimezone(LOCAL_TZ))
-    event.add("summary", student.user.get_full_name())
+    event.add("summary", group_booking["name"] if group_booking else student.user.get_full_name())
     if summary:
         event.add("description", str(summary)[:5000])
-    event.add("X-STUDIOSYNC-STUDENT-ID", str(student.id))
+    if group_booking:
+        event.add("X-STUDIOSYNC-GROUP-BOOKING", "1")
+    else:
+        event.add("X-STUDIOSYNC-STUDENT-ID", str(student.id))
     event.add("X-STUDIOSYNC-TEACHER-ID", str(teacher.id))
     values = {"freq": "monthly" if frequency == "monthly" else "weekly"}
     if frequency == "biweekly":
@@ -983,7 +1030,11 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
         saved = cal.save_event(ical.to_ical().decode("utf-8"))
         saved.load()
         stats = {"imported": 0, "exported": 0, "cancelled": 0, "unassigned": 0, "conflicts": 0}
-        _import_series(user, student.studio, calendar_url, saved, stats)
+        if group_booking:
+            _, master, _ = _master_and_overrides(_raw(saved.data))
+            ICloudCalendarSeries.objects.get_or_create(user=user,calendar_url=calendar_url,uid=str(master["UID"]),
+                defaults={"studio":studio,"teacher":teacher,"remote_url":str(saved.url),"group_booking":group_booking})
+        _import_series(user, studio, calendar_url, saved, stats)
     return stats
 
 
