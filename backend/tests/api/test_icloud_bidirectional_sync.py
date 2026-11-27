@@ -414,3 +414,30 @@ def test_apple_group_recurrence_override_has_own_participants(admin_user, studio
     _push_changes(series, remote, stats)
     changed = [e for e in Calendar.from_ical(remote.data).walk("VEVENT") if e.get("RECURRENCE-ID")][0]
     assert str(changed["DESCRIPTION"]) == "Gitarre\nAnna Maria, Tom\nNeuer Kommentar"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("family", [True, False])
+@pytest.mark.parametrize("prefixed", [True, False])
+def test_group_title_prefix_for_existing_and_apple_created_appointments(admin_user, studio, student, teacher, family, prefixed):
+    from apps.lessons.group_titles import group_title
+    from apps.lessons.icloud_sync import _import_series, _ical_for_lesson
+    from apps.lessons.serializers import LessonListSerializer
+    source, _ = _apple_group_fixture(studio, student, family=family)
+    source.name = "Koßagk" if family else "Minis"
+    source.save(update_fields=["name"])
+    expected = "Familie Koßagk" if family else "Gruppe Minis"
+    title = expected if prefixed else source.name
+    remote = _remote(_apple_group_event(timezone.now()+timedelta(days=3), title, "Gitarre\nAnna Maria, Max"))
+    stats = {"imported":0,"exported":0,"cancelled":0,"unassigned":0,"conflicts":0}
+    series = _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    assert not series.last_error, series.last_error
+    lesson = Lesson.objects.get()
+    assert LessonListSerializer(lesson).data["student_name"] == expected
+    assert LessonListSerializer(lesson).data["group_name_snapshot"] == expected
+    event = Calendar.from_ical(_ical_for_lesson(lesson)).walk("VEVENT")[0]
+    assert str(event["SUMMARY"]) == expected
+    assert group_title(expected, family=family) == expected
+    assert source.name == ("Koßagk" if family else "Minis")
+    _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    assert Lesson.objects.count() == 1
