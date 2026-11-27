@@ -67,6 +67,7 @@ export default function LessonBookingDialog({
   onSubmit: handleBooking, onDelete, students, teachers, bands,
   preferredTeacherId, use24Hour = true,
 }: LessonBookingDialogProps) {
+  const { currentUser } = useUser();
   const tr = useTranslations("Schedule");
   const groupT = useTranslations("TeachingGroups");
   const [groupChoices,setGroupChoices]=useState<{id:string;name:string;members:{id:string;name:string;is_active?:boolean}[];address?:string}[]>([]);
@@ -80,7 +81,6 @@ export default function LessonBookingDialog({
     api.get("/core/home-assistant/connection/").then(({data})=>{if(active){setZones((data.zones||[]).map((z:{name:string})=>z.name).filter((n:string,i:number,a:string[])=>a.indexOf(n)===i));setZonesFailed(!data.connected)}}).catch(()=>{if(active)setZonesFailed(true)});
     return()=>{active=false};
   },[open,bookingMode,newBooking.group_source,currentUser?.role]);
-  const { currentUser } = useUser();
   const teacherManuallyChanged = useRef(false);
   const durationManuallyChanged = useRef(false);
 
