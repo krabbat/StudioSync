@@ -302,6 +302,7 @@ class FamilyAccess(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="family_access_grants")
     students = models.ManyToManyField("Student", blank=True, related_name="family_access_grants")
     can_view_communication = models.BooleanField(default=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
