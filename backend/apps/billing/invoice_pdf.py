@@ -88,6 +88,12 @@ def invoice_snapshot(invoice):
     zip_code = profile.recipient_postal_code if override else (student.postal_code if student else "")
     city = profile.recipient_city if override else (student.city if student else "")
 
+    family = invoice.family if getattr(invoice, "family_id", None) else None
+    if family:
+        recipient_name = family.billing_recipient_name.strip()
+        email = family.billing_email.strip()
+        street, zip_code, city = family.address_line1, family.postal_code, family.city
+        payment_method = family.payment_method
     studio_settings = studio.settings if isinstance(studio.settings, dict) else {}
     period_end = invoice.service_month_end or invoice.service_month
     return {
@@ -150,7 +156,7 @@ def missing_billing_fields(invoice, data):
     for key, label in required.items():
         if not str(data.get(key) or "").strip():
             missing.append(label)
-    if not invoice.student:
+    if not invoice.student and not getattr(invoice, "family_id", None):
         missing.append("Schülerzuordnung")
     if not data["items"]:
         missing.append("Rechnungsposition")
