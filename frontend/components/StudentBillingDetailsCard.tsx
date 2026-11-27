@@ -240,7 +240,7 @@ export default function StudentBillingDetailsCard({
                                     </div>
                                     <input
                                         id="billing-recipient-email"
-                                        type="email" maxLength={254}
+                                        type="text" inputMode="email" maxLength={254}
                                         value={profile.recipient_email}
                                         onChange={event => setField('recipient_email', event.target.value)}
                                         placeholder="rechnung@beispiel.de"
