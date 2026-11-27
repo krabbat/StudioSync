@@ -3,6 +3,7 @@ from datetime import timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 import logging
+import secrets
 
 from django.db import transaction
 from django.db.models import Q
@@ -38,8 +39,8 @@ class BlockPlanSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Bitte zuerst Barzahlung in den Rechnungsdaten hinterlegen.")
             if student.family_id and not student.family.individual_billing:
                 raise serializers.ValidationError("Blockabrechnung ist derzeit nur mit Einzelabrechnung möglich.")
-            if self.instance and self.instance.units.exists() and attrs.get("starts_on") != self.instance.starts_on:
-                raise serializers.ValidationError("Der Abrechnungsbeginn eines bereits genutzten Kontos darf nicht verändert werden.")
+        if self.instance and self.instance.units.exists() and attrs.get("starts_on") != self.instance.starts_on:
+            raise serializers.ValidationError("Der Abrechnungsbeginn eines bereits genutzten Kontos darf nicht verändert werden.")
         return attrs
 
 
@@ -132,6 +133,7 @@ def generate_blocks(plan_id):
         today = berlin_today()
         invoice = Invoice.objects.create(
             studio_id=plan.student.studio_id, student=plan.student,
+            invoice_number=("TEST-BLOCK-" + secrets.token_hex(10)) if plan.test_only else "",
             issue_date=today, due_date=today + timedelta(days=7), status="draft",
             notes=("TESTRECHNUNG – keine Zahlungsaufforderung. " if plan.test_only else "") + "Unterricht am " + ", ".join(d.strftime("%d.%m.%Y") for d in dates),
         )
