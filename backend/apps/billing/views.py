@@ -16,6 +16,7 @@ from apps.core.tenancy import studio_for_request, studios_for_request
 
 from .models import Invoice, Payment, Subscription, SubscriptionPlan
 from .family_billing import existing_period, generate_month
+from .family_payments import book_allocated_payment
 from .payment_status import MANUAL_PAYMENT_NOTE, berlin_today, open_amount
 from .invoice_delivery import InvoiceDeliveryError, send_invoice, invoice_pdf_bytes
 from .serializers import InvoiceSerializer, SubscriptionPlanSerializer, SubscriptionSerializer
@@ -168,6 +169,17 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             "already_sent": bool(invoice.sent_at),
         })
 
+    @action(detail=True, methods=["post"], url_path="book-payment")
+    def book_payment(self, request, pk=None):
+        if request.user.role != "admin":
+            raise PermissionDenied()
+        invoice = self.get_object()
+        with transaction.atomic():
+            invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+            book_allocated_payment(invoice, request.data.get("allocations"),
+                                   request.data.get("payment_method"), request.user)
+        return Response(self.get_serializer(invoice).data)
+
     @action(detail=True, methods=["post"], url_path="mark-paid")
     def mark_paid(self, request, pk=None):
         """Manually book payment for the remaining invoice amount."""
@@ -182,6 +194,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             if remaining > 0:
                 profile = getattr(invoice.student, "billing_profile", None) if invoice.student else None
                 method = invoice.family.payment_method if invoice.family_id else (profile.payment_method if profile else "bank_transfer")
+                if invoice.tuition_months.exists():
+                    book_allocated_payment(invoice, None, method, request.user, manual_full=True)
+                    return Response(self.get_serializer(invoice).data)
                 Payment.objects.create(
                     invoice=invoice,
                     amount=remaining,
