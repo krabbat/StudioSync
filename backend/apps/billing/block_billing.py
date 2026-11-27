@@ -1,5 +1,5 @@
 """Block billing based only on completed calendar units, independent of quotas."""
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 import logging
@@ -39,8 +39,16 @@ class BlockPlanSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Bitte zuerst Barzahlung in den Rechnungsdaten hinterlegen.")
             if student.family_id and not student.family.individual_billing:
                 raise serializers.ValidationError("Blockabrechnung ist derzeit nur mit Einzelabrechnung möglich.")
-        if self.instance and self.instance.units.exists() and attrs.get("starts_on") != self.instance.starts_on:
-            raise serializers.ValidationError("Der Abrechnungsbeginn eines bereits genutzten Kontos darf nicht verändert werden.")
+        if self.instance and self.instance.units.exists():
+            switching_live = self.instance.test_only and not attrs.get("test_only", self.instance.test_only)
+            if switching_live:
+                last_test = self.instance.units.filter(test_only=True).order_by("-lesson_date").first()
+                first_live = max(berlin_today(), last_test.lesson_date + timedelta(days=1)) if last_test else berlin_today()
+                if attrs.get("starts_on", self.instance.starts_on) < first_live:
+                    raise serializers.ValidationError("Für den Produktivstart muss der Abrechnungsbeginn nach den Teststunden liegen.")
+            elif (attrs.get("starts_on", self.instance.starts_on) != self.instance.starts_on
+                  or attrs.get("test_only", self.instance.test_only) != self.instance.test_only):
+                raise serializers.ValidationError("Der Abrechnungsbeginn oder Testmodus eines bereits genutzten Kontos darf nicht verändert werden.")
         return attrs
 
 
@@ -55,7 +63,7 @@ def completed_lessons(plan):
     """One completed appointment equals one UE, including completed group participation."""
     return Lesson.objects.filter(
         studio_id=plan.student.studio_id,
-        scheduled_start__date__gte=plan.starts_on,
+        scheduled_start__gte=datetime.combine(plan.starts_on, time.min, tzinfo=BERLIN),
         scheduled_end__lte=timezone.now(),
     ).filter(
         Q(student=plan.student, status="completed", lesson_type__in=["private", "makeup"])
@@ -65,14 +73,14 @@ def completed_lessons(plan):
 
 
 def pending_lessons(plan):
-    return completed_lessons(plan).exclude(pk__in=plan.units.values("lesson_id"))
+    return completed_lessons(plan).exclude(pk__in=plan.units.filter(test_only=plan.test_only).values("lesson_id"))
 
 
 def block_status(student):
     plan = BlockBillingPlan.objects.filter(student=student).first()
     if not plan:
         return {"plan": None, "open_units": 0, "unbilled_units": 0, "bills": []}
-    outstanding = plan.units.filter(reset_at__isnull=True, bill__isnull=False).exclude(
+    outstanding = plan.units.filter(test_only=plan.test_only, reset_at__isnull=True, bill__isnull=False).exclude(
         bill__invoice__status="paid",
     ).count()
     unbilled = pending_lessons(plan).count()
@@ -84,7 +92,7 @@ def block_status(student):
             {"id": str(b.invoice_id), "number": b.invoice.invoice_number,
              "status": b.invoice.status, "sent": bool(b.invoice.sent_at),
              "error": b.delivery_error, "attempted": bool(b.attempted_at)}
-            for b in plan.bills.select_related("invoice").order_by("-pk")[:20]
+            for b in plan.bills.filter(test_only=plan.test_only).select_related("invoice").order_by("-pk")[:20]
         ],
     }
 
@@ -107,10 +115,10 @@ def reset_block(student, actor):
         raise ValidationError("Keine aktive Blockabrechnung vorhanden.")
     now = timezone.now()
     # Do not erase invoices or pretend cash was received. Reset only the counter.
-    plan.units.filter(reset_at__isnull=True).exclude(bill__invoice__status="paid").update(
+    plan.units.filter(test_only=plan.test_only, reset_at__isnull=True).exclude(bill__invoice__status="paid").update(
         reset_at=now, reset_by=actor)
     BlockBillingUnit.objects.bulk_create([
-        BlockBillingUnit(plan=plan, lesson_id=lesson.pk,
+        BlockBillingUnit(plan=plan, test_only=plan.test_only, lesson_id=lesson.pk,
                          lesson_date=timezone.localtime(lesson.scheduled_start, BERLIN).date(),
                          reset_at=now, reset_by=actor)
         for lesson in pending_lessons(plan)
@@ -145,7 +153,7 @@ def generate_blocks(plan_id):
         invoice.calculate_totals()
         bill = BlockInvoice.objects.create(plan=plan, invoice=invoice, test_only=plan.test_only)
         BlockBillingUnit.objects.bulk_create([
-            BlockBillingUnit(plan=plan, lesson_id=item.pk, lesson_date=day, bill=bill)
+            BlockBillingUnit(plan=plan, test_only=plan.test_only, lesson_id=item.pk, lesson_date=day, bill=bill)
             for item, day in zip(chunk, dates)
         ])
         created.append(bill.pk)
@@ -157,7 +165,7 @@ def deliver_block(bill_id):
     # retry, never a blind automatic resend on every scheduler run.
     with transaction.atomic():
         bill = BlockInvoice.objects.select_for_update().select_related("plan", "invoice").get(pk=bill_id)
-        if bill.attempted_at or bill.invoice.sent_at or bill.invoice.status == "cancelled" or not eligible(bill.plan):
+        if bill.attempted_at or bill.invoice.sent_at or bill.invoice.status == "cancelled" or bill.test_only != bill.plan.test_only or not eligible(bill.plan):
             return False
         bill.attempted_at = timezone.now()
         bill.save(update_fields=["attempted_at"])
