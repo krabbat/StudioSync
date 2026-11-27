@@ -333,7 +333,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         defaults={"studio": studio, "remote_url": remote_url}
     )
     remote_hash = _hash(raw)
-    remote_is_unchanged = not made and remote_hash == series.remote_hash
+    remote_is_unchanged = not made and remote_hash == series.remote_hash and not series.last_error
     dirty = [
         entry for entry in series.occurrences.select_related("lesson")
         if entry.lesson and entry.synced_signature and
@@ -400,6 +400,16 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         fields = group_fields(series) if grouped else {}
         source = (fields.get("teaching_family") or fields.get("teaching_group")) if grouped else None
         structured_master = grouped and (series.group_booking.get("notes_format") or master.get("X-STUDIOSYNC-NOTES-FORMAT"))
+        if grouped and not structured_master:
+            # Legacy linked group events may receive the new notes directly
+            # in Apple. Adopt only a complete, unambiguously valid format.
+            try:
+                if normal(series.title) in {normal(str(source)), normal(series.group_booking["name"])}:
+                    booking, _ = parse_group_notes(source, _raw(master.get("DESCRIPTION", "")), series.location, series.group_booking)
+                    series.group_booking = booking
+                    structured_master = True
+            except ICloudSetupError:
+                pass
         if structured_master:
             if normal(series.title) != normal(series.group_booking["name"]) and normal(series.title) != normal(str(source)):
                 raise ICloudSetupError("Gruppenwechsel eines bestehenden Termins bitte in StudioSync prüfen.")
