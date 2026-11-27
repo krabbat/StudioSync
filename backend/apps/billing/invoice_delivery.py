@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from email.utils import formataddr
+from email.utils import formataddr, make_msgid
 
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.db import transaction
 from django.utils import timezone
 
 from apps.core.security import assert_public_host
-from apps.core.mail_outbound import _open_sent_folder, _save_sent_copy
+from apps.core.mail_outbound import _open_sent_folder, _save_sent_copy, _smtp_utf8_bytes
+from apps.core.international_email import validate_international_email
 from apps.core.mail_cache import invalidate_sent_folder
 import logging
 
@@ -84,12 +85,16 @@ def send_invoice(invoice_id, *, resend=False):
         pdf = bytes(invoice.pdf_document) if invoice.pdf_document else render_invoice_pdf(snapshot)
 
         from django.core.exceptions import ValidationError
-        from django.core.validators import validate_email
         try:
-            validate_email(snapshot["recipient_email"])
+            recipient_email = validate_international_email(snapshot["recipient_email"])
             if snapshot["recipient_email"].casefold().endswith(".invalid"):
                 raise ValidationError("invalid recipient")
-            validate_email(sender_email)
+            sender_email = validate_international_email(sender_email)
+            reply_to = snapshot.get('sender_email') or ''
+            if reply_to and reply_to != sender_email:
+                reply_to = validate_international_email(reply_to)
+            else:
+                reply_to = ''
         except ValidationError as exc:
             raise InvoiceDeliveryError("Die Rechnungs- oder Absender-E-Mail ist ungültig.") from exc
 
@@ -106,30 +111,66 @@ def send_invoice(invoice_id, *, resend=False):
             f"{intro}\n\n"
             f"Mit freundlichen Grüßen\n{snapshot.get('sender_name') or sender_name}\n"
         )
+        raw_message = None
         try:
-            email = EmailMultiAlternatives(
-                subject=subject,
-                body=body,
-                from_email=formataddr((sender_name, sender_email)),
-                to=[snapshot["recipient_email"]],
-                reply_to=(
-                    [snapshot["sender_email"]]
-                    if snapshot.get("sender_email")
-                    and snapshot["sender_email"] != sender_email
-                    else []
-                ),
-                connection=get_connection(
-                    backend="django.core.mail.backends.smtp.EmailBackend",
-                    **connection_args,
-                ),
-            )
-            email.attach(
-                f"MUSart-Rechnung-{invoice.invoice_number}.pdf",
-                pdf,
-                "application/pdf",
-            )
-            if email.send(fail_silently=False) != 1:
-                raise InvoiceDeliveryError("Der SMTP-Server hat den Versand nicht bestätigt.")
+            needs_utf8 = any(not address.rsplit("@", 1)[0].isascii()
+                             for address in (recipient_email, sender_email, reply_to) if address)
+            if needs_utf8:
+                # Use the same RFC 6532 message construction as ordinary
+                # StudioSync mail. Django's SMTP backend alone cannot send
+                # internationalized local parts correctly.
+                def envelope(address):
+                    local, domain = address.rsplit("@", 1)
+                    return local + "@" + domain.encode("idna").decode("ascii")
+                sender = envelope(sender_email)
+                recipient = envelope(recipient_email)
+                raw_message = _smtp_utf8_bytes(
+                    sender=sender, recipient=recipient, studio_name=sender_name,
+                    subject=subject, plain=body, html=None,
+                    attachments=[(f"MUSart-Rechnung-{invoice.invoice_number}.pdf", pdf, "application/pdf")],
+                    message_id=make_msgid(), reply_to=envelope(reply_to) if reply_to else None,
+                )
+                connection = get_connection(
+                    backend="django.core.mail.backends.smtp.EmailBackend", **connection_args)
+                email = None
+                try:
+                    connection.open()
+                    smtp = connection.connection
+                    if smtp is None or not smtp.has_extn("smtputf8"):
+                        raise InvoiceDeliveryError("SMTPUTF8 wird vom Mailserver nicht unterstützt.")
+                    refused = smtp.sendmail(sender, [recipient], raw_message,
+                        mail_options=("SMTPUTF8", "BODY=8BITMIME"))
+                    if refused:
+                        raise InvoiceDeliveryError("Der SMTP-Server hat den Versand nicht bestätigt.")
+                finally:
+                    try:
+                        connection.close()
+                    except Exception:
+                        LOG.warning("Closing invoice SMTP connection failed")
+            else:
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=body,
+                    from_email=formataddr((sender_name, sender_email)),
+                    to=[snapshot["recipient_email"]],
+                    reply_to=(
+                        [snapshot["sender_email"]]
+                        if snapshot.get("sender_email")
+                        and snapshot["sender_email"] != sender_email
+                        else []
+                    ),
+                    connection=get_connection(
+                        backend="django.core.mail.backends.smtp.EmailBackend",
+                        **connection_args,
+                    ),
+                )
+                email.attach(
+                    f"MUSart-Rechnung-{invoice.invoice_number}.pdf",
+                    pdf,
+                    "application/pdf",
+                )
+                if email.send(fail_silently=False) != 1:
+                    raise InvoiceDeliveryError("Der SMTP-Server hat den Versand nicht bestätigt.")
         except InvoiceDeliveryError:
             raise
         except Exception as exc:
@@ -150,7 +191,10 @@ def send_invoice(invoice_id, *, resend=False):
             sent_client = None
             try:
                 sent_client, sent_folder = _open_sent_folder(technical)
-                _save_sent_copy(sent_client, sent_folder, email)
+                if raw_message is not None:
+                    _save_sent_copy(sent_client, sent_folder, email, raw_message)
+                else:
+                    _save_sent_copy(sent_client, sent_folder, email)
                 invalidate_sent_folder(invoice.studio, invoice.studio.owner, technical)
             except Exception as exc:
                 LOG.warning("Invoice accepted by SMTP, but IMAP Sent copy failed (%s)",
