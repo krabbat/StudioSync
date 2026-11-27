@@ -22,6 +22,7 @@ export interface User {
     instrument?: string
     studio?: { id: string; name: string;[key: string]: any }
     student_profile?: { id: string;[key: string]: any }
+    family_access?: boolean
     teacher_profile?: { id: string; studio?: { id: string };[key: string]: any }
 }
 
