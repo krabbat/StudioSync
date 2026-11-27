@@ -1,10 +1,12 @@
 from rest_framework import serializers
+from apps.core.international_email import InternationalEmailField
 
 from .models import Invoice, InvoiceLineItem, Payment, PaymentMethod, SubscriptionPlan, Subscription, StudentBillingProfile
 
 
 class StudentBillingProfileSerializer(serializers.ModelSerializer):
     """Only explicit recipient details, never automatically copies student email."""
+    recipient_email = InternationalEmailField(required=False, allow_blank=True)
 
     class Meta:
         model = StudentBillingProfile
