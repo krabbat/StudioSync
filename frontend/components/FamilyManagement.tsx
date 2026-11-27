@@ -91,7 +91,7 @@ export default function FamilyManagement() {
     const importBillingData = () => {
         const selectedSource=billingSources.find(s=>s.id===importId)
         const b=selectedSource?.billing
-        if(!b)return
+        if(!selectedSource||!b)return
         setDraft(old=>old?{...old,billing_recipient_name:b.recipient_name||old.billing_recipient_name,billing_email:selectedSource.guardian?b.recipient_email:(b.recipient_email||old.billing_email),payment_method:selectedSource.guardian?old.payment_method:(b.payment_method||old.payment_method)}:old)
         toast.success(selectedSource.guardian&&!b.recipient_email?'Name übernommen. Bitte Rechnungs-E-Mail ergänzen und speichern.':'Rechnungsdaten übernommen. Bitte speichern.')
     }

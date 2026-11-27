@@ -120,7 +120,7 @@ def test_additional_guardians_persist_and_are_family_billing_candidates(authenti
     assert row["guardian_sources"][1]["billing"]["recipient_email"] == "max@example.org"
     assert row["guardian_sources"][2]["billing"]["recipient_email"] == ""
     assert authenticated_client.patch(endpoint, {"additional_guardians": [{"first_name": "Invalid"}]}, format="json").status_code == 400
-    assert authenticated_client.patch(endpoint, {"notes": "ignored"}, format="json").status_code == 200
+    assert authenticated_client.patch(endpoint, {"phone": "030123459"}, format="json").status_code == 200
     student.refresh_from_db()
     assert len(student.additional_guardians) == 2
     assert authenticated_client.patch(endpoint, {"additional_guardians": []}, format="json").status_code == 200
