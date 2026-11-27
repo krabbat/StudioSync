@@ -11,6 +11,15 @@ from apps.lessons.models import Lesson, LessonParticipant, LessonNote, LessonPla
 
 class GroupLessonReadMixin(serializers.Serializer):
     group_participants = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_status(self, obj):
+        request = self.context.get('request')
+        if request and request.user.role == 'student' and (obj.teaching_family_id or obj.teaching_group_id):
+            p = obj.participants.filter(student__user=request.user).first()
+            if p and p.status != 'inherit':
+                return 'cancelled' if p.status in ('student_cancelled','teacher_cancelled') else p.status
+        return obj.status
 
     def get_group_participants(self, obj):
         if not (obj.teaching_family_id or obj.teaching_group_id):
@@ -40,6 +49,9 @@ class LessonListSerializer(GroupLessonReadMixin, serializers.ModelSerializer):
 
     def get_student_address(self, obj):
         """Use the student or special appointment's actual address."""
+        if obj.teaching_family_id:
+            family=obj.teaching_family
+            return ", ".join(part for part in (family.address_line1, " ".join(v for v in (family.postal_code,family.city) if v)) if part)
         if not obj.student_id:
             return obj.guest_address or ""
         pupil = obj.student
