@@ -24,8 +24,9 @@ from apps.core.views.icloud_calendar import (
     _settings,
 )
 from apps.lessons.icloud_notes import (
-    common_instrument, format_notes, group_source, normal, parse_group_notes, single_notes,
+    common_instrument, format_notes, group_source, normal, parse_group_notes, single_notes, source_titles,
 )
+from apps.lessons.group_titles import group_title, lesson_group_title
 from apps.lessons.models import (
     ICloudCalendarOccurrence, ICloudCalendarSeries, Lesson, LessonParticipant,
 )
@@ -404,14 +405,14 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             # Legacy linked group events may receive the new notes directly
             # in Apple. Adopt only a complete, unambiguously valid format.
             try:
-                if normal(series.title) in {normal(str(source)), normal(series.group_booking["name"])}:
+                if normal(series.title) in source_titles(source, series.group_booking["name"]):
                     booking, _ = parse_group_notes(source, _raw(master.get("DESCRIPTION", "")), series.location, series.group_booking)
                     series.group_booking = booking
                     structured_master = True
             except ICloudSetupError:
                 pass
         if structured_master:
-            if normal(series.title) != normal(series.group_booking["name"]) and normal(series.title) != normal(str(source)):
+            if normal(series.title) not in source_titles(source, series.group_booking["name"]):
                 raise ICloudSetupError("Gruppenwechsel eines bestehenden Termins bitte in StudioSync prüfen.")
             booking, _ = parse_group_notes(source, _raw(master.get("DESCRIPTION", "")), series.location, series.group_booking)
             series.group_booking = booking
@@ -477,7 +478,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         summary = entry["description"]
         if grouped and (structured_master or entry.get("structured_notes")):
             try:
-                if normal(entry["title"]) not in {normal(series.title), normal(str(source)), normal(series.group_booking["name"])}:
+                if normal(entry["title"]) not in source_titles(source, series.group_booking["name"]) | {normal(series.title)}:
                     raise ICloudSetupError("Gruppentermin: Abweichender Titel einer Serieninstanz.")
                 previous = group_snapshot(lesson) if lesson else series.group_booking
                 entry_booking, summary = parse_group_notes(source, summary, entry["location"], previous)
@@ -588,7 +589,7 @@ def _ical_for_lesson(lesson):
     event.add("dtstamp", timezone.now())
     event.add("dtstart", lesson.scheduled_start.astimezone(LOCAL_TZ))
     event.add("dtend", lesson.scheduled_end.astimezone(LOCAL_TZ))
-    event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else (lesson.group_name_snapshot or lesson.guest_name or "MUSart Unterricht"))
+    event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else (lesson_group_title(lesson) or lesson.guest_name or "MUSart Unterricht"))
     event.add("location", lesson.guest_address or lesson.location or lesson.group_ha_zone or "")
     if lesson.guest_name and not lesson.student_id:
         event.add("X-STUDIOSYNC-GUEST-NAME", lesson.guest_name)
@@ -707,6 +708,8 @@ def _push_changes(series, remote, stats):
             _set_property(target, "DTSTART", lesson.scheduled_start.astimezone(LOCAL_TZ))
             _set_property(target, "DTEND", lesson.scheduled_end.astimezone(LOCAL_TZ))
             _set_property(target, "LOCATION", lesson.guest_address or lesson.location or lesson.group_ha_zone or "")
+            if lesson.teaching_family_id or lesson.teaching_group_id:
+                _set_property(target, "SUMMARY", lesson_group_title(lesson))
             description, structured = _description_for_lesson(lesson)
             _set_property(target, "DESCRIPTION", description)
             if structured:
@@ -1126,7 +1129,7 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
     event.add("dtstamp", timezone.now())
     event.add("dtstart", start.astimezone(LOCAL_TZ))
     event.add("dtend", end.astimezone(LOCAL_TZ))
-    event.add("summary", group_booking["name"] if group_booking else student.user.get_full_name())
+    event.add("summary", group_title(group_booking["name"], family=bool(group_booking.get("family"))) if group_booking else student.user.get_full_name())
     instrument = common_instrument(group_booking["members"]) if group_booking else student.instrument
     description = format_notes(instrument, str(summary)[:5000], group_booking["members"] if group_booking else None) if instrument else str(summary)[:5000]
     if description:
