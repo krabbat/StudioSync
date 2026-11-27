@@ -43,6 +43,7 @@ import { StudentGrowthChart } from "@/components/charts/StudentGrowthChart";
 import { AttendanceChart } from "@/components/charts/AttendanceChart";
 import { DashboardSkeleton } from "@/components/SkeletonLoader";
 import { useTranslations } from "next-intl";
+import FamilyPortalPage from "./family/page";
 import { useStudioFormatting } from "@/lib/useStudioFormatting";
 
 // --- Types ---
@@ -221,6 +222,12 @@ function SortableWidget({ widget, children, isEditing, onToggleVisibility }: Sor
 
 // --- Main Page Component ---
 export default function DashboardPage() {
+  const {currentUser}=useUser();
+  if(currentUser?.role==="parent") return <FamilyPortalPage/>;
+  return <StudioDashboardPage/>;
+}
+
+function StudioDashboardPage() {
   const t = useTranslations("Dashboard");
   const { money } = useStudioFormatting();
   const router = useRouter();
