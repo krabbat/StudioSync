@@ -127,6 +127,20 @@ class StudentViewSet(viewsets.ModelViewSet):
             serializer.save(student=student)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get", "put", "post"], url_path="block-billing")
+    def block_billing(self, request, pk=None):
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen Blockabrechnungen verwalten.")
+        from apps.billing.block_billing import block_status, save_plan, reset_block
+        student = self.get_object()
+        if request.method == "PUT":
+            return Response(save_plan(student, request.data))
+        if request.method == "POST":
+            if request.data.get("action") != "reset":
+                raise ValidationError("Unbekannte Aktion.")
+            return Response(reset_block(student, request.user))
+        return Response(block_status(student))
+
     @action(detail=True, methods=["get", "put"], url_path="contract")
     def contract(self, request, pk=None):
         """Students see only their own contract; only admins can create/edit it."""
