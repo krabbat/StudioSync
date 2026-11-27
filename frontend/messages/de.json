@@ -1,5 +1,7 @@
 {
   "FamilyAccess": {
+    "revoked": "Widerrufen",
+    "reactivate": "Erneut freigeben",
     "title": "Zugangsberechtigungen",
     "hint": "Nur ausdrücklich freigegebene Profile und Kommunikation werden im Familienportal angezeigt.",
     "edit": "Bearbeiten",
