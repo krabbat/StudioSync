@@ -103,12 +103,17 @@ def activate_account(user, data, *, new=False):
 class FamilyGrantAdminView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, family_id):
+    def get(self, request, family_id, grant_id=None):
         family = admin_family(request, family_id)
+        if grant_id is not None:
+            grant=family.access_grants.filter(pk=grant_id).first()
+            if not grant: raise NotFound()
+            return Response(grant_data(grant))
         return Response([grant_data(g) for g in family.access_grants.select_related("user")])
 
     @transaction.atomic
-    def post(self, request, family_id):
+    def post(self, request, family_id, grant_id=None):
+        if grant_id is not None: raise NotFound()
         family = admin_family(request, family_id)
         family = Family.objects.select_for_update().get(pk=family.pk)
         rows = valid_students(family, request.data.get("student_ids", []))
@@ -143,7 +148,7 @@ class FamilyGrantAdminView(APIView):
         return Response(grant_data(grant), status=201)
 
     @transaction.atomic
-    def put(self, request, family_id, grant_id):
+    def put(self, request, family_id, grant_id=None):
         family = admin_family(request, family_id)
         grant = family.access_grants.select_for_update().filter(pk=grant_id).select_related("user").first()
         if not grant:
@@ -160,7 +165,7 @@ class FamilyGrantAdminView(APIView):
         return Response(grant_data(grant))
 
     @transaction.atomic
-    def delete(self, request, family_id, grant_id):
+    def delete(self, request, family_id, grant_id=None):
         family = admin_family(request, family_id)
         grant = family.access_grants.filter(pk=grant_id).first()
         if not grant:
