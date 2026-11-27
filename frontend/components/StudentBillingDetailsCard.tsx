@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { toast } from 'react-hot-toast'
 import { Mail } from 'lucide-react'
 import api from '@/services/api'
@@ -30,6 +31,8 @@ type StudentInvoice = {
     balance_due: string | number
     status: string
     is_overdue: boolean
+    family?:string|null
+    line_items?:{student?:string|null;total_price:string;allocated_paid:string}[]
 }
 
 const initialProfile: BillingProfile = {
@@ -66,6 +69,7 @@ export default function StudentBillingDetailsCard({
     studentEmail: string
     studentAddress: StudentAddress
 }) {
+    const t=useTranslations('FamilyBilling')
     const [profile, setProfile] = useState<BillingProfile>(initialProfile)
     // Empty stored address fields mean: dynamically use the student's current address.
     const [useStudentAddress, setUseStudentAddress] = useState(true)
@@ -341,13 +345,17 @@ export default function StudentBillingDetailsCard({
                                         </thead>
                                         <tbody>
                                             {invoices.map(invoice => {
-                                                const state = invoiceState(invoice)
+                                                const lines=invoice.family?(invoice.line_items||[]).filter(l=>l.student===studentId):[]
+                                                const share=lines.reduce((n,l)=>n+Number(l.total_price),0)
+                                                const paid=lines.reduce((n,l)=>n+Number(l.allocated_paid||0),0)
+                                                const shown=invoice.family?{...invoice,total_amount:share,balance_due:Math.max(0,share-paid),status:invoice.status==='cancelled'?'cancelled':share===paid?'paid':paid>0?'partial':'sent'}:invoice
+                                                const state = invoiceState(shown)
                                                 return (
                                                     <tr key={invoice.id} className="border-t border-border">
-                                                        <td className="p-3 whitespace-nowrap font-medium">{invoice.invoice_number}</td>
+                                                        <td className="p-3 whitespace-nowrap font-medium">{invoice.invoice_number}{invoice.family&&<small className="block text-gray-500">{t('familyInvoice')}</small>}</td>
                                                         <td className="p-3 whitespace-nowrap">{germanDate(invoice.due_date)}</td>
-                                                        <td className="p-3 whitespace-nowrap text-right">{euro(invoice.total_amount)}</td>
-                                                        <td className="p-3 whitespace-nowrap text-right">{euro(invoice.balance_due)}</td>
+                                                        <td className="p-3 whitespace-nowrap text-right">{euro(shown.total_amount)}</td>
+                                                        <td className="p-3 whitespace-nowrap text-right">{euro(shown.balance_due)}</td>
                                                         <td className={`p-3 whitespace-nowrap font-semibold ${state.color}`}>{state.label}</td>
                                                     </tr>
                                                 )
