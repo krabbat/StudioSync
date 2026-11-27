@@ -273,6 +273,19 @@ class Payment(models.Model):
         return f"Payment {self.amount} for {self.invoice.invoice_number}"
 
 
+class PaymentAllocation(models.Model):
+    """Explicit assignment of a received payment to a tuition line."""
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name="allocations")
+    line_item = models.ForeignKey(InvoiceLineItem, on_delete=models.PROTECT, related_name="payment_allocations")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["payment", "line_item"], name="unique_payment_line"),
+            models.CheckConstraint(condition=models.Q(amount__gt=0), name="positive_payment_allocation"),
+        ]
+
+
 class PaymentMethod(models.Model):
     """
     Saved payment methods for bands
