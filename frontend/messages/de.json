@@ -1,4 +1,10 @@
 {
+  "FamilyContactImport": {
+    "importPerson": "Als Ansprechpartner übernehmen",
+    "importEmergency": "Hinterlegte Notfallkontakte übernehmen",
+    "hint": "Übernimmt den ausgewählten Schüler selbst oder dessen hinterlegte Notfallkontakte. Die Beziehung zum Schüler kann anschließend ergänzt werden.",
+    "imported": "Ansprechpartner übernommen. Bitte speichern."
+  },
   "TeachingGroups": {
     "haZone": "Home-Assistant-Zone",
     "chooseZone": "Unterrichtszone auswählen",
