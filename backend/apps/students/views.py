@@ -347,8 +347,16 @@ class FamilyViewSet(viewsets.ModelViewSet):
             billing = None
             if profile:
                 billing = StudentBillingProfileSerializer(profile).data
+            # A family member may also be a guardian. Export their own contact
+            # details separately from the emergency contacts stored for them.
+            email = (student.contact_email or "").strip()
+            if email.casefold().endswith(".invalid"):
+                email = ""
+            person = {"name": student.user.get_full_name(),
+                      "first_name": student.user.first_name, "last_name": student.user.last_name,
+                      "relation": "", "email": email, "phone": student.user.phone or ""}
             result.append({"id": str(student.pk), "name": student.user.get_full_name(),
-                           "contacts": contacts, "billing": billing})
+                           "person": person, "contacts": contacts, "billing": billing})
         return Response(result)
 
     @action(detail=True, methods=["put"], url_path="members")
