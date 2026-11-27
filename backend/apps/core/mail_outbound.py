@@ -58,6 +58,9 @@ def _valid_email(value):
 
 def _recipient_address(student):
     """Prefer a family's designated main parent for general communication."""
+    explicit = _valid_email(student.contact_email)
+    if explicit:
+        return explicit, "Kontakt"
     family = student.family
     if family and family.primary_parent and family.primary_parent.is_active:
         parent_email = _valid_email(family.primary_parent.email)
