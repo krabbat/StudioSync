@@ -46,6 +46,7 @@ def student_catalog(studio):
             if isinstance(item, str) and item.strip()
         ))
         addresses = [student.contact_email, student.user.email]
+        addresses.extend(g.get("email", "") for g in student.additional_guardians if isinstance(g, dict))
         if student.family_id:
             family = student.family
             addresses.extend([

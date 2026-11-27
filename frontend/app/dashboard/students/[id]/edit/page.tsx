@@ -10,6 +10,7 @@ import { proxyFileUrl } from '@/lib/utils'
 import { useTeachers } from '@/hooks/useDashboardData'
 import ImageCropper from '@/components/ImageCropper'
 import StudentPersonalFields from '@/components/StudentPersonalFields'
+import { type GuardianContact } from '@/components/AdditionalGuardians'
 import TeachingContractCard from '@/components/TeachingContractCard'
 import StudentAccountTabs, { type AccountSection } from '@/components/StudentAccountTabs'
 import StudentLessonAccountCard from '@/components/StudentLessonAccountCard'
@@ -51,6 +52,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
         emergency_contact_name: '',
         emergency_contact_first_name: '', emergency_contact_last_name: '',
         emergency_contact_phone: '',
+        additional_guardians: [] as GuardianContact[],
         enrollment_date: '',
         primary_teacher: '',
         is_active: true,
@@ -91,6 +93,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                     emergency_contact_name: student.emergency_contact_name || '',
                     emergency_contact_first_name: student.emergency_contact_first_name || '', emergency_contact_last_name: student.emergency_contact_last_name || '',
                     emergency_contact_phone: student.emergency_contact_phone || '',
+                    additional_guardians: Array.isArray(student.additional_guardians) ? student.additional_guardians : [],
                     enrollment_date: student.enrollment_date || '',
                     primary_teacher: typeof student.primary_teacher === 'string' ? student.primary_teacher : student.primary_teacher?.id || '',
                     is_active: student.is_active ?? true,
@@ -124,6 +127,7 @@ export default function EditStudentPage({ params: paramsPromise }: { params: Pro
                 birth_date: formData.birth_date || null,
                 emergency_contact_first_name: formData.emergency_contact_first_name, emergency_contact_last_name: formData.emergency_contact_last_name,
                 emergency_contact_phone: formData.emergency_contact_phone,
+                additional_guardians: formData.additional_guardians,
                 primary_teacher: formData.primary_teacher || null,
                 is_active: formData.is_active,
                 ...(formData.enrollment_date ? { enrollment_date: formData.enrollment_date } : {})

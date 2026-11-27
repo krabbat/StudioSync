@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { INTERNATIONAL_EMAIL_PATTERN, INTERNATIONAL_EMAIL_HINT } from '@/lib/internationalEmail'
+import AdditionalGuardians, { type GuardianContact } from '@/components/AdditionalGuardians'
 
 export type StudentPersonalData = {
     first_name: string; last_name: string; email: string; phone: string
     birth_date: string; address_line1: string; postal_code: string; city: string
     emergency_contact_name: string; emergency_contact_first_name: string; emergency_contact_last_name: string; emergency_contact_phone: string
+    additional_guardians?: GuardianContact[]
 }
 
 export const emptyStudentPersonal: StudentPersonalData = {
@@ -70,7 +72,7 @@ export default function StudentPersonalFields({ value, onChange }: {
         return years < 18 || (years === 18 && !birthdayPassed)
     })()
     const field = (
-        key: keyof StudentPersonalData, type: 'text' | 'email' | 'tel' = 'text',
+        key: Exclude<keyof StudentPersonalData, 'additional_guardians'>, type: 'text' | 'email' | 'tel' = 'text',
         required = false, autoComplete?: string
     ) => (
         <label key={key} className="block space-y-1 text-sm font-medium text-gray-700">
@@ -112,6 +114,8 @@ export default function StudentPersonalFields({ value, onChange }: {
                     {field('emergency_contact_last_name', 'text', isMinor)}
                     {field('emergency_contact_phone', 'tel', isMinor)}
                 </div>
+                {value.additional_guardians !== undefined && <AdditionalGuardians value={value.additional_guardians}
+                    onChange={additional_guardians => onChange({ additional_guardians })} canAdd={isMinor} />}
             </section>
         </div>
     )

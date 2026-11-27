@@ -11,6 +11,7 @@ import { formatPhoneNumber } from '@/lib/utils'
 import ImageCropper from '@/components/ImageCropper'
 import { useTeachers } from '@/hooks/useDashboardData'
 import { useUser } from '@/contexts/UserContext'
+import AdditionalGuardians, { type GuardianContact } from '@/components/AdditionalGuardians'
 
 /** Returns the age in whole years given an ISO date string, or null if blank. */
 function calcAge(birthDate: string): number | null {
@@ -69,6 +70,7 @@ export default function AddStudentPage() {
         emergency_contact_first_name: '',
         emergency_contact_last_name: '',
         emergency_contact_phone: '',
+        additional_guardians: [] as GuardianContact[],
     })
 
     // Preselect a sole teacher, or the owner in individual-teaching mode.
@@ -460,6 +462,7 @@ export default function AddStudentPage() {
                                         />
                                     </div>
                                 </div>
+                                <AdditionalGuardians value={formData.additional_guardians} onChange={additional_guardians => setFormData(prev => ({ ...prev, additional_guardians }))} canAdd={isMinor} />
                             </section>
                         )}
 

@@ -358,9 +358,29 @@ class FamilyViewSet(viewsets.ModelViewSet):
             if student.emergency_contact_name:
                 contacts.append({"name": student.emergency_contact_name, "first_name": student.emergency_contact_first_name, "last_name": student.emergency_contact_last_name, "relation": "",
                     "phone": student.emergency_contact_phone, "email": ""})
+            for guardian in student.additional_guardians:
+                contacts.append({
+                    "name": " ".join((guardian["first_name"], guardian["last_name"])),
+                    "first_name": guardian["first_name"], "last_name": guardian["last_name"],
+                    "relation": "", "phone": guardian["phone"], "email": guardian.get("email", ""),
+                })
             billing = None
             if profile:
                 billing = StudentBillingProfileSerializer(profile).data
+            guardian_sources = []
+            for index, contact in enumerate(contacts):
+                email = contact["email"]
+                if email.casefold().endswith(".invalid"):
+                    email = ""
+                guardian_sources.append({
+                    "id": f"{student.pk}:guardian:{index}",
+                    "name": contact["name"],
+                    "billing": {
+                        "recipient_name": contact["name"],
+                        "recipient_email": email,
+                        "payment_method": billing["payment_method"] if billing else "",
+                    },
+                })
             # A family member may also be a guardian. Export their own contact
             # details separately from the emergency contacts stored for them.
             email = (student.contact_email or "").strip()
@@ -370,7 +390,8 @@ class FamilyViewSet(viewsets.ModelViewSet):
                       "first_name": student.user.first_name, "last_name": student.user.last_name,
                       "relation": "", "email": email, "phone": student.user.phone or ""}
             result.append({"id": str(student.pk), "name": student.user.get_full_name(),
-                           "person": person, "contacts": contacts, "billing": billing})
+                           "person": person, "contacts": contacts, "billing": billing,
+                           "guardian_sources": guardian_sources})
         return Response(result)
 
     @action(detail=True, methods=["put"], url_path="members")

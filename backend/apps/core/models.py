@@ -443,6 +443,7 @@ class Student(models.Model):
     emergency_contact_name = models.CharField(max_length=200, blank=True)
     emergency_contact_first_name = models.CharField(max_length=100, blank=True)
     emergency_contact_last_name = models.CharField(max_length=100, blank=True)
+    additional_guardians = models.JSONField(default=list, blank=True)
     contact_email = models.EmailField(blank=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True)
     medical_notes = models.TextField(blank=True)

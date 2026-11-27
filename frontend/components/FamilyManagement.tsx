@@ -15,7 +15,9 @@ import { fetchAllLibraryPages } from '@/lib/materialLibrary.mjs'
 
 type AddressStudent = { id:string; name:string; address_line1:string; postal_code:string; city:string }
 type Contact = { name: string; first_name?: string; last_name?: string; relation: string; email: string; phone: string }
-type ImportSource = { id:string; name:string; person?:Contact; contacts:Contact[]; billing:{recipient_name:string;recipient_email:string;payment_method:string;recipient_address_line1:string;recipient_postal_code:string;recipient_city:string}|null }
+type BillingImport = {recipient_name:string;recipient_email:string;payment_method:string}
+type GuardianSource = {id:string;name:string;billing:BillingImport}
+type ImportSource = { id:string; name:string; person?:Contact; contacts:Contact[]; billing:BillingImport|null; guardian_sources?:GuardianSource[] }
 type Member = { id: string; user_id: string; birth_date?:string|null; name: string; instrument: string; monthly_amount?: string | null; is_active?: boolean }
 type Family = {
     id: string; name: string; display_name: string; address_line1: string; postal_code: string; city: string;
@@ -54,6 +56,10 @@ export default function FamilyManagement() {
     const [memberSearch, setMemberSearch] = useState('')
     const [importSources, setImportSources] = useState<ImportSource[]>([])
     const [importId, setImportId] = useState('')
+    const billingSources = importSources.flatMap(s => [
+        {id:s.id, name:s.name, billing:s.billing, guardian:false},
+        ...(s.guardian_sources || []).map(g => ({...g, name:g.name+' (Ansprechpartner: '+s.name+')', guardian:true})),
+    ])
     const [importLoading, setImportLoading] = useState(false)
     const [importError, setImportError] = useState(false)
     useEffect(() => {
@@ -83,10 +89,11 @@ export default function FamilyManagement() {
         toast.success(contactT('imported'))
     }
     const importBillingData = () => {
-        const b=importSources.find(s=>s.id===importId)?.billing
+        const selectedSource=billingSources.find(s=>s.id===importId)
+        const b=selectedSource?.billing
         if(!b)return
-        setDraft(old=>old?{...old,billing_recipient_name:b.recipient_name||old.billing_recipient_name,billing_email:b.recipient_email||old.billing_email,payment_method:b.payment_method||old.payment_method}:old)
-        toast.success('Rechnungsdaten übernommen. Bitte speichern.')
+        setDraft(old=>old?{...old,billing_recipient_name:b.recipient_name||old.billing_recipient_name,billing_email:selectedSource.guardian?b.recipient_email:(b.recipient_email||old.billing_email),payment_method:selectedSource.guardian?old.payment_method:(b.payment_method||old.payment_method)}:old)
+        toast.success(selectedSource.guardian&&!b.recipient_email?'Name übernommen. Bitte Rechnungs-E-Mail ergänzen und speichern.':'Rechnungsdaten übernommen. Bitte speichern.')
     }
     const [search, setSearch] = useState('')
     const [memberLoading, setMemberLoading] = useState(false)
@@ -184,20 +191,22 @@ export default function FamilyManagement() {
     const choices = [...new Map([...(selected?.students || []),...available].map(s=>[s.id,s])).values()]
     const chosen=choices.filter(s=>memberIds.includes(s.id))
     const source=importSources.find(s=>s.id===importId)
+    const billingSource=billingSources.find(s=>s.id===importId)
     const importPanel=(kind:'contacts'|'billing')=><div className="min-w-0 space-y-2">
         <label className="block text-sm font-semibold" htmlFor="family-import-source">Daten eines Familienmitglieds übernehmen</label>
         <div className="flex flex-wrap gap-2">
             <select id="family-import-source" className={inputClass+' min-w-0 flex-1'} value={importId} disabled={importLoading||importError} onChange={e=>setImportId(e.target.value)}>
                 <option value="">{importLoading?'Schüler werden geladen…':'Schüler auswählen'}</option>
-                {importSources.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                {(kind==='billing'?billingSources:importSources).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            {kind==='contacts'?<Button variant="outline" disabled={saving||importLoading||!source?.person} onClick={()=>importContactData(true)}>{contactT('importPerson')}</Button>:<Button variant="outline" disabled={saving||importLoading||!source?.billing} onClick={importBillingData}>Daten übernehmen</Button>}
+            {kind==='contacts'?<Button variant="outline" disabled={saving||importLoading||!source?.person} onClick={()=>importContactData(true)}>{contactT('importPerson')}</Button>:<Button variant="outline" disabled={saving||importLoading||!billingSource?.billing} onClick={importBillingData}>Daten übernehmen</Button>}
         </div>
         {importError&&<p className="text-sm text-red-600">Schülerdaten konnten nicht geladen werden.</p>}
         {!importLoading&&!importError&&!importSources.length&&<p className="text-sm text-gray-500">Bitte zuerst Familienmitglieder zuordnen und speichern.</p>}
         {kind==='contacts'&&source&&source.contacts.length>0&&<Button variant="outline" disabled={saving||importLoading} onClick={()=>importContactData(false)}>{contactT('importEmergency')}</Button>}
-        {kind==='billing'&&source&&!source.billing&&<p className="text-sm text-gray-500">Bei diesem Schüler sind keine entsprechenden Daten hinterlegt.</p>}
-        <p className="text-xs text-gray-500">{kind==='contacts'?contactT('hint'):'Übernimmt Rechnungsempfänger, Rechnungs-E-Mail und Zahlungsart. Die Familienanschrift bleibt unverändert.'}</p>
+        {kind==='billing'&&billingSource&&!billingSource.billing&&<p className="text-sm text-gray-500">Bei diesem Schüler sind keine entsprechenden Daten hinterlegt.</p>}
+        {kind==='billing'&&billingSource?.guardian&&!billingSource.billing?.recipient_email&&<p className="text-sm text-gray-500">Bei diesem Ansprechpartner ist keine E-Mail hinterlegt. Bitte nach der Übernahme ergänzen.</p>}
+        <p className="text-xs text-gray-500">{kind==='contacts'?contactT('hint'):'Übernimmt Rechnungsempfänger und Rechnungs-E-Mail; beim Schüler auch die Zahlungsart. Die Familienanschrift bleibt unverändert.'}</p>
     </div>
     return <section className="space-y-5">
         <button className="flex items-center gap-2 text-sm text-gray-600" onClick={()=>{setDraft(null);setSelected(null)}}><ArrowLeft className="w-4 h-4"/>Zurück zu Familien</button>

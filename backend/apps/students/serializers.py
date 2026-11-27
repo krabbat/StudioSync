@@ -113,6 +113,13 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         return None
 
 
+class AdditionalGuardianSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=100)
+    last_name = serializers.CharField(max_length=100)
+    phone = serializers.CharField(max_length=20)
+    email = InternationalEmailField(required=False, allow_blank=True, default="")
+
+
 class StudentCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating students with nested user data"""
 
@@ -125,6 +132,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
     login_email = InternationalEmailField(write_only=True, required=False, allow_blank=True)
     access_mode = serializers.ChoiceField(choices=["none", "own"], write_only=True, required=False)
     phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    additional_guardians = AdditionalGuardianSerializer(many=True, required=False)
     password = serializers.CharField(
         write_only=True, required=False, allow_blank=True, trim_whitespace=False,
         style={"input_type": "password"},
@@ -157,6 +165,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
             "emergency_contact_name",
             "emergency_contact_first_name", "emergency_contact_last_name", "contact_email", "login_email", "access_mode",
             "emergency_contact_phone",
+            "additional_guardians",
             "primary_teacher",
             "is_active",
         ]

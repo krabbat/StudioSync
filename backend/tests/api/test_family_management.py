@@ -87,3 +87,43 @@ def test_family_accepts_german_international_email(authenticated_client, studio)
     assert invalid.status_code == 400
     blank = authenticated_client.patch(BASE+result.data["id"]+"/", {"billing_email":""}, format="json")
     assert blank.status_code == 200
+
+
+
+@pytest.mark.django_db
+def test_additional_guardians_persist_and_are_family_billing_candidates(authenticated_client, studio, student):
+    from apps.core.mail_associations import student_catalog
+
+    family = Family.objects.create(studio=studio, name="Familie Test")
+    student.family = family
+    student.emergency_contact_first_name = "Anna"
+    student.emergency_contact_last_name = "Test"
+    student.emergency_contact_name = "Anna Test"
+    student.emergency_contact_phone = "030123456"
+    student.save()
+    endpoint = f"/api/students/{student.pk}/"
+    guardians = [
+        {"first_name": "Max", "last_name": "Test", "phone": "030123457", "email": "max@example.org"},
+        {"first_name": "Eva", "last_name": "Test", "phone": "030123458"},
+    ]
+    response = authenticated_client.patch(endpoint, {"additional_guardians": guardians}, format="json")
+    assert response.status_code == 200, response.data
+    student.refresh_from_db()
+    assert student.emergency_contact_name == "Anna Test"
+    assert len(student.additional_guardians) == 2
+    assert authenticated_client.get(endpoint).data["additional_guardians"][0]["email"] == "max@example.org"
+    assert str(student.pk) in student_catalog(studio)[1]["max@example.org"]
+    rows = authenticated_client.get(f"{BASE}{family.pk}/member-data/").data
+    row = next(r for r in rows if r["id"] == str(student.pk))
+    assert [c["name"] for c in row["contacts"]] == ["Anna Test", "Max Test", "Eva Test"]
+    assert [c["billing"]["recipient_name"] for c in row["guardian_sources"]] == ["Anna Test", "Max Test", "Eva Test"]
+    assert row["guardian_sources"][1]["billing"]["recipient_email"] == "max@example.org"
+    assert row["guardian_sources"][2]["billing"]["recipient_email"] == ""
+    assert authenticated_client.patch(endpoint, {"additional_guardians": [{"first_name": "Invalid"}]}, format="json").status_code == 400
+    assert authenticated_client.patch(endpoint, {"notes": "ignored"}, format="json").status_code == 200
+    student.refresh_from_db()
+    assert len(student.additional_guardians) == 2
+    assert authenticated_client.patch(endpoint, {"additional_guardians": []}, format="json").status_code == 200
+    student.refresh_from_db()
+    assert student.additional_guardians == []
+    assert student.emergency_contact_name == "Anna Test"

@@ -347,7 +347,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                         )}
 
                         {/* Emergency Contact */}
-                        {(student.emergency_contact_name || student.emergency_contact_phone) && (
+                        {(student.emergency_contact_name || student.emergency_contact_phone || student.additional_guardians?.length > 0) && (
                             <section className="bg-gradient-to-br from-amber-50/80 to-orange-50/50 p-12 rounded-[3rem] border border-amber-100/50 space-y-10 shadow-lg shadow-amber-100/20">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-xs font-black text-amber-700/60 uppercase tracking-[0.3em] flex items-center gap-4">
@@ -367,6 +367,12 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                         <p className="text-xl font-black text-gray-900">{formatPhoneNumber(student.emergency_contact_phone) || tr('notProvided')}</p>
                                     </div>
                                 </div>
+                                {(student.additional_guardians || []).map((guardian: {first_name: string; last_name: string; phone: string; email?: string}, i: number) => (
+                                    <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-amber-100 pt-4">
+                                        <div><p className="text-sm text-amber-700">Ansprechpartner {i + 2}</p><p className="font-semibold">{guardian.first_name} {guardian.last_name}</p></div>
+                                        <div><p>{formatPhoneNumber(guardian.phone)}</p>{guardian.email && <p className="break-all">{guardian.email}</p>}</div>
+                                    </div>
+                                ))}
                             </section>
                         )}
                     </div>
