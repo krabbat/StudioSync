@@ -48,7 +48,7 @@ interface Lesson {
     teaching_group?:string
     group_name_snapshot?:string
     group_ha_zone?:string
-    group_participants?:{id:string;name:string;status:string}[]
+    group_participants?:{id:string;name:string;first_name?:string;instrument?:string;status:string}[]
     room?: string
     duration_minutes?: number
     online_meeting_url?: string
@@ -328,7 +328,8 @@ export default function LessonsPage() {
 
         const searchLower = searchQuery.toLowerCase()
         if (searchQuery && !lesson.student_name?.toLowerCase().includes(searchLower) &&
-            !lesson.teacher_name?.toLowerCase().includes(searchLower)) {
+            !lesson.teacher_name?.toLowerCase().includes(searchLower) &&
+            !lesson.group_participants?.some(p=>p.name.toLowerCase().includes(searchLower))) {
             return false
         }
 
@@ -555,6 +556,7 @@ export default function LessonsPage() {
                                                     <div>
                                                         <div className="text-sm font-black text-gray-900 tracking-tight uppercase tracking-tighter">{lesson.student_name}</div>
                                                         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{lesson.student_instrument}</div>
+                                                        {!!lesson.group_participants?.length&&<div className="text-xs text-gray-600 mt-1">{lesson.group_participants.map(p=>p.first_name||p.name).join(", ")}</div>}
                                                         {lesson.student_address && (
                                                             <div className="text-xs text-gray-600 mt-1">{lesson.student_address}</div>
                                                         )}
@@ -623,6 +625,7 @@ export default function LessonsPage() {
                                             <div>
                                                 <div className="text-sm font-black text-gray-900 tracking-tight uppercase">{lesson.student_name}</div>
                                                 <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{lesson.student_instrument}</div>
+                                                        {!!lesson.group_participants?.length&&<div className="text-xs text-gray-600 mt-1">{lesson.group_participants.map(p=>p.first_name||p.name).join(", ")}</div>}
                                                         {lesson.student_address && (
                                                             <div className="text-xs text-gray-600 mt-1">{lesson.student_address}</div>
                                                         )}
