@@ -214,7 +214,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Status 'versendet' darf nur durch erfolgreichen E-Mail-Versand entstehen."
             )
-        if instance.tuition_months.exists() and validated_data:
+        if (instance.tuition_months.exists() or hasattr(instance, "block_bill")) and validated_data:
             raise serializers.ValidationError("Tuition allocations are immutable.")
         if instance.sent_at and set(validated_data) - {"status"}:
             raise serializers.ValidationError(
