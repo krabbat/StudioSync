@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations, useLocale } from 'next-intl'
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import type { TouchEvent as ReactTouchEvent } from "react";
 import { useUser } from "@/contexts/UserContext";
 import {
   useLessons,
@@ -105,6 +106,27 @@ export default function SchedulePage() {
     };
   }, []);
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
+  const calendarScrollRef = useRef<HTMLDivElement>(null);
+  const swipeStart = useRef<{ id: number; x: number; y: number } | null>(null);
+  const swipeDirection = useRef<-1 | 1 | null>(null);
+
+  // Animate only completed touch swipes, never every touch-move or data refresh.
+  useLayoutEffect(() => {
+    const direction = swipeDirection.current;
+    swipeDirection.current = null;
+    const surface = calendarScrollRef.current;
+    if (direction === null || !surface || typeof surface.animate !== "function"
+      || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const animation = surface.animate(
+      [
+        { transform: `translate3d(${direction * 24}px, 0, 0)`, opacity: 0.94 },
+        { transform: "translate3d(0, 0, 0)", opacity: 1 },
+      ],
+      { duration: 170, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" },
+    );
+    return () => animation.cancel();
+  }, [currentDate, viewMode]);
   const [colorMode, setColorMode] = useState<"status" | "student" | "instrument">("status");
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
@@ -441,19 +463,48 @@ export default function SchedulePage() {
     return use24Hour ? format(date, "HH:mm") : format(date, "h a");
   };
 
-  const previousPeriod = () => {
-    if (viewMode === "week") {
-      setCurrentDate(addDays(currentDate, -7));
-    } else {
-      setCurrentDate(addMonths(currentDate, -1));
-    }
+  const changePeriod = (direction: -1 | 1) => {
+    setCurrentDate(previous => viewMode === "week"
+      ? addDays(previous, direction * 7)
+      : addMonths(previous, direction));
   };
-  const nextPeriod = () => {
-    if (viewMode === "week") {
-      setCurrentDate(addDays(currentDate, 7));
-    } else {
-      setCurrentDate(addMonths(currentDate, 1));
+  const previousPeriod = () => changePeriod(-1);
+  const nextPeriod = () => changePeriod(1);
+
+  const handleCalendarTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    swipeStart.current = null;
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    // Preserve native browser back/forward gestures at the screen edges.
+    if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24) return;
+    swipeStart.current = { id: touch.identifier, x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleCalendarTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const start = swipeStart.current;
+    if (!start) return;
+    if (event.touches.length !== 1 || event.touches[0].identifier !== start.id) {
+      swipeStart.current = null;
+      return;
     }
+    const dx = Math.abs(event.touches[0].clientX - start.x);
+    const dy = Math.abs(event.touches[0].clientY - start.y);
+    // A vertical or diagonal scroll must never navigate to another period.
+    if (dy > 12 && dy >= dx) swipeStart.current = null;
+  };
+
+  const handleCalendarTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    if (!start || event.touches.length !== 0) return;
+    const touch = Array.from(event.changedTouches).find(item => item.identifier === start.id);
+    if (!touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.75) return;
+    const direction = dx < 0 ? 1 : -1;
+    swipeDirection.current = direction;
+    changePeriod(direction);
   };
 
   const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -860,7 +911,14 @@ export default function SchedulePage() {
 
       {/* Schedule Grid */}
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col w-full min-w-0 flex-1 min-h-[180px]">
-        <div key={viewMode} className={`overflow-x-hidden ${viewMode === "week" ? "overflow-y-auto" : "overflow-y-hidden"} overscroll-x-none touch-pan-y schedule-scroll-area flex-1 min-h-0 min-w-0 relative`}>
+        <div key={viewMode}
+          ref={calendarScrollRef}
+          onTouchStart={handleCalendarTouchStart}
+          onTouchMove={handleCalendarTouchMove}
+          onTouchEnd={handleCalendarTouchEnd}
+          onTouchCancel={() => { swipeStart.current = null; }}
+          style={{ touchAction: "pan-y pinch-zoom" }}
+          className={`overflow-x-hidden ${viewMode === "week" ? "overflow-y-auto" : "overflow-y-hidden"} overscroll-x-none schedule-scroll-area flex-1 min-h-0 min-w-0 relative`}>
           {viewMode === "week" ? (
             <table className="w-full table-fixed border-separate border-spacing-0">
                <colgroup>
