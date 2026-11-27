@@ -17,8 +17,8 @@ class StudentBillingProfileSerializer(serializers.ModelSerializer):
 class InvoiceLineItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvoiceLineItem
-        fields = ["id", "description", "quantity", "unit_price", "total_price", "created_at"]
-        read_only_fields = ["total_price", "created_at"]
+        fields = ["id", "description", "quantity", "unit_price", "total_price", "created_at", "student", "student_name_snapshot"]
+        read_only_fields = ["total_price", "created_at", "student", "student_name_snapshot"]
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -66,6 +66,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 "postal_code": snapshot.get("recipient_postal_code", ""),
                 "city": snapshot.get("recipient_city", ""),
             }
+        if obj.family_id:
+            f = obj.family
+            return {"name": f.billing_recipient_name, "street": f.address_line1, "postal_code": f.postal_code, "city": f.city}
         if not obj.student:
             return {"name": "", "street": "", "postal_code": "", "city": ""}
         profile = getattr(obj.student, "billing_profile", None)
@@ -98,6 +101,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return obj.stripe_session_id or None
 
     def get_student_name(self, obj):
+        if obj.family_id:
+            return obj.document_snapshot.get("family_name") or str(obj.family)
         if obj.student and obj.student.user:
             return obj.student.user.get_full_name()
         return ""
@@ -136,6 +141,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "notes",
             "band",
             "student",
+            "family",
             "teacher",
             "band_name",
             "student_name",
@@ -143,6 +149,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "invoice_number",
+            "family",
             "subtotal",
             "total_amount",
             "amount_paid",
@@ -201,6 +208,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Status 'versendet' darf nur durch erfolgreichen E-Mail-Versand entstehen."
             )
+        if instance.tuition_months.exists() and validated_data:
+            raise serializers.ValidationError("Tuition allocations are immutable.")
         if instance.sent_at and set(validated_data) - {"status"}:
             raise serializers.ValidationError(
                 "Eine versendete Rechnung darf inhaltlich nicht verändert werden."
