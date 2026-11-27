@@ -329,7 +329,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                 {editingLogin && (
                                     <div className="space-y-3">
                                         <p className="text-xs text-gray-500">{tr('loginPasswordInfo')}</p>
-                                        <label className="block text-sm">{accessT('loginEmail')}<input type="email" className="w-full px-4 py-3 border rounded-xl" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/></label>
+                                        <label className="block text-sm">{accessT('loginEmail')}<input type="text" inputMode="email" className="w-full px-4 py-3 border rounded-xl" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/></label>
                                         <input type="password" autoComplete="new-password"
                                             aria-label={tr('newPassword')} placeholder={tr('newPassword')}
                                             value={newPassword} onChange={e => setNewPassword(e.target.value)}
