@@ -15,7 +15,7 @@ import { fetchAllLibraryPages } from '@/lib/materialLibrary.mjs'
 
 type AddressStudent = { id:string; name:string; address_line1:string; postal_code:string; city:string }
 type Contact = { name: string; first_name?: string; last_name?: string; relation: string; email: string; phone: string }
-type ImportSource = { id:string; name:string; contacts:Contact[]; billing:{recipient_name:string;recipient_email:string;payment_method:string;recipient_address_line1:string;recipient_postal_code:string;recipient_city:string}|null }
+type ImportSource = { id:string; name:string; person?:Contact; contacts:Contact[]; billing:{recipient_name:string;recipient_email:string;payment_method:string;recipient_address_line1:string;recipient_postal_code:string;recipient_city:string}|null }
 type Member = { id: string; user_id: string; birth_date?:string|null; name: string; instrument: string; monthly_amount?: string | null; is_active?: boolean }
 type Family = {
     id: string; name: string; display_name: string; address_line1: string; postal_code: string; city: string;
@@ -41,6 +41,7 @@ export default function FamilyManagement() {
     const router = useRouter()
     const billingT = useTranslations('FamilyBilling')
     const accessT = useTranslations('FamilyAccess')
+    const contactT = useTranslations('FamilyContactImport')
     const [families, setFamilies] = useState<Family[]>([])
     const [selected, setSelected] = useState<Family | null>(null)
     const [draft, setDraft] = useState<Draft | null>(null)
@@ -65,20 +66,21 @@ export default function FamilyManagement() {
             .finally(()=>{if(live)setImportLoading(false)})
         return ()=>{live=false}
     },[selected?.id,tab])
-    const importContactData = () => {
+    const importContactData = (ownPerson=false) => {
         const source=importSources.find(s=>s.id===importId)
-        if(!source?.contacts.length)return
+        const incoming=ownPerson?(source?.person?[source.person]:[]):(source?.contacts||[])
+        if(!incoming.length)return
         setDraft(old=>{
             if(!old)return old
             const contacts=[...old.contacts]
-            for(const contact of source.contacts){
+            for(const contact of incoming){
                 const i=contacts.findIndex(c=>c.name.trim().toLowerCase()===contact.name.trim().toLowerCase())
                 if(i<0)contacts.push(contact)
                 else contacts[i]={...contacts[i],phone:contacts[i].phone||contact.phone,email:contacts[i].email||contact.email,relation:contacts[i].relation||contact.relation}
             }
             return {...old,contacts}
         })
-        toast.success('Ansprechpartner übernommen. Bitte speichern.')
+        toast.success(contactT('imported'))
     }
     const importBillingData = () => {
         const b=importSources.find(s=>s.id===importId)?.billing
@@ -189,12 +191,13 @@ export default function FamilyManagement() {
                 <option value="">{importLoading?'Schüler werden geladen…':'Schüler auswählen'}</option>
                 {importSources.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <Button variant="outline" disabled={saving||importLoading||!(kind==='contacts'?source?.contacts.length:source?.billing)} onClick={kind==='contacts'?importContactData:importBillingData}>Daten übernehmen</Button>
+            {kind==='contacts'?<Button variant="outline" disabled={saving||importLoading||!source?.person} onClick={()=>importContactData(true)}>{contactT('importPerson')}</Button>:<Button variant="outline" disabled={saving||importLoading||!source?.billing} onClick={importBillingData}>Daten übernehmen</Button>}
         </div>
         {importError&&<p className="text-sm text-red-600">Schülerdaten konnten nicht geladen werden.</p>}
         {!importLoading&&!importError&&!importSources.length&&<p className="text-sm text-gray-500">Bitte zuerst Familienmitglieder zuordnen und speichern.</p>}
-        {source&&!(kind==='contacts'?source.contacts.length:source.billing)&&<p className="text-sm text-gray-500">Bei diesem Schüler sind keine entsprechenden Daten hinterlegt.</p>}
-        <p className="text-xs text-gray-500">{kind==='contacts'?'Vorhandene Notfallkontakte werden übernommen. Fehlende Angaben bleiben frei.':'Übernimmt Rechnungsempfänger, Rechnungs-E-Mail und Zahlungsart. Die Familienanschrift bleibt unverändert.'}</p>
+        {kind==='contacts'&&source&&source.contacts.length>0&&<Button variant="outline" disabled={saving||importLoading} onClick={()=>importContactData(false)}>{contactT('importEmergency')}</Button>}
+        {kind==='billing'&&source&&!source.billing&&<p className="text-sm text-gray-500">Bei diesem Schüler sind keine entsprechenden Daten hinterlegt.</p>}
+        <p className="text-xs text-gray-500">{kind==='contacts'?contactT('hint'):'Übernimmt Rechnungsempfänger, Rechnungs-E-Mail und Zahlungsart. Die Familienanschrift bleibt unverändert.'}</p>
     </div>
     return <section className="space-y-5">
         <button className="flex items-center gap-2 text-sm text-gray-600" onClick={()=>{setDraft(null);setSelected(null)}}><ArrowLeft className="w-4 h-4"/>Zurück zu Familien</button>
