@@ -68,7 +68,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         elif user.role == "teacher" and hasattr(user, "teacher_profile"):
             queryset = queryset.filter(teacher=user.teacher_profile)
         elif user.role == "student" and hasattr(user, "student_profile"):
-            queryset = queryset.filter(student=user.student_profile)
+            queryset = queryset.filter(Q(student=user.student_profile)|Q(participants__student=user.student_profile)).distinct()
         elif user.role == "parent":
             queryset = queryset.filter(
                 Q(student__family__primary_parent=user) | Q(student__family__secondary_parent=user)
