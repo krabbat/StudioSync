@@ -2413,5 +2413,31 @@
     "save": "Speichern",
     "delete": "Löschen",
     "confirmDeleteAbsence": "Diesen Ausfall wirklich löschen?"
+  },
+  "BlockBilling": {
+    "heading": "Abrechnungsmodell und Stundenblock",
+    "model": "Abrechnungsmodell",
+    "monthly": "Monatliche Abrechnung",
+    "block": "Abrechnung nach Unterrichtseinheiten",
+    "startsOn": "Abrechnungsbeginn",
+    "units": "UE je Abrechnung",
+    "amount": "Blockpreis (€)",
+    "testOnly": "Testversand nur an @musart.de",
+    "hint": "Nach Erreichen des Blocks werden ausschließlich abgeschlossene Unterrichtseinheiten abgerechnet. Bitte zuvor Barzahlung und Rechnungsdaten speichern. Die Jahresstunden bleiben erhalten.",
+    "save": "Abrechnungsmodell speichern",
+    "saved": "Abrechnungsmodell gespeichert.",
+    "loading": "Abrechnungsdaten werden geladen …",
+    "loadFailed": "Blockabrechnung konnte nicht geladen werden.",
+    "saveFailed": "Blockabrechnung konnte nicht gespeichert werden.",
+    "openUnits": "Offene Unterrichtseinheiten",
+    "unbilledUnits": "Noch nicht in Rechnung gestellt: {count} UE",
+    "sent": "Versendet",
+    "checkDelivery": "Versand prüfen",
+    "draft": "Entwurf",
+    "reset": "Abrechnungszähler zurücksetzen",
+    "resetWarning": "Nur der Zähler wird zurückgesetzt. Unterrichtshistorie und bestehende Rechnungen bleiben erhalten; offene Rechnungen werden nicht als bezahlt markiert.",
+    "confirm": "Zurücksetzen",
+    "cancel": "Abbrechen",
+    "resetDone": "Abrechnungszähler zurückgesetzt."
   }
 }
