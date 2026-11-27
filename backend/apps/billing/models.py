@@ -426,3 +426,46 @@ class BlockBillingUnit(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["plan", "lesson_id"], name="unique_block_billed_lesson")]
+
+
+class BillingAutomation(models.Model):
+    studio = models.OneToOneField(Studio, on_delete=models.CASCADE, related_name="billing_automation")
+    monthly_enabled = models.BooleanField(default=False)
+    monthly_from = models.DateField(null=True, blank=True)
+    monthly_day = models.PositiveSmallIntegerField(default=1)
+    monthly_time = models.TimeField(default="08:00")
+    monthly_send = models.BooleanField(default=True)
+    test_enabled = models.BooleanField(default=False)
+    test_at = models.DateTimeField(null=True, blank=True)
+    test_month = models.DateField(null=True, blank=True)
+    test_send = models.BooleanField(default=True)
+
+
+class BillingRun(models.Model):
+    studio = models.ForeignKey(Studio, on_delete=models.CASCADE, related_name="billing_runs")
+    kind = models.CharField(max_length=12)
+    service_month = models.DateField()
+    scheduled_for = models.DateTimeField()
+    send = models.BooleanField(default=True)
+    status = models.CharField(max_length=20, default="preparing")
+    skipped = models.JSONField(default=list, blank=True)
+    error = models.TextField(default="", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["studio", "kind", "scheduled_for"], name="unique_billing_run_time"),
+            models.UniqueConstraint(fields=["studio", "service_month"], condition=models.Q(kind="monthly"), name="unique_monthly_billing_run"),
+        ]
+
+
+class BillingRunItem(models.Model):
+    run = models.ForeignKey(BillingRun, on_delete=models.CASCADE, related_name="items")
+    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True)
+    number = models.CharField(max_length=60)
+    recipient = models.CharField(max_length=320, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    snapshot = models.JSONField(default=dict, blank=True)
+    pdf_document = models.BinaryField(null=True, blank=True)
+    state = models.CharField(max_length=20, default="pending")
+    error = models.TextField(default="", blank=True)
