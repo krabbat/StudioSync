@@ -98,6 +98,7 @@ def invoice_snapshot(invoice):
     period_end = invoice.service_month_end or invoice.service_month
     return {
         "invoice_number": invoice.invoice_number,
+        "family_name": str(family) if family else "",
         "issue_date": date_de(invoice.issue_date),
         "due_date": date_de(effective_due_date(invoice)),
         "service_period": (
