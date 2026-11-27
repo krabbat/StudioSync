@@ -235,7 +235,7 @@ class MailStudentOverviewView(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, student_id):
+    def get(self, request, student_id=None, family_id=None):
         config = _mailbox_config(request)
         studio = studio_for_request(request)
         try:
@@ -244,6 +244,7 @@ class MailStudentOverviewView(APIView):
             result = mail_student_overview(
                 studio, request.user, mailbox_account_key(config),
                 str(student_id), limit=limit, offset=offset,
+                family_id=family_id, contact_index=int(request.query_params["contact"]) if family_id and "contact" in request.query_params else None,
             )
         except (ValueError, TypeError):
             return Response({"detail": "Ungültige Seitenauswahl."},
