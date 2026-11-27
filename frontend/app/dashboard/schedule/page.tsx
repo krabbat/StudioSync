@@ -846,8 +846,8 @@ export default function SchedulePage() {
                         <span className={`absolute inset-x-0 top-1 ${showNowLine && ((hour === nowHour && nowOffset < 22) || (hour === nowHour + 1 && nowOffset > WEEK_HOUR_HEIGHT - 12)) ? "invisible" : ""}`}>{formatGridHour(hour)}</span>
                         {showNowLine && hour === nowHour && (
                           <>
-                            <div aria-hidden="true" className="no-print pointer-events-none absolute left-0 -right-px z-30 h-0.5 bg-red-600" style={{ top: nowOffset }} />
-                            <span className="no-print pointer-events-none absolute left-1 z-30 -translate-y-1/2 rounded bg-red-600 px-1 py-0.5 text-[10px] sm:text-xs font-bold leading-none tabular-nums text-white" style={{ top: hour === businessStart ? Math.max(8, nowOffset) : nowOffset }}>{nowLabel}</span>
+                            <div aria-hidden="true" className="no-print pointer-events-none absolute left-0 -right-px z-30 h-px bg-red-600/35" style={{ top: nowOffset }} />
+                            <span className="no-print pointer-events-none absolute left-1 z-30 -translate-y-1/2 px-0.5 text-[10px] font-normal leading-none tabular-nums text-[#b75a5a]" style={{ backgroundColor: WEEK_CHROME_COLOR, top: hour === businessStart ? Math.max(8, nowOffset) : nowOffset }}>{nowLabel}</span>
                           </>
                         )}
                       </div>
@@ -876,7 +876,7 @@ export default function SchedulePage() {
                         >
                           <div className="relative h-[84px] overflow-visible">
                               {showNowLine && hour === nowHour && (
-                                <div aria-hidden="true" className="no-print pointer-events-none absolute left-0 -right-px z-30 h-0.5 bg-red-600" style={{ top: nowOffset }} />
+                                <div aria-hidden="true" className="no-print pointer-events-none absolute left-0 -right-px z-30 h-px bg-red-600/35" style={{ top: nowOffset }} />
                               )}
                               {slotLessons.map((lesson: any) => (
                                 <div
