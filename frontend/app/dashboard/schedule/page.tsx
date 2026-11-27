@@ -119,6 +119,11 @@ export default function SchedulePage() {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
+  const monthDays = eachDayOfInterval({
+    start: startOfWeek(monthStart, { weekStartsOn: 1 }),
+    end: endOfWeek(monthEnd, { weekStartsOn: 1 }),
+  });
+  const monthWeekCount = monthDays.length / 7;
 
   const queryStartDate = viewMode === "week"
     ? format(weekStart, "yyyy-MM-dd")
@@ -700,7 +705,56 @@ export default function SchedulePage() {
             }
           }
         }
+        @media screen {
+          /* Fit all month rows into the calendar's available height, including
+             six-week months on shorter landscape tablet screens. */
+          .studiosync-schedule .schedule-month {
+            container-name: schedule-month;
+            container-type: size;
+          }
+          @container schedule-month (max-height: 620px) {
+            .schedule-month .schedule-month-weekday {
+              padding-top: 0.375rem;
+              padding-bottom: 0.375rem;
+            }
+            .schedule-month .schedule-month-day {
+              padding: 0.1875rem 0.25rem;
+            }
+            .schedule-month .schedule-month-date {
+              margin-bottom: 0.125rem;
+            }
+            .schedule-month .schedule-month-date > span {
+              width: 1.125rem;
+              height: 1.125rem;
+              font-size: 0.6875rem;
+            }
+            .schedule-month .schedule-month-events > * + * {
+              margin-top: 0.125rem;
+            }
+            .schedule-month .schedule-month-event {
+              font-size: 0.625rem;
+              line-height: 1.15;
+              padding: 0.125rem 0.25rem;
+            }
+          }
+          @container schedule-month (max-height: 460px) {
+            .schedule-month .schedule-month-date > span {
+              height: 1rem;
+            }
+            .schedule-month .schedule-month-event {
+              padding-top: 1px;
+              padding-bottom: 1px;
+            }
+          }
+        }
         @media print {
+          .studiosync-schedule .schedule-month {
+            height: auto;
+          }
+          .studiosync-schedule .schedule-month-grid {
+            grid-template-rows: none !important;
+            grid-auto-rows: minmax(100px, auto);
+          }
           .studiosync-schedule .schedule-viewport {
             display: block;
             height: auto;
@@ -806,7 +860,7 @@ export default function SchedulePage() {
 
       {/* Schedule Grid */}
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col w-full min-w-0 flex-1 min-h-[180px]">
-        <div className="overflow-x-hidden overflow-y-auto overscroll-x-none touch-pan-y schedule-scroll-area flex-1 min-h-0 min-w-0 relative">
+        <div key={viewMode} className={`overflow-x-hidden ${viewMode === "week" ? "overflow-y-auto" : "overflow-y-hidden"} overscroll-x-none touch-pan-y schedule-scroll-area flex-1 min-h-0 min-w-0 relative`}>
           {viewMode === "week" ? (
             <table className="w-full table-fixed border-separate border-spacing-0">
                <colgroup>
@@ -983,19 +1037,16 @@ export default function SchedulePage() {
               </tbody>
             </table>
           ) : (
-            <div className="flex flex-col h-full w-full min-w-0">
+            <div className="schedule-month flex flex-col h-full w-full min-h-0 min-w-0">
               <div className="grid grid-cols-7 bg-gray-50/80 backdrop-blur-sm sticky top-0 z-20 border-b border-gray-100 shrink-0">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayName) => (
-                  <div key={dayName} className="py-3 px-2 text-center text-[10px] sm:text-xs font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 last:border-0">
+                  <div key={dayName} className="schedule-month-weekday py-3 px-2 text-center text-[10px] sm:text-xs font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 last:border-0">
                     {dayName}
                   </div>
                 ))}
               </div>
-              <div className="flex-1 grid grid-cols-7 auto-rows-fr">
-                {eachDayOfInterval({
-                  start: startOfWeek(monthStart, { weekStartsOn: 1 }),
-                  end: endOfWeek(monthEnd, { weekStartsOn: 1 })
-                }).map((day, idx) => {
+              <div className="schedule-month-grid flex-1 min-h-0 min-w-0 grid grid-cols-7" style={{ gridTemplateRows: `repeat(${monthWeekCount}, minmax(0, 1fr))` }}>
+                {monthDays.map((day) => {
                   const isCurrentMonth = isSameMonth(day, monthStart);
                   const isToday = isSameDay(day, new Date());
                   const dayLessons = getLessonsForDay(day);
@@ -1016,14 +1067,14 @@ export default function SchedulePage() {
                         setBookingMode("individual");
                         setShowBookingModal(true);
                       }}
-                      className={`min-h-[100px] min-w-0 border-b border-r border-gray-100 p-1 sm:p-2 hover:bg-gray-50/50 transition-colors ${!isCurrentMonth ? "bg-gray-50/40" : ""} flex flex-col`}
+                      className={`schedule-month-day min-h-0 min-w-0 overflow-hidden border-b border-r border-gray-100 p-1 sm:p-2 hover:bg-gray-50/50 transition-colors ${!isCurrentMonth ? "bg-gray-50/40" : ""} flex flex-col`}
                     >
-                      <div className="flex justify-end mb-1">
+                      <div className="schedule-month-date flex justify-end mb-1 shrink-0">
                         <span className={`text-xs sm:text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? "bg-primary text-white" : isCurrentMonth ? "text-gray-900" : "text-gray-400"}`}>
                           {format(day, "d")}
                         </span>
                       </div>
-                      <div className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto space-y-1 schedule-scroll-area">
+                      <div className="schedule-month-events flex-1 min-h-0 min-w-0 overflow-x-hidden overflow-y-auto space-y-1 schedule-scroll-area">
                         {dayLessons.map((lesson: any) => (
                           <div
                             key={lesson.id}
@@ -1034,7 +1085,7 @@ export default function SchedulePage() {
                             }}
                             style={getLessonColorStyles(lesson)}
                             className={`
-                              px-1.5 py-1 rounded w-full truncate border-l-2 shadow-sm hover:shadow-md cursor-pointer text-left relative
+                              schedule-month-event px-1.5 py-1 rounded w-full truncate border-l-2 shadow-sm hover:shadow-md cursor-pointer text-left relative
                               ${(colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed" || lesson.status === "in_progress" || lesson.status === "no_show") ? (
                                 lesson.status === "scheduled" ? "bg-blue-50 border-blue-200 text-blue-700" :
                                   lesson.status === "completed" ? "bg-emerald-50 border-emerald-400 text-emerald-800" :
@@ -1065,7 +1116,7 @@ export default function SchedulePage() {
                           <div
                             key={evt.id}
                             title={`${evt.feed_name}: ${evt.title}`}
-                            className="px-1.5 py-1 rounded w-full truncate border border-dashed text-[9px] sm:text-[10px]"
+                            className="schedule-month-event px-1.5 py-1 rounded w-full truncate border border-dashed text-[9px] sm:text-[10px]"
                             style={{
                               borderColor: evt.feed_color,
                               color: evt.feed_color,
