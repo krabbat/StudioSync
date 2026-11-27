@@ -45,7 +45,7 @@ class FamilySerializer(serializers.ModelSerializer):
             "id",
             "studio",
             "name", "display_name", "address_line1", "postal_code", "city",
-            "ha_zone_entity_id", "contacts", "billing_recipient_name", "payment_method",
+            "ha_zone_entity_id", "contacts", "billing_recipient_name", "payment_method", "individual_billing",
             "primary_parent",
             "primary_parent_details",
             "secondary_parent",
