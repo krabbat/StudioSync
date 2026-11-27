@@ -44,6 +44,10 @@ interface Lesson {
     teacher?: string
     student_profile_id?: string
     band?: string
+    teaching_family?:string
+    teaching_group?:string
+    group_name_snapshot?:string
+    group_participants?:{id:string;name:string;status:string}[]
     room?: string
     duration_minutes?: number
     online_meeting_url?: string
@@ -68,6 +72,7 @@ interface Lesson {
 
 export default function LessonsPage() {
   const tr = useTranslations('Lessons')
+  const groupT=useTranslations('TeachingGroups')
   const locale = useLocale()
     const { currentUser } = useUser()
     const { lessons, loading, refetch: refetchLessons } = useLessons()
@@ -138,13 +143,19 @@ export default function LessonsPage() {
         const isGuest = Boolean(lesson.guest_name)
         setEditingLessonId(lesson.id)
         setBookingMode(
-            isGuest ? 'special' : lesson.band ? 'band'
+            isGuest ? 'special' : (lesson.band || lesson.teaching_family || lesson.teaching_group) ? 'band'
             : (lesson.lesson_type === 'workshop' || lesson.lesson_type === 'recital') ? 'event' : 'individual'
         )
         setNewBooking({
             ...blankLesson(lesson.teacher || preferredTeacherId),
             student: lesson.student_profile_id || lesson.student || '',
             band: lesson.band || '',
+            group_source:lesson.teaching_group?'group':'family',
+            group_id:lesson.teaching_group||lesson.teaching_family||'',
+            group_name:lesson.group_name_snapshot||'',
+            participant_ids:(lesson.group_participants||[]).map(p=>p.id),
+            participant_names:lesson.group_participants||[],
+            participant_statuses:Object.fromEntries((lesson.group_participants||[]).map(p=>[p.id,p.status])),
             room: lesson.room || '',
             date: format(start, 'yyyy-MM-dd'),
             time: format(start, 'HH:mm'),
@@ -168,13 +179,13 @@ export default function LessonsPage() {
         e.preventDefault()
         if (!newBooking.date || !newBooking.time ||
             (bookingMode === 'individual' && !newBooking.student) ||
-            (bookingMode === 'band' && !newBooking.band) ||
+            (bookingMode === 'band' && !newBooking.band && (!newBooking.group_id||(newBooking.participant_ids?.length||0)<2)) ||
             (bookingMode === 'special' && !newBooking.guest_name.trim())
         ) {
-            toast.error('Bitte die erforderlichen Termindaten ausfüllen.')
+            toast.error(bookingMode==='band'?groupT('selectTwo'):'Bitte die erforderlichen Termindaten ausfüllen.')
             return
         }
-        if (newBooking.status === 'cancelled' && bookingMode === 'individual' && !newBooking.cancellation_kind) {
+        if (newBooking.status === 'cancelled' && (bookingMode === 'individual' || (bookingMode==='band'&&newBooking.group_id)) && !newBooking.cancellation_kind) {
             toast.error(tr('cancellationKindRequired'))
             return
         }
@@ -197,12 +208,18 @@ export default function LessonsPage() {
             }
             if (newBooking.status === 'cancelled') {
                 payload.cancellation_reason = newBooking.cancellation_reason
-                payload.cancellation_kind = bookingMode === 'individual' ? newBooking.cancellation_kind : ''
+                payload.cancellation_kind = (bookingMode === 'individual' || (bookingMode==='band'&&newBooking.group_id)) ? newBooking.cancellation_kind : ''
             }
             if (bookingMode === 'special') {
                 payload.student = null
                 payload.band = null
                 payload.room = null
+            } else if (bookingMode === 'band' && newBooking.group_id) {
+                payload.lesson_type='group';payload.student=null;payload.band=null
+                payload.teaching_family=newBooking.group_source==='group'?null:newBooking.group_id
+                payload.teaching_group=newBooking.group_source==='group'?newBooking.group_id:null
+                payload.participant_ids=newBooking.participant_ids
+                payload.participant_statuses=newBooking.participant_statuses||{}
             } else if (bookingMode === 'band') {
                 payload.band = newBooking.band
                 payload.student = null
