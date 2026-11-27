@@ -83,6 +83,7 @@ const WEEK_CHROME_COLOR = "#e2e8f0";
 
 export default function SchedulePage() {
   const tr = useTranslations('Schedule')
+  const groupT=useTranslations('TeachingGroups')
   const locale = useLocale()
   const { currentUser } = useUser();
   const hasIcloudCalendar = currentUser?.role === "admin" && Boolean(currentUser?.preferences?.technical?.icloud_calendar_url);
@@ -322,6 +323,12 @@ export default function SchedulePage() {
       student: lesson.student || "",
       teacher: lesson.teacher || "",
       band: lesson.band || "",
+      group_source: lesson.teaching_group ? "group" : "family",
+      group_id: lesson.teaching_group || lesson.teaching_family || "",
+      group_name: lesson.group_name_snapshot || "",
+      participant_ids: (lesson.group_participants || []).map((p:any)=>p.id),
+      participant_names: lesson.group_participants || [],
+      participant_statuses: Object.fromEntries((lesson.group_participants || []).map((p:any)=>[p.id,p.status])),
       room: lesson.room || (lesson.is_online ? "external" : ""),
       date: format(start, "yyyy-MM-dd"),
       time: format(start, "HH:mm"),
@@ -341,7 +348,7 @@ export default function SchedulePage() {
     setEditingLessonId(lesson.id);
 
     if (lesson.guest_name) setBookingMode("special");
-    else if (lesson.band) setBookingMode("band");
+    else if (lesson.band || lesson.teaching_family || lesson.teaching_group) setBookingMode("band");
     else if (lesson.lesson_type === "workshop" || lesson.lesson_type === "recital")
       setBookingMode("event");
     else setBookingMode("individual");
@@ -515,12 +522,12 @@ export default function SchedulePage() {
       toast.error(tr('messagePleaseSelectAStudent'));
       return;
     }
-    if (newBooking.status === "cancelled" && bookingMode === "individual" && !newBooking.cancellation_kind) {
+    if (newBooking.status === "cancelled" && (bookingMode === "individual" || (bookingMode==="band"&&newBooking.group_id)) && !newBooking.cancellation_kind) {
       toast.error(tr('cancellationKindRequired'));
       return;
     }
-    if (currentUser?.role !== "student" && bookingMode === "band" && !newBooking.band) {
-      toast.error(tr('messagePleaseSelectABand'));
+    if (currentUser?.role !== "student" && bookingMode === "band" && !newBooking.band && (!newBooking.group_id || (newBooking.participant_ids?.length || 0)<2)) {
+      toast.error(groupT('selectTwo'));
       return;
     }
 
@@ -543,7 +550,7 @@ export default function SchedulePage() {
 
       if (newBooking.status === "cancelled") {
         payload.cancellation_reason = newBooking.cancellation_reason;
-        payload.cancellation_kind = bookingMode === "individual" ? newBooking.cancellation_kind : "";
+        payload.cancellation_kind = (bookingMode === "individual" || (bookingMode==="band"&&newBooking.group_id)) ? newBooking.cancellation_kind : "";
       }
 
       if (currentUser?.role === "student") {
@@ -558,6 +565,12 @@ export default function SchedulePage() {
           payload.student = null;
           payload.band = null;
           payload.room = null;
+        } else if (bookingMode === "band" && newBooking.group_id) {
+          payload.lesson_type="group"; payload.student=null; payload.band=null;
+          payload.teaching_family=newBooking.group_source==="group"?null:newBooking.group_id;
+          payload.teaching_group=newBooking.group_source==="group"?newBooking.group_id:null;
+          payload.participant_ids=newBooking.participant_ids;
+          payload.participant_statuses=newBooking.participant_statuses||{};
         } else if (bookingMode === "band" && newBooking.band) {
           payload.band = newBooking.band;
           payload.student = null;
