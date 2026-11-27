@@ -1,5 +1,6 @@
 {
   "TeachingGroups": {
+    "noSpecificStudent": "Kein bestimmter Schüler",
     "title": "Gruppen",
     "students": "Schüler",
     "families": "Familien",
