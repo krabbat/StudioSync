@@ -76,6 +76,11 @@ def send_invoice(invoice_id, *, resend=False):
             raise InvoiceDeliveryError("Eine stornierte Rechnung kann nicht versendet werden.")
 
         snapshot = dict(invoice.document_snapshot or invoice_snapshot(invoice))
+        block = getattr(invoice, "block_bill", None)
+        if block and block.plan.test_only:
+            if snapshot.get("recipient_email", "").strip().rsplit("@", 1)[-1].casefold() != "musart.de":
+                raise InvoiceDeliveryError("Testversand ist ausschließlich an @musart.de erlaubt.")
+
         if not already_sent:
             snapshot.update(already_paid=str(invoice.amount_paid), balance_due=str(max(invoice.balance_due, 0)))
         missing = missing_billing_fields(invoice, snapshot)
@@ -100,6 +105,8 @@ def send_invoice(invoice_id, *, resend=False):
 
         paid = float(snapshot["balance_due"]) <= 0
         subject = f"MUSart – Rechnung {invoice.invoice_number}"
+        if block and block.plan.test_only:
+            subject = "[TEST] " + subject
         intro = (
             "Der Rechnungsbetrag wurde bereits beglichen."
             if paid else
