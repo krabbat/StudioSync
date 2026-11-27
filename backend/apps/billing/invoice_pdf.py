@@ -98,6 +98,7 @@ def invoice_snapshot(invoice):
     period_end = invoice.service_month_end or invoice.service_month
     return {
         "invoice_number": invoice.invoice_number,
+        "test_only": bool(getattr(getattr(invoice, "block_bill", None), "test_only", False)),
         "family_name": str(family) if family else "",
         "issue_date": date_de(invoice.issue_date),
         "due_date": date_de(effective_due_date(invoice)),
@@ -224,7 +225,7 @@ def render_invoice_pdf(data):
         paragraph(line(data["recipient_postal_code"], data["recipient_city"])),
     ]
     dates = [
-        paragraph("RECHNUNG", heading),
+        paragraph("TESTRECHNUNG" if data.get("test_only") else "RECHNUNG", heading),
         Spacer(1, 3 * mm),
         paragraph("Nr. " + data["invoice_number"], right),
         paragraph("Rechnungsdatum: " + data["issue_date"], right_small),
@@ -237,6 +238,8 @@ def render_invoice_pdf(data):
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
     ]))
     story += [block, Spacer(1, 12 * mm)]
+    if data.get("test_only"):
+        story += [paragraph("Nur zur Prüfung – keine Zahlungsaufforderung.", subheading)]
     if data["student_name"]:
         story += [paragraph(
             data.get("lesson_subject", "Musikunterricht") + " für " + data["student_name"],
