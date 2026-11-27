@@ -24,6 +24,7 @@ BERLIN = ZoneInfo("Europe/Berlin")
 
 class BillingAutomationSerializer(serializers.ModelSerializer):
     monthly_day = serializers.IntegerField(min_value=1, max_value=28)
+    test_at = serializers.DateTimeField(default_timezone=BERLIN, allow_null=True, required=False)
 
     class Meta:
         model = BillingAutomation
