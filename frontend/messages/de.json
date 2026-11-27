@@ -1,5 +1,10 @@
 {
   "TeachingGroups": {
+    "haZone": "Home-Assistant-Zone",
+    "chooseZone": "Unterrichtszone auswählen",
+    "zonesUnavailable": "HA-Zonen konnten nicht geladen werden.",
+    "reviewRequired": "Anwesenheitsprüfung erforderlich",
+    "selectZone": "Bitte eine Unterrichtszone auswählen.",
     "noSpecificStudent": "Kein bestimmter Schüler",
     "title": "Gruppen",
     "students": "Schüler",
