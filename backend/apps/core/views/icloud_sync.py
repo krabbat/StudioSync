@@ -147,7 +147,7 @@ class ICloudSeriesCreateView(_AdminICloudView):
                 request.user, student=student, teacher=teacher, start=start,
                 end=end, frequency=str(request.data.get("frequency", "")), until=until,
                 summary=str(request.data.get("summary") or ""),
-                group_booking=booking,
+                **({"group_booking":booking} if booking else {}),
             )
         except ICloudSetupError as exc:
             return Response({"detail": str(exc)}, status=400)
