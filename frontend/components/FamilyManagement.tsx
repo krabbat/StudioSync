@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import FamilyBillingPanel from '@/components/FamilyBillingPanel'
 import { Plus, Users, Save, ArrowLeft, Loader2, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
@@ -16,11 +18,11 @@ type Member = { id: string; name: string; instrument: string; monthly_amount?: s
 type Family = {
     id: string; name: string; display_name: string; address_line1: string; postal_code: string; city: string;
     address: string; ha_zone_entity_id: string; contacts: Contact[]; billing_recipient_name: string;
-    billing_email: string; payment_method: string; students: Member[]
+    billing_email: string; payment_method: string; individual_billing: boolean; students: Member[]
 }
-type Draft = Pick<Family, 'name' | 'address_line1' | 'postal_code' | 'city' | 'ha_zone_entity_id' | 'contacts' | 'billing_recipient_name' | 'billing_email' | 'payment_method'>
-const empty: Draft = { name: '', address_line1: '', postal_code: '', city: '', ha_zone_entity_id: '', contacts: [], billing_recipient_name: '', billing_email: '', payment_method: 'bank_transfer' }
-const toDraft = (f: Family): Draft => ({ name: f.name || f.display_name, address_line1: f.address_line1, postal_code: f.postal_code, city: f.city, ha_zone_entity_id: f.ha_zone_entity_id, contacts: (f.contacts || []).map(c=>({...c,first_name:c.first_name??(c.name.includes(' ')?c.name.split(' ')[0]:''),last_name:c.last_name??(c.name.includes(' ')?c.name.substring(c.name.indexOf(' ')+1):c.name)})), billing_recipient_name: f.billing_recipient_name, billing_email: f.billing_email, payment_method: f.payment_method })
+type Draft = Pick<Family, 'name' | 'address_line1' | 'postal_code' | 'city' | 'ha_zone_entity_id' | 'contacts' | 'billing_recipient_name' | 'billing_email' | 'payment_method' | 'individual_billing'>
+const empty: Draft = { name: '', address_line1: '', postal_code: '', city: '', ha_zone_entity_id: '', contacts: [], billing_recipient_name: '', billing_email: '', payment_method: 'bank_transfer', individual_billing: false }
+const toDraft = (f: Family): Draft => ({ name: f.name || f.display_name, address_line1: f.address_line1, postal_code: f.postal_code, city: f.city, ha_zone_entity_id: f.ha_zone_entity_id, contacts: (f.contacts || []).map(c=>({...c,first_name:c.first_name??(c.name.includes(' ')?c.name.split(' ')[0]:''),last_name:c.last_name??(c.name.includes(' ')?c.name.substring(c.name.indexOf(' ')+1):c.name)})), billing_recipient_name: f.billing_recipient_name, billing_email: f.billing_email, payment_method: f.payment_method, individual_billing: f.individual_billing ?? false })
 const money = (value: number) => value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
 const inputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900'
 const err = (e: any) => {
@@ -35,6 +37,7 @@ const err = (e: any) => {
 
 export default function FamilyManagement() {
     const router = useRouter()
+    const billingT = useTranslations('FamilyBilling')
     const [families, setFamilies] = useState<Family[]>([])
     const [selected, setSelected] = useState<Family | null>(null)
     const [draft, setDraft] = useState<Draft | null>(null)
@@ -236,8 +239,8 @@ export default function FamilyManagement() {
                 </>}
                 <div className="flex flex-wrap gap-3"><Button disabled={saving||memberLoading||memberError} onClick={()=>{setMemberDropdown(false);void saveMembers()}}>Zuordnung speichern</Button></div></>}
             {tab==='contacts' && <>{!draft.contacts.length&&<p className="text-sm text-gray-500">Noch keine Ansprechpartner hinterlegt.</p>}{draft.contacts.map((contact,i)=><div key={i} className="border rounded-lg p-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-6"><div className="flex justify-between sm:col-span-2 xl:col-span-6"><strong>Ansprechpartner {i+1}</strong><button aria-label="Ansprechpartner entfernen" onClick={()=>change('contacts',draft.contacts.filter((_,j)=>i!==j))}><X className="w-4 h-4"/></button></div>{([['first_name','Vorname'],['last_name','Nachname'],['relation','Beziehung zum Schüler'],['email','E-Mail'],['phone','Telefon']] as const).map(([k,label])=><label key={k} className={'space-y-1 text-sm min-w-0 '+(k==='email'?'xl:col-span-3':k==='phone'?'xl:col-span-3':'xl:col-span-2')}><span>{label}</span><input className={inputClass} type={k==='email'?'email':'text'} value={contact[k]} onChange={e=>change('contacts',draft.contacts.map((x,j)=>i===j?{...x,[k]:e.target.value,...(k==='first_name'||k==='last_name'?{name:[k==='first_name'?e.target.value:x.first_name,k==='last_name'?e.target.value:x.last_name].filter(Boolean).join(' ')}:{})}:x))}/></label>)}</div>)}<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end border-t border-gray-200 pt-4"><div><Button variant="outline" onClick={()=>change('contacts',[...draft.contacts,{name:'',first_name:'',last_name:'',relation:'',email:'',phone:''}])}><Plus className="w-4 h-4 mr-2"/>Ansprechpartner hinzufügen</Button></div>{importPanel('contacts')}</div></>}
-            {tab==='billing' && <><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{field('Rechnungsempfänger','billing_recipient_name')}{field('Rechnungs-E-Mail','billing_email','email')}<label className="space-y-1 text-sm font-semibold">Zahlungsart<select className={inputClass} value={draft.payment_method} onChange={e=>change('payment_method',e.target.value)}><option value="bank_transfer">Banküberweisung</option><option value="paypal">PayPal</option><option value="cash">Barzahlung</option></select></label></div><p className="text-sm text-gray-500">Gemeinsame Rechnungsanschrift: Familienanschrift. Sammelrechnungen werden erst in der nächsten Abrechnungs-Ausbaustufe aktiviert.</p><div className="border-t border-gray-200 pt-4 flex justify-end"><div className="w-full lg:max-w-xl">{importPanel('billing')}</div></div></>}
-            {tab==='accounts' && <><p className="text-sm text-gray-500">Sammelabrechnung noch nicht aktiv. Die bestehenden Einzelrechnungen bleiben unverändert.</p>{selected?.students.map(s=><div key={s.id} className="flex justify-between border-b py-2"><Link href={'/dashboard/students/'+s.id}>{s.name}</Link><span>{s.monthly_amount ? money(Number(s.monthly_amount)) : 'Kein Vertrag'}</span></div>)}</>}
+            {tab==='billing' && <><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{field('Rechnungsempfänger','billing_recipient_name')}{field('Rechnungs-E-Mail','billing_email','email')}<label className="space-y-1 text-sm font-semibold">Zahlungsart<select className={inputClass} value={draft.payment_method} onChange={e=>change('payment_method',e.target.value)}><option value="bank_transfer">Banküberweisung</option><option value="paypal">PayPal</option><option value="cash">Barzahlung</option></select></label></div><p className="text-sm text-gray-500">{billingT('addressHint')}</p><label className="flex gap-3 items-start text-sm"><input type="checkbox" className="mt-1" checked={draft.individual_billing} onChange={e=>change('individual_billing',e.target.checked)}/><span><strong>{billingT('individual')}</strong><span className="block text-gray-500">{billingT('individualHint')}</span></span></label><div className="border-t border-gray-200 pt-4 flex justify-end"><div className="w-full lg:max-w-xl">{importPanel('billing')}</div></div></>}
+            {tab==='accounts' && selected && <FamilyBillingPanel key={selected.id} familyId={selected.id} individualBilling={selected.individual_billing} members={selected.students}/>}
             {tab==='communication' && <p className="text-sm text-gray-500">Die familienbezogene Mailzuordnung folgt in einer späteren Ausbaustufe. Bestehender Schriftverkehr bleibt bei den Schülern verfügbar.</p>}
             {['overview','contacts','billing'].includes(tab) && <Button disabled={saving} onClick={()=>void save()}><Save className="w-4 h-4 mr-2"/>Speichern</Button>}
         </div>
