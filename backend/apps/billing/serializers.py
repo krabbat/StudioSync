@@ -31,6 +31,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
     line_items = InvoiceLineItemSerializer(many=True, required=False)
     balance_due = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
+    test_only = serializers.SerializerMethodField()
+    def get_test_only(self, obj):
+        return bool(getattr(getattr(obj, "block_bill", None), "test_only", False))
+
     pdf_available = serializers.SerializerMethodField()
     email_sent = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
@@ -121,6 +125,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "invoice_number",
+            "test_only",
             "status",
             "issue_date",
             "due_date",
