@@ -54,7 +54,7 @@ export default function FamilyAccessPanel({familyId,members,contacts}:{familyId:
                 <fieldset className="space-y-2"><legend className="font-medium text-sm">{t('profiles')}</legend>{members.map(m=><label key={m.id} className="flex gap-2 items-center text-sm"><input type="checkbox" checked={students.includes(m.id)} onChange={e=>setStudents(old=>e.target.checked?[...old,m.id]:old.filter(id=>id!==m.id))}/>{m.name}</label>)}</fieldset>
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={communication} onChange={e=>setCommunication(e.target.checked)}/>{t('communication')}</label>
                 <div className="grid sm:grid-cols-3 gap-3">
-                    <label className="text-sm">{t('loginEmail')}<input type="email" autoComplete="off" className="block border rounded-lg p-2 w-full" value={email} onChange={e=>setEmail(e.target.value)}/></label>
+                    <label className="text-sm">{t('loginEmail')}<input type="text" inputMode="email" autoComplete="off" className="block border rounded-lg p-2 w-full" value={email} onChange={e=>setEmail(e.target.value)}/></label>
                     <label className="text-sm">{t('password')}<input type="password" autoComplete="new-password" className="block border rounded-lg p-2 w-full" value={password} onChange={e=>setPassword(e.target.value)}/></label>
                     <label className="text-sm">{t('confirmPassword')}<input type="password" autoComplete="new-password" className="block border rounded-lg p-2 w-full" value={confirm} onChange={e=>setConfirm(e.target.value)}/></label>
                 </div><p className="text-xs text-gray-500">{t('passwordHint')}</p>
