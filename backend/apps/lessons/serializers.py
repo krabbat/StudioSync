@@ -28,7 +28,7 @@ class GroupLessonReadMixin(serializers.Serializer):
         request = self.context.get("request")
         if request and request.user.role not in ("admin","teacher"):
             qs = qs.filter(student__user=request.user)
-        return [{"id":str(p.student_id),"name":p.name_snapshot,"status":p.status} for p in qs]
+        return [{"id":str(p.student_id),"name":p.name_snapshot,"first_name":p.first_name_snapshot or p.name_snapshot, "instrument":p.instrument_snapshot,"status":p.status} for p in qs]
 
 
 class LessonListSerializer(GroupLessonReadMixin, serializers.ModelSerializer):
@@ -66,6 +66,12 @@ class LessonListSerializer(GroupLessonReadMixin, serializers.ModelSerializer):
     def get_student_instrument(self, obj):
         if obj.student_id:
             return obj.student.instrument
+        if obj.teaching_family_id or obj.teaching_group_id:
+            instruments = {}
+            for participant in obj.participants.all():
+                name = participant.instrument_snapshot.strip()
+                if name: instruments.setdefault(name.casefold(), name)
+            return ", ".join(instruments.values())
         return None
 
     def get_band_name(self, obj):
@@ -361,7 +367,8 @@ class LessonCreateSerializer(serializers.ModelSerializer):
             instance.participants.exclude(student_id__in=ids).delete()
             existing=set(instance.participants.values_list("student_id",flat=True))
             for student in Student.objects.filter(pk__in=set(ids)-existing).select_related("user"):
-                LessonParticipant.objects.create(lesson=instance,student=student,name_snapshot=student.user.get_full_name())
+                LessonParticipant.objects.create(lesson=instance,student=student,name_snapshot=student.user.get_full_name(),
+                    first_name_snapshot=student.user.first_name,instrument_snapshot=student.instrument)
         for key,value in statuses.items():
             instance.participants.filter(student_id=key).update(status=value)
 
