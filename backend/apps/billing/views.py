@@ -122,6 +122,18 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         data["email_error"] = error_message
         return Response(data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=["get", "put"], url_path="automation")
+    def automation(self, request):
+        if request.user.role != "admin":
+            raise PermissionDenied()
+        studio = studio_for_request(request)
+        if studio is None:
+            raise ValidationError({"detail": "Kein zugeordnetes Studio vorhanden."})
+        from .automation import settings_payload, save_settings
+        if request.method == "PUT":
+            return Response(save_settings(studio, request.data))
+        return Response(settings_payload(studio))
+
     @action(detail=False, methods=["post"], url_path="generate-month")
     def generate_monthly(self, request):
         if request.user.role != "admin":
