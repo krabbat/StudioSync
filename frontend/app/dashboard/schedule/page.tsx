@@ -78,7 +78,7 @@ interface ExternalEvent {
 
 // One hour always occupies exactly 96px in the weekly timetable.
 // The labels and appointment offsets must use this same scale.
-const WEEK_HOUR_HEIGHT = 96;
+const WEEK_HOUR_HEIGHT = 84;
 const WEEK_CHROME_COLOR = "#e2e8f0";
 const participantNames = (lesson:any) => (lesson.group_participants||[]).map((p:{first_name?:string;name:string})=>p.first_name||p.name).filter(Boolean).join(", ");
 
@@ -652,8 +652,19 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="max-w-[1600px] w-full min-w-0 mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-12 space-y-4 print:space-y-2">
+    <div className="studiosync-schedule max-w-[1600px] w-full min-w-0 mx-auto px-4 sm:px-6 lg:px-8 pb-12 space-y-3 print:space-y-2">
       <style jsx global>{`
+        .dashboard-main:has(.studiosync-schedule),
+        .studiosync-schedule .schedule-scroll-area {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .dashboard-main:has(.studiosync-schedule)::-webkit-scrollbar,
+        .studiosync-schedule .schedule-scroll-area::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
         @media print {
           nav,
           aside,
@@ -681,16 +692,16 @@ export default function SchedulePage() {
       `}</style>
 
       {/* Period Navigation */}
-      <div className="flex justify-between items-center bg-white px-4 sm:px-6 py-2 sm:py-3 rounded-2xl border border-gray-100 shadow-sm no-print">
+      <div className="flex justify-between items-center bg-white px-4 sm:px-6 py-1 rounded-2xl border border-gray-100 shadow-sm no-print">
         <Button variant="ghost" size="icon" onClick={previousPeriod} className="text-gray-600">
           <ChevronLeft className="w-6 h-6" />
         </Button>
         <div className="text-center">
-          <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+          <h2 className="text-lg sm:text-xl leading-tight font-black text-gray-900 tracking-tight">
             {new Intl.DateTimeFormat(locale, {month: "long", year: "numeric"}).format(viewMode === "week" ? weekStart : monthStart)}
           </h2>
           {viewMode === "week" && (
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">
+            <p className="text-xs leading-tight font-bold text-gray-400 uppercase tracking-widest">
               {new Intl.DateTimeFormat(locale, {day: "numeric", month: "short"}).format(weekStart)} — {new Intl.DateTimeFormat(locale, {day: "numeric", month: "short"}).format(addDays(weekStart, 6))}
             </p>
           )}
@@ -710,8 +721,8 @@ export default function SchedulePage() {
       </div>
 
       {/* Schedule Grid */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col w-full min-w-0 h-[calc(100dvh-12rem)] min-h-[240px]">
-        <div className="overflow-x-hidden overflow-y-auto overscroll-x-none touch-pan-y custom-scrollbar flex-1 min-h-0 min-w-0 relative">
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col w-full min-w-0 h-[calc(100dvh_-_13rem)] min-h-[240px]">
+        <div className="overflow-x-hidden overflow-y-auto overscroll-x-none touch-pan-y schedule-scroll-area flex-1 min-h-0 min-w-0 relative">
           {viewMode === "week" ? (
             <table className="w-full table-fixed border-separate border-spacing-0">
                <colgroup>
@@ -720,22 +731,22 @@ export default function SchedulePage() {
                </colgroup>
               <thead className="bg-slate-200 sticky top-0 z-20" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                 <tr>
-                  <th className="px-1 py-3 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest z-30 bg-slate-200 border-r border-b border-slate-300/60" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
+                  <th className="px-1 h-14 py-1 align-middle text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest z-30 bg-slate-200 border-r border-b border-slate-300/60" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                     {tr('time')}
                   </th>
                   {weekDays.map((day, idx) => (
                     <th
                       key={idx}
-                      className={`px-1 py-3 sm:py-4 text-center bg-slate-200 border-b border-slate-300/60 ${idx < 6 ? "border-r border-slate-300/60" : ""}`}
+                      className={`px-1 h-14 py-1 align-middle text-center bg-slate-200 border-b border-slate-300/60 ${idx < 6 ? "border-r border-slate-300/60" : ""}`}
                       style={{ backgroundColor: WEEK_CHROME_COLOR }}
                     >
                       <div
-                        className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 ${isSameDay(day, new Date()) ? "text-primary" : "text-gray-400"}`}
+                        className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest leading-tight ${isSameDay(day, new Date()) ? "text-primary" : "text-gray-400"}`}
                       >
                         {new Intl.DateTimeFormat(locale, {weekday: "short"}).format(day)}
                       </div>
                       <div
-                        className={`text-xl sm:text-2xl font-black ${isSameDay(day, new Date()) ? "text-primary" : "text-gray-900"}`}
+                        className={`text-lg sm:text-xl leading-tight font-black ${isSameDay(day, new Date()) ? "text-primary" : "text-gray-900"}`}
                       >
                         {format(day, "d")}
                       </div>
@@ -745,9 +756,9 @@ export default function SchedulePage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {timeSlots.map((hour) => (
-                  <tr key={hour} className={`group h-24 ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}>
-                    <td className="h-24 p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 z-10 text-center align-top" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
-                      <div className="relative h-24">
+                  <tr key={hour} className={`group h-[84px] ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}>
+                    <td className="h-[84px] p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 z-10 text-center align-top" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
+                      <div className="relative h-[84px]">
                         <span className="absolute inset-x-0 top-1">{formatGridHour(hour)}</span>
                       </div>
                     </td>
@@ -771,9 +782,9 @@ export default function SchedulePage() {
                               setShowBookingModal(true);
                             }
                           }}
-                          className={`h-24 p-0 align-top border-b border-slate-200/70 transition-colors hover:bg-indigo-50/40 ${dayIdx < 6 ? "border-r border-slate-200/70" : ""} ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}
+                          className={`h-[84px] p-0 align-top border-b border-slate-200/70 transition-colors hover:bg-indigo-50/40 ${dayIdx < 6 ? "border-r border-slate-200/70" : ""} ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}
                         >
-                          <div className="relative h-24 overflow-visible">
+                          <div className="relative h-[84px] overflow-visible">
                               {slotLessons.map((lesson: any) => (
                                 <div
                                   key={lesson.id}
@@ -788,7 +799,7 @@ export default function SchedulePage() {
                                   }}
                                   title={`${format(parseISO(lesson.scheduled_start), "HH:mm")} – ${format(parseISO(lesson.scheduled_end), "HH:mm")} · ${lesson.student_name || lesson.band_name || "Unterricht"}${participantNames(lesson)?" · "+participantNames(lesson):""}${lesson.student_instrument?" · "+lesson.student_instrument:""}`}
                                   className={`
-                                    absolute inset-x-1 z-10 overflow-hidden p-1 rounded-lg border-l-[3px] shadow-sm hover:shadow-md transition-all cursor-pointer group/card
+                                    absolute inset-x-1 z-10 overflow-hidden px-1 py-0.5 rounded-lg border-l-[3px] shadow-sm hover:shadow-md transition-all cursor-pointer group/card
                                     ${(colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed" || lesson.status === "in_progress" || lesson.status === "no_show") ? (
                                       lesson.status === "scheduled" ? "bg-blue-50 border-blue-200 text-blue-700 cursor-pointer hover:bg-blue-100" :
                                         lesson.status === "completed" ? "bg-emerald-50 border-emerald-400" :
@@ -831,14 +842,14 @@ export default function SchedulePage() {
                                     </div>
                                   </div>
                                   <p
-                                    className={`text-[9px] sm:text-[10px] font-medium mt-0.5 truncate ${colorMode !== "status" ? "" : "text-gray-500 group-hover/card:text-gray-700"}`}
+                                    className={`text-[9px] sm:text-[10px] leading-tight font-medium truncate ${colorMode !== "status" ? "" : "text-gray-500 group-hover/card:text-gray-700"}`}
                                     style={colorMode !== "status" ? { color: "var(--dynamic-text-light)" } : {}}
                                   >
                                     {lesson.student_instrument}
                                   </p>
                                   {participantNames(lesson)&&<p className="text-[9px] sm:text-[10px] leading-tight truncate" title={participantNames(lesson)}>{participantNames(lesson)}</p>}
                                   {!lesson.is_online && lesson.student_address && (
-                                    <p className="text-[9px] sm:text-[10px] mt-0.5 truncate text-gray-600"
+                                    <p className="text-[9px] sm:text-[10px] leading-tight truncate text-gray-600"
                                        title={lesson.student_address}>
                                       {lesson.student_address}
                                     </p>
@@ -919,7 +930,7 @@ export default function SchedulePage() {
                           {format(day, "d")}
                         </span>
                       </div>
-                      <div className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto space-y-1 custom-scrollbar">
+                      <div className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto space-y-1 schedule-scroll-area">
                         {dayLessons.map((lesson: any) => (
                           <div
                             key={lesson.id}
