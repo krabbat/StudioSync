@@ -15,6 +15,7 @@ class Migration(migrations.Migration):
         ]),
         migrations.CreateModel(name="BlockInvoice", fields=[
             ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+            ("test_only", models.BooleanField(default=True)),
             ("attempted_at", models.DateTimeField(blank=True, null=True)),
             ("delivery_error", models.TextField(blank=True, default="")),
             ("plan", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="bills", to="billing.blockbillingplan")),
