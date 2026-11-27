@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.core.models import Studio
+from apps.core.models import Studio, Student
 from apps.core.international_email import validate_international_email
 from apps.core.mail_outbound import _smtp_utf8_bytes, _open_sent_folder, _save_sent_copy
 from apps.core.mail_cache import invalidate_sent_folder
@@ -39,17 +39,20 @@ class BillingAutomationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Bitte den ersten Abrechnungsmonat angeben.")
         if attrs.get("test_enabled") and not (attrs.get("test_at") and attrs.get("test_month")):
             raise serializers.ValidationError("Testtermin und Leistungsmonat sind erforderlich.")
+        if attrs.get("test_enabled") and attrs["test_at"] <= timezone.now():
+            raise serializers.ValidationError("Der Testtermin muss in der Zukunft liegen.")
         return attrs
 
 
 def settings_payload(studio):
     settings = BillingAutomation.objects.filter(studio=studio).first()
     settings = settings or BillingAutomation(studio=studio)
+    names = {str(student.pk): student.user.get_full_name() for student in Student.objects.filter(studio=studio).select_related("user")}
     runs = studio.billing_runs.prefetch_related("items").order_by("-created_at")[:15]
     return {"settings": BillingAutomationSerializer(settings).data, "runs": [
         {"id": run.pk, "kind": run.kind, "service_month": run.service_month.isoformat(),
          "scheduled_for": run.scheduled_for.isoformat(), "status": run.status,
-         "skipped": run.skipped, "error": run.error,
+         "skipped": [{**entry, "name": names.get(entry.get("student"), "")} for entry in run.skipped], "error": run.error,
          "items": [{"number": item.number, "recipient": item.recipient,
                     "amount": str(item.amount), "state": item.state, "error": item.error}
                    for item in run.items.all()]}
