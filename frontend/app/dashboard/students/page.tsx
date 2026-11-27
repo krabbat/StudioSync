@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import FamilyManagement from '@/components/FamilyManagement'
+import TeachingGroupManagement from '@/components/TeachingGroupManagement'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/contexts/UserContext'
 import { useStudents, useTeachers, useStudentStats, useInstruments } from '@/hooks/useDashboardData'
@@ -80,10 +81,11 @@ const formatDate = (date: Date | null, locale: string, fallback: string): string
 
 export default function StudentsPage() {
     const t = useTranslations('Students')
+    const groupT = useTranslations('TeachingGroups')
     const locale = useLocale()
     const router = useRouter()
     const { currentUser } = useUser()
-    const [rosterTab, setRosterTab] = useState<'students' | 'families'>('students')
+    const [rosterTab, setRosterTab] = useState<'students' | 'families' | 'groups'>('students')
     const { teachers } = useTeachers()
 
     // --- State ---
@@ -158,9 +160,10 @@ export default function StudentsPage() {
 
     const rosterTabs = currentUser?.role === 'admin' ? (
         <nav className="flex gap-4 border-b border-gray-200" aria-label="Schülerverwaltung">
-            {(['students','families'] as const).map(tab => <button key={tab} onClick={() => { setRosterTab(tab); if (tab === 'students') refresh() }} className={'px-4 py-3 font-semibold border-b-2 '+(rosterTab===tab?'border-primary text-primary':'border-transparent text-gray-500')}>{tab==='students'?'Schüler':'Familien'}</button>)}
+            {(['students','families','groups'] as const).map(tab => <button key={tab} onClick={() => { setRosterTab(tab); if (tab === 'students') refresh() }} className={'px-4 py-3 font-semibold border-b-2 '+(rosterTab===tab?'border-primary text-primary':'border-transparent text-gray-500')}>{groupT(tab==='students'?'students':tab==='families'?'families':'title')}</button>)}
         </nav>
     ) : null
+    if (rosterTab === 'groups' && currentUser?.role === 'admin') return (<div className="w-full px-4 sm:px-6 lg:px-8 pb-12 space-y-6 pt-4">{rosterTabs}<TeachingGroupManagement/></div>)
     if (rosterTab === 'families' && currentUser?.role === 'admin') return (
         <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 space-y-6 pt-4">
             {rosterTabs}<FamilyManagement/>
