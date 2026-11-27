@@ -32,7 +32,7 @@ def generate_month(studio_id, month, family_id=None):
     if month.day != 1:
         raise ValidationError({"code": "invalid_month"})
     studio = Studio.objects.select_for_update().get(pk=studio_id)
-    families = {f.pk: f for f in Family.objects.filter(studio=studio)}
+    families = {f.pk: f for f in Family.objects.filter(studio=studio, archived_at__isnull=True)}
     if family_id is not None and family_id not in families:
         raise ValidationError({"code": "invalid_family"})
     students = Student.objects.filter(studio=studio, is_active=True, user__role="student",
