@@ -79,6 +79,13 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
     teacher = serializers.SerializerMethodField()
     login_enabled = serializers.SerializerMethodField()
+    login_email = serializers.SerializerMethodField()
+
+    def get_login_email(self, obj):
+        actor = getattr(self.context.get("request"), "user", None)
+        if not actor or (actor.role != "admin" and actor.pk != obj.user_id):
+            return ""
+        return "" if obj.user.email.casefold().endswith(".invalid") else obj.user.email
     family_name = serializers.SerializerMethodField()
 
     def get_family_name(self, obj):
