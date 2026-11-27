@@ -73,3 +73,17 @@ def test_member_data_includes_own_contact_without_emergency_contact(authenticate
     student.save(update_fields=["contact_email"])
     response = authenticated_client.get(f"{BASE}{family.pk}/member-data/")
     assert response.data[0]["person"]["email"] == ""
+
+
+@pytest.mark.django_db
+def test_family_accepts_german_international_email(authenticated_client, studio):
+    address = "groß@example.org"
+    result = authenticated_client.post(BASE, {"name":"Familie Test","billing_email":address,
+        "contacts":[{"first_name":"Anna","last_name":"Groß","email":address}]}, format="json")
+    assert result.status_code == 201, result.data
+    assert result.data["billing_email"] == address
+    assert result.data["contacts"][0]["email"] == address
+    invalid = authenticated_client.patch(BASE+result.data["id"]+"/", {"billing_email":"gro ß@example.org"}, format="json")
+    assert invalid.status_code == 400
+    blank = authenticated_client.patch(BASE+result.data["id"]+"/", {"billing_email":""}, format="json")
+    assert blank.status_code == 200
