@@ -53,6 +53,7 @@ def test_summaries_account_for_partial_paid_and_exclude_cancelled(studio, studen
     pending = make_invoice(studio, student, due_date=date(2026, 10, 7))
     partially_paid = make_invoice(
         studio, student, due_date=date(2026, 11, 7),
+        issued=date(2026, 10, 22),  # Issued before due date; no retroactive seven-day grace period.
         amount="135.00", paid="50.00", status="partial",
     )
     paid_legacy = make_invoice(
