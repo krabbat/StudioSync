@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from apps.core.tenancy import studio_for_request, studios_for_request
 
 from .models import Invoice, Payment, Subscription, SubscriptionPlan
+from .family_billing import existing_period, generate_month
 from .payment_status import MANUAL_PAYMENT_NOTE, berlin_today, open_amount
 from .invoice_delivery import InvoiceDeliveryError, send_invoice, invoice_pdf_bytes
 from .serializers import InvoiceSerializer, SubscriptionPlanSerializer, SubscriptionSerializer
@@ -62,7 +63,16 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 UUID(student_id)
             except (TypeError, ValueError):
                 raise ValidationError({"student": "Ungültige Schüler-ID."})
-            queryset = queryset.filter(student_id=student_id)
+            queryset = queryset.filter(Q(student_id=student_id) | Q(tuition_months__student_id=student_id)).distinct()
+        family_id = self.request.query_params.get("family")
+        if family_id:
+            if self.request.user.role != "admin":
+                raise PermissionDenied()
+            from apps.core.models import Family
+            family = Family.objects.filter(pk=family_id, studio__in=studios_for_request(self.request)).first()
+            if not family:
+                raise ValidationError({"code": "invalid_family"})
+            queryset = queryset.filter(Q(family=family) | Q(student__family=family)).distinct()
         return queryset.defer("pdf_document")
 
     def create(self, request, *args, **kwargs):
@@ -82,6 +92,15 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
+            from apps.core.models import Studio
+            Studio.objects.select_for_update().get(pk=studio.pk)
+            student = Student.objects.select_related("family").get(pk=student_id, studio=studio)
+            start = serializer.validated_data.get("service_month")
+            end = serializer.validated_data.get("service_month_end") or start
+            if start and student.family_id and not student.family.individual_billing:
+                raise ValidationError({"code": "family_billing_required"})
+            if start and existing_period(student, start, end):
+                raise ValidationError({"code": "already_billed"})
             invoice = serializer.save(
                 studio=studio,
                 status="draft",
@@ -100,11 +119,27 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         data["email_error"] = error_message
         return Response(data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=["post"], url_path="generate-month")
+    def generate_monthly(self, request):
+        if request.user.role != "admin":
+            raise PermissionDenied()
+        studio = studio_for_request(request)
+        if studio is None:
+            raise ValidationError({"code": "invalid_studio"})
+        from datetime import date
+        try:
+            month = date.fromisoformat(request.data.get("month", ""))
+            family_id = UUID(str(request.data["family"])) if request.data.get("family") else None
+        except (ValueError, TypeError):
+            raise ValidationError({"code": "invalid_month"})
+        invoices, skipped = generate_month(studio.pk, month, family_id)
+        return Response({"invoices": self.get_serializer(invoices, many=True).data, "skipped": skipped})
+
     @action(detail=True, methods=["get"], url_path="pdf")
     def pdf(self, request, pk=None):
         """Serve archive/preview via authorized API, never via public media files."""
         invoice = self.get_object()
-        if not invoice.student:
+        if not invoice.student and not invoice.family_id:
             raise ValidationError({"detail": "Für diese Rechnung ist keine Schüler-PDF-Vorlage vorhanden."})
         pdf_data = invoice_pdf_bytes(invoice)
         response = HttpResponse(pdf_data, content_type="application/pdf")
@@ -146,7 +181,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             remaining = open_amount(invoice)
             if remaining > 0:
                 profile = getattr(invoice.student, "billing_profile", None) if invoice.student else None
-                method = profile.payment_method if profile else "bank_transfer"
+                method = invoice.family.payment_method if invoice.family_id else (profile.payment_method if profile else "bank_transfer")
                 Payment.objects.create(
                     invoice=invoice,
                     amount=remaining,
@@ -202,6 +237,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": "Only admins can delete invoices."}, status=status.HTTP_403_FORBIDDEN
             )
+        if self.get_object().tuition_months.exists():
+            raise ValidationError({"code": "tuition_invoice_protected"})
         return super().destroy(request, *args, **kwargs)
 
 class SubscriptionPlanViewSet(viewsets.ModelViewSet):
