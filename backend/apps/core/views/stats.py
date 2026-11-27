@@ -103,7 +103,7 @@ class DashboardStatsView(APIView):
                 revenue_month = (
                     Invoice.objects.filter(
                         studio=studio, status="paid", issue_date__gte=start_of_month.date()
-                    ).aggregate(total=Sum("total_amount"))["total"]
+                    ).exclude(block_bill__test_only=True).aggregate(total=Sum("total_amount"))["total"]
                     or 0
                 )
 
@@ -112,7 +112,7 @@ class DashboardStatsView(APIView):
 
                 # 5. Invoice payment amounts independent of email state
                 payment_summary = payment_totals(
-                    Invoice.objects.filter(studio=studio)
+                    Invoice.objects.filter(studio=studio).exclude(block_bill__test_only=True)
                     .only("status", "amount_paid", "total_amount", "due_date", "issue_date")
                 )
                 unpaid_invoices = float(payment_summary["pending"] + payment_summary["overdue"])
@@ -329,6 +329,7 @@ class DashboardAnalyticsView(APIView):
                 studio=studio,
                 status="paid", created_at__gte=six_months_ago
             )
+            .exclude(block_bill__test_only=True)
             .annotate(month=TruncMonth("created_at"))
             .values("month")
             .annotate(total_revenue=Sum("total_amount"))
