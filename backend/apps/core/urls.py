@@ -40,6 +40,10 @@ from apps.core.views.mail_outbound import (
     MailResourceDownloadView,
     MailSendView,
 )
+from apps.core.views.family_access import (
+    FamilyGrantAdminView, FamilyPortalView, FamilyPortalStudentView,
+    FamilyPortalResourceView, FamilyPortalInvoiceView, FamilyPortalMailView,
+)
 from apps.core.views.home_assistant import HomeAssistantConnectionView
 from apps.core.views.icloud_calendar import ICloudCalendarListView, ICloudCalendarWriteTestView
 from apps.core.views.icloud_sync import (
@@ -64,6 +68,14 @@ urlpatterns_manual = [
 
 urlpatterns = (
     [
+        path("family-access/<uuid:family_id>/", FamilyGrantAdminView.as_view()),
+        path("family-access/<uuid:family_id>/<uuid:grant_id>/", FamilyGrantAdminView.as_view()),
+        path("family-portal/", FamilyPortalView.as_view()),
+        path("family-portal/<uuid:family_id>/students/<uuid:student_id>/", FamilyPortalStudentView.as_view()),
+        path("family-portal/<uuid:family_id>/students/<uuid:student_id>/resources/<uuid:resource_id>/", FamilyPortalResourceView.as_view()),
+        path("family-portal/<uuid:family_id>/students/<uuid:student_id>/invoices/<uuid:invoice_id>/", FamilyPortalInvoiceView.as_view()),
+        path("family-portal/<uuid:family_id>/mail/", FamilyPortalMailView.as_view()),
+        path("family-portal/<uuid:family_id>/mail/<int:message_id>/", FamilyPortalMailView.as_view()),
         path("stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
         path("analytics/", DashboardAnalyticsView.as_view(), name="dashboard-analytics"),
         path("reports/export/", ReportsExportView.as_view(), name="reports-export"),
