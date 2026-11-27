@@ -165,7 +165,10 @@ class LessonViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
         if "status" in data and data["status"] != current.status:
             previous = current.status
-            saved = serializer.save(ha_manual_override=True,
+            evidence = dict(current.ha_attendance or {})
+            if evidence.pop("review_required", False):
+                evidence["error"] = ""
+            saved = serializer.save(ha_manual_override=True, ha_attendance=evidence,
                             ha_watch_active=current.ha_watch_active and data["status"] != "cancelled")
             from apps.lessons.ha_diagnostics import event
             transaction.on_commit(lambda: event("manual_status_changed", studio=str(saved.studio_id),
