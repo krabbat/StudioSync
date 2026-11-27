@@ -309,6 +309,21 @@ class FamilyAccess(models.Model):
         constraints = [models.UniqueConstraint(fields=["family", "user"], name="unique_family_access_user")]
 
 
+class TeachingGroup(models.Model):
+    """Named roster independent of family, billing and individual contracts."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    studio = models.ForeignKey(Studio, on_delete=models.CASCADE, related_name="teaching_groups")
+    name = models.CharField(max_length=200)
+    members = models.ManyToManyField("Student", blank=True, related_name="teaching_groups")
+    archived_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+
+    def __str__(self):
+        return self.name
+
+
 class BandManager(models.Manager):
     def get_by_natural_key(self, studio_natural_key, name):
         studio = Studio.objects.get_by_natural_key(*studio_natural_key)
