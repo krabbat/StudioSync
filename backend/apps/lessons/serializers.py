@@ -6,11 +6,17 @@ from rest_framework import serializers
 from django.db import transaction
 from django.db.models import Q
 
+from apps.lessons.group_titles import lesson_group_title
 from apps.lessons.models import Lesson, LessonParticipant, LessonNote, LessonPlan, RecurringPattern, StudentGoal
 
 
 class GroupLessonReadMixin(serializers.Serializer):
     group_participants = serializers.SerializerMethodField()
+    group_name_snapshot = serializers.SerializerMethodField()
+
+    def get_group_name_snapshot(self, obj):
+        return lesson_group_title(obj)
+
     status = serializers.SerializerMethodField()
 
     def get_status(self, obj):
@@ -61,7 +67,7 @@ class LessonListSerializer(GroupLessonReadMixin, serializers.ModelSerializer):
     def get_student_name(self, obj):
         if obj.student_id:
             return obj.student.user.get_full_name()
-        return obj.group_name_snapshot or obj.guest_name or None
+        return lesson_group_title(obj) or obj.guest_name or None
 
     def get_student_instrument(self, obj):
         if obj.student_id:
