@@ -1,5 +1,10 @@
 {
   "TeachingGroups": {
+    "haZone": "Home Assistant zone",
+    "chooseZone": "Select lesson zone",
+    "zonesUnavailable": "HA zones could not be loaded.",
+    "reviewRequired": "Attendance review required",
+    "selectZone": "Select a lesson zone.",
     "noSpecificStudent": "No specific student",
     "title": "Groups",
     "students": "Students",
