@@ -15,6 +15,7 @@ from apps.lessons.icloud_sync import (
 )
 from apps.core.views.icloud_calendar import _credentials, _connect, _discover, _allowed_calendar_url
 from apps.lessons.models import ICloudCalendarSeries
+from apps.lessons.serializers import LessonCreateSerializer
 
 LOG = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ def _series_payload(user):
                 "uid": item.uid,
                 "title": item.title,
                 "student": str(item.student_id) if item.student_id else None,
-                "student_name": item.student.user.get_full_name() if item.student else "",
+                "student_name": item.student.user.get_full_name() if item.student else item.group_booking.get("name", ""),
                 "teacher": str(item.teacher_id) if item.teacher_id else None,
                 "error": item.last_error,
                 "occurrences": item.occurrences.count(),
@@ -82,6 +83,8 @@ class ICloudSeriesAssignView(_AdminICloudView):
         ).first()
         if not series:
             return Response({"detail": "Terminserie nicht gefunden."}, status=404)
+        if series.group_booking:
+            return Response({"detail": "Gruppenzuordnung in StudioSync bearbeiten."}, status=400)
         student_id = str(request.data.get("student") or "").strip()
         student = Student.objects.filter(pk=student_id, studio=studio).first() if student_id else None
         if not student:
@@ -98,15 +101,16 @@ class ICloudSeriesCreateView(_AdminICloudView):
 
     def post(self, request):
         studio = _studio(request)
-        student = Student.objects.filter(
+        grouped = bool(request.data.get("teaching_family") or request.data.get("teaching_group"))
+        student = None if grouped else Student.objects.filter(
             pk=request.data.get("student"), studio=studio
         ).first()
-        if not student:
+        if not student and not grouped:
             return Response({"detail": "Schüler nicht gefunden."}, status=400)
         teacher_id = request.data.get("teacher")
         teacher = (
             Teacher.objects.filter(pk=teacher_id, studio=studio).first()
-            if teacher_id else student.primary_teacher or _default_teacher(studio)
+            if teacher_id else (student.primary_teacher if student else None) or _default_teacher(studio)
         )
         if not teacher:
             return Response({"detail": "Lehrkraft nicht gefunden."}, status=400)
@@ -125,11 +129,25 @@ class ICloudSeriesCreateView(_AdminICloudView):
             if not until_date or until_date < start.astimezone(LOCAL_TZ).date():
                 return Response({"detail": "Das Serienende ist ungültig."}, status=400)
             until = datetime.combine(until_date, time(23, 59, 59), tzinfo=LOCAL_TZ).astimezone(utc_timezone.utc)
+        booking = None
+        if grouped:
+            payload = {**request.data, "studio":str(studio.pk), "teacher":str(teacher.pk), "lesson_type":"group"}
+            serializer=LessonCreateSerializer(data=payload,context={"request":request})
+            serializer.is_valid(raise_exception=True)
+            data=serializer.validated_data
+            family=data.get("teaching_family")
+            group=data.get("teaching_group")
+            ids=data["participant_ids"]
+            pupils=Student.objects.filter(studio=studio,pk__in=ids).select_related("user").order_by("pk")
+            booking={"family":str(family.pk) if family else "", "group":str(group.pk) if group else "",
+                     "name":str(family or group),"zone":data.get("group_ha_zone",""),
+                     "members":[{"id":str(p.pk),"name":p.user.get_full_name()} for p in pupils]}
         try:
             stats = create_icloud_series(
                 request.user, student=student, teacher=teacher, start=start,
                 end=end, frequency=str(request.data.get("frequency", "")), until=until,
                 summary=str(request.data.get("summary") or ""),
+                group_booking=booking,
             )
         except ICloudSetupError as exc:
             return Response({"detail": str(exc)}, status=400)
