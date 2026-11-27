@@ -410,6 +410,7 @@ class BlockBillingPlan(models.Model):
 class BlockInvoice(models.Model):
     plan = models.ForeignKey(BlockBillingPlan, on_delete=models.PROTECT, related_name="bills")
     invoice = models.OneToOneField(Invoice, on_delete=models.PROTECT, related_name="block_bill")
+    test_only = models.BooleanField(default=True)
     attempted_at = models.DateTimeField(null=True, blank=True)
     delivery_error = models.TextField(blank=True, default="")
 
