@@ -763,7 +763,7 @@ function GeneralSettingsContents() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
                                     <input
-                                        type="email"
+                                        type="text" inputMode="email"
                                         value={formData.email}
                                         disabled
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
@@ -901,7 +901,7 @@ function GeneralSettingsContents() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('studioEmail')}</label>
-                                        <input type="email" value={studioSettings.studio_email} onChange={e => setStudioSettings({ ...studioSettings, studio_email: e.target.value })} placeholder="contact@studio.com" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                        <input type="text" inputMode="email" value={studioSettings.studio_email} onChange={e => setStudioSettings({ ...studioSettings, studio_email: e.target.value })} placeholder="contact@studio.com" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('studioPhone')}</label>
@@ -1281,7 +1281,7 @@ function GeneralSettingsContents() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromEmail')}</label>
-                                                <input type="email" value={technicalSettings.smtp_from_email} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_from_email: e.target.value })} placeholder="musikunterricht@musart.de" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                                <input type="text" inputMode="email" value={technicalSettings.smtp_from_email} onChange={e => setTechnicalSettings({ ...technicalSettings, smtp_from_email: e.target.value })} placeholder="musikunterricht@musart.de" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('detailFromName')}</label>
@@ -1337,7 +1337,7 @@ function GeneralSettingsContents() {
                                         </div>
                                         <div>
                                             <label htmlFor="imap-username" className="block text-xs font-medium text-gray-700 mb-1">Benutzername (E-Mail-Adresse)</label>
-                                            <input id="imap-username" type="email" autoComplete="username" value={technicalSettings.imap_username}
+                                            <input id="imap-username" type="text" inputMode="email" autoComplete="username" value={technicalSettings.imap_username}
                                                 onChange={e => setTechnicalSettings({ ...technicalSettings, imap_username: e.target.value })}
                                                 placeholder="musikunterricht@musart.de"
                                                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-primary" />
