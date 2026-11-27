@@ -290,7 +290,7 @@ export default function AddStudentPage() {
                         <section className="space-y-4">
                             <h2 className="text-lg font-semibold text-gray-900">{tr('studentLogin')}</h2>
                             <select className={inputClass} value={accessMode} onChange={e=>setAccessMode(e.target.value as 'none'|'own')}><option value="none">Kein persönlicher Zugang</option><option value="own">Eigener Zugang</option></select>
-                            {accessMode==='own' && <><label className="block text-sm">Login-E-Mail (optional abweichend von Kontakt-E-Mail)<input type="email" className={inputClass} value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/></label>
+                            {accessMode==='own' && <><label className="block text-sm">Login-E-Mail (optional abweichend von Kontakt-E-Mail)<input type="text" inputMode="email" className={inputClass} value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/></label>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="new-student-password" className="block text-sm font-medium text-gray-700 mb-1">{tr('newPassword')}</label>
