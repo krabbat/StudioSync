@@ -115,6 +115,7 @@ class LessonListSerializer(GroupLessonReadMixin, serializers.ModelSerializer):
             "teaching_family",
             "teaching_group",
             "group_name_snapshot",
+            "group_ha_zone",
             "group_participants",
             "room",
             "room_name",
@@ -249,6 +250,7 @@ class LessonCreateSerializer(serializers.ModelSerializer):
             "teaching_group",
             "participant_ids",
             "participant_statuses",
+            "group_ha_zone",
             "band",
             "room",
             "lesson_type",
@@ -290,6 +292,12 @@ class LessonCreateSerializer(serializers.ModelSerializer):
             studio = _lesson_value(data,instance,"studio")
             if studio is None or source.studio_id != studio.pk:
                 raise serializers.ValidationError({"code":"invalid_group_source"})
+            zone = (_lesson_value(data, instance, "group_ha_zone") or "").strip()
+            if family and zone:
+                raise serializers.ValidationError({"code":"family_zone_inherited"})
+            if group and not zone and not _lesson_value(data,instance,"is_online"):
+                raise serializers.ValidationError({"code":"group_zone_required"})
+            if "group_ha_zone" in data: data["group_ha_zone"] = zone
             if len(selected)<2 or (ids is not None and len(ids)!=len(selected)):
                 raise serializers.ValidationError({"code":"group_needs_two"})
             source_changed = not instance or family != instance.teaching_family or group != instance.teaching_group
