@@ -76,7 +76,7 @@ interface ExternalEvent {
   end_dt: string;
 }
 
-// One hour always occupies exactly 96px in the weekly timetable.
+// One hour always occupies exactly 84px in the weekly timetable.
 // The labels and appointment offsets must use this same scale.
 const WEEK_HOUR_HEIGHT = 84;
 const WEEK_CHROME_COLOR = "#e2e8f0";
@@ -665,7 +665,28 @@ export default function SchedulePage() {
           width: 0;
           height: 0;
         }
+        @media screen {
+          .dashboard-main:has(.studiosync-schedule) {
+            container-type: size;
+          }
+          .studiosync-schedule .schedule-viewport {
+            height: calc(100dvh - 6rem);
+            min-height: 360px;
+          }
+          @supports (height: 100cqh) {
+            .studiosync-schedule .schedule-viewport {
+              height: 100cqh;
+            }
+          }
+        }
         @media print {
+          .studiosync-schedule .schedule-viewport {
+            display: block;
+            height: auto;
+          }
+          .studiosync-schedule .schedule-scroll-area {
+            overflow: visible !important;
+          }
           nav,
           aside,
           header button,
@@ -691,12 +712,29 @@ export default function SchedulePage() {
         }
       `}</style>
 
+      <section className="schedule-viewport flex flex-col gap-3 min-w-0">
       {/* Period Navigation */}
-      <div className="flex justify-between items-center bg-white px-4 sm:px-6 py-1 rounded-2xl border border-gray-100 shadow-sm no-print">
-        <Button variant="ghost" size="icon" onClick={previousPeriod} className="text-gray-600">
+      <div className="grid grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1 bg-white px-2 sm:px-4 py-1 rounded-2xl border border-gray-100 shadow-sm no-print shrink-0">
+        <div className="flex items-center gap-2 col-start-1 row-start-2 lg:row-start-1">
+          <Button variant="ghost" size="icon" onClick={previousPeriod} className="text-gray-600">
           <ChevronLeft className="w-6 h-6" />
         </Button>
-        <div className="text-center">
+          <div className="flex bg-gray-100 p-1 rounded-xl w-fit shrink-0">
+          <button
+            onClick={() => setViewMode("week")}
+            className={`px-3 sm:px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {tr('week')}
+          </button>
+          <button
+            onClick={() => setViewMode("month")}
+            className={`px-3 sm:px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {tr('month')}
+          </button>
+        </div>
+        </div>
+        <div className="col-span-2 lg:col-span-1 col-start-1 lg:col-start-2 row-start-1 justify-self-center"><div className="text-center">
           <h2 className="text-lg sm:text-xl leading-tight font-black text-gray-900 tracking-tight">
             {new Intl.DateTimeFormat(locale, {month: "long", year: "numeric"}).format(viewMode === "week" ? weekStart : monthStart)}
           </h2>
@@ -705,10 +743,35 @@ export default function SchedulePage() {
               {new Intl.DateTimeFormat(locale, {day: "numeric", month: "short"}).format(weekStart)} — {new Intl.DateTimeFormat(locale, {day: "numeric", month: "short"}).format(addDays(weekStart, 6))}
             </p>
           )}
+        </div></div>
+        <div className="flex items-center justify-end gap-2 col-start-2 lg:col-start-3 row-start-2 lg:row-start-1">
+          <div className="flex justify-end items-center gap-2 min-w-0">
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest hidden lg:inline">{tr('colorBy')}</span>
+          <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+            <button
+              onClick={() => setColorMode("status")}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "status" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              {tr('status')}
+            </button>
+            <button
+              onClick={() => setColorMode("student")}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "student" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              {tr('student')}
+            </button>
+            <button
+              onClick={() => setColorMode("instrument")}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "instrument" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              {tr('instrument')}
+            </button>
+          </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={nextPeriod} className="text-gray-600">
+          <Button variant="ghost" size="icon" onClick={nextPeriod} className="text-gray-600">
           <ChevronRight className="w-6 h-6" />
         </Button>
+        </div>
       </div>
 
       {/* Print Header */}
@@ -721,7 +784,7 @@ export default function SchedulePage() {
       </div>
 
       {/* Schedule Grid */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col w-full min-w-0 h-[calc(100dvh_-_13rem)] min-h-[240px]">
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col w-full min-w-0 flex-1 min-h-[180px]">
         <div className="overflow-x-hidden overflow-y-auto overscroll-x-none touch-pan-y schedule-scroll-area flex-1 min-h-0 min-w-0 relative">
           {viewMode === "week" ? (
             <table className="w-full table-fixed border-separate border-spacing-0">
@@ -993,71 +1056,79 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
-        <div className="space-y-2">
-          <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{tr('schedule')}</h1>
-          <p className="text-gray-500 font-medium max-w-lg">
-            {tr('orchestrateYourWeeklyLessonCalendar')}
-          </p>
-        </div>
-        <div className={`grid ${hasIcloudCalendar ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} gap-2 sm:gap-3 no-print`}>
+      {/* Calendar actions, visible in the first viewport */}
+      <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 shrink-0 no-print">
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
             onClick={() => refetchLessons()}
             title={tr('refresh')}
-            className="w-full"
+            className="px-4"
           >
             <RefreshCw className={`w-4 h-4 ${lessonsLoading ? "animate-spin" : ""}`} />
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setUse24Hour(!use24Hour)}
-            className="gap-2 w-full"
+            className="gap-2"
             title={tr("timezoneLabel", {timezone: localTimeZone})}
           >
             <Clock className="w-4 h-4" />
-            <span className="hidden sm:inline">
+            <span className="inline">
               {use24Hour ? "24h" : "12h"} <span className="text-[9px] text-gray-400 font-bold ml-1">{shortTimeZone}</span>
             </span>
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setShowSubscribeModal(true)}
-            className="gap-2 w-full"
+            className="gap-2"
           >
             <Link className="w-4 h-4" />
-            <span className="hidden sm:inline">{tr('subscribe')}</span>
+            <span className="inline">{tr('subscribe')}</span>
           </Button>
           {hasIcloudCalendar && (
-            <Button type="button" variant="outline" onClick={() => void syncAppleNow()}
-              disabled={icloudBusy} className="gap-2 w-full" title="Bidirektional mit iCloud synchronisieren">
+            <Button type="button" variant="outline" size="sm" onClick={() => void syncAppleNow()}
+              disabled={icloudBusy} className="gap-2" title="Bidirektional mit iCloud synchronisieren">
               <RefreshCw className={`w-4 h-4 ${icloudBusy ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">iCloud-Abgleich</span>
+              <span className="inline">iCloud-Abgleich</span>
             </Button>
           )}
           <Button
-            variant="default" // Changed from outline with inline style
+            variant="outline"
+            size="sm"
             onClick={handlePrint}
-            className="gap-2 w-full"
+            className="gap-2"
           >
             <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">{tr('print')}</span>
+            <span className="inline">{tr('print')}</span>
           </Button>
+          <Button variant="default" size="sm" className="gap-2" onClick={() => setCurrentDate(new Date())}>
+            <CalendarIcon className="w-4 h-4" />
+            {tr('today')}
+          </Button>
+      </div>
+      </section>
+
+      {/* Additional actions below the first viewport */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 no-print">
+        <div className="space-y-2">
+          <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{tr('schedule')}</h1>
+          <p className="text-gray-500 font-medium max-w-lg">{tr('orchestrateYourWeeklyLessonCalendar')}</p>
+        </div>
           {["admin", "teacher", "student"].includes(currentUser?.role || "") && (
             <Button
               onClick={() => {
                 resetBooking();
                 setShowBookingModal(true);
               }}
-              className={`gap-2 hover:scale-105 w-full ${hasIcloudCalendar ? "col-span-3 sm:col-span-5" : "col-span-2 sm:col-span-4"}`}
+              className="gap-2 w-full sm:w-auto"
             >
               <Plus className="w-4 h-4" />
               {tr('newBooking')}
             </Button>
           )}
-        </div>
       </header>
 
       {icloudIssues.length > 0 && (
@@ -1077,48 +1148,6 @@ export default function SchedulePage() {
           ))}
         </section>
       )}
-
-      {/* View & Color Toggles */}
-      <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-2 no-print">
-        <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
-          <button
-            onClick={() => setViewMode("week")}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            {tr('week')}
-          </button>
-          <button
-            onClick={() => setViewMode("month")}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            {tr('month')}
-          </button>
-        </div>
-
-        <div className="flex justify-center items-center gap-2">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:inline">{tr('colorBy')}</span>
-          <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
-            <button
-              onClick={() => setColorMode("status")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "status" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              {tr('status')}
-            </button>
-            <button
-              onClick={() => setColorMode("student")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "student" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              {tr('student')}
-            </button>
-            <button
-              onClick={() => setColorMode("instrument")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "instrument" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              {tr('instrument')}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* ── External Calendars Panel ─────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden no-print">
