@@ -531,6 +531,7 @@ export default function SchedulePage() {
       toast.error(groupT('selectTwo'));
       return;
     }
+    if(bookingMode==="band"&&newBooking.group_source==="group"&&newBooking.group_id&&!newBooking.is_online&&!newBooking.group_ha_zone){toast.error(groupT("selectZone"));return;}
 
     setBookingLoading(true);
 
@@ -572,7 +573,7 @@ export default function SchedulePage() {
           payload.teaching_group=newBooking.group_source==="group"?newBooking.group_id:null;
           payload.group_ha_zone=newBooking.group_source==="group"&&!newBooking.is_online?newBooking.group_ha_zone||"":"";
           payload.participant_ids=newBooking.participant_ids;
-          payload.participant_statuses=newBooking.participant_statuses||{};
+          payload.participant_statuses=Object.fromEntries(Object.entries(newBooking.participant_statuses||{}).filter(([id])=>newBooking.participant_ids?.includes(id)));
         } else if (bookingMode === "band" && newBooking.band) {
           payload.band = newBooking.band;
           payload.student = null;
