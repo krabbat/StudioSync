@@ -296,6 +296,10 @@ export default function MailWorkspace() {
             setComposing(true)
             setRecipientMode('single')
             if (sid) setRecipientOverrides({ [sid]: true })
+            const familyStudents=(params.get('students')||'').split(',').filter(id=>/^[a-f0-9-]{36}$/i.test(id)).slice(0,100)
+            if(familyStudents.length) setRecipientOverrides(Object.fromEntries(familyStudents.map(id=>[id,true])))
+            const contactRecipient=params.get('recipient')
+            if(contactRecipient) setRecipient(contactRecipient.slice(0,254))
             const resourceId = params.get('resource')
             if (resourceId && /^[a-f0-9-]{36}$/i.test(resourceId)) {
                 void api.get<{ resources: StudioMailResource[] }>(
