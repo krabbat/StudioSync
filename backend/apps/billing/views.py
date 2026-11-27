@@ -98,6 +98,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             student = Student.objects.select_related("family").get(pk=student_id, studio=studio)
             start = serializer.validated_data.get("service_month")
             end = serializer.validated_data.get("service_month_end") or start
+            if start and getattr(getattr(student, "block_billing", None), "enabled", False):
+                raise ValidationError({"code": "block_billing_required"})
             if start and student.family_id and not student.family.individual_billing:
                 raise ValidationError({"code": "family_billing_required"})
             if start and existing_period(student, start, end):
@@ -255,6 +257,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice = self.get_object()
         with transaction.atomic():
             invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+            if hasattr(invoice, "block_bill"):
+                raise ValidationError({"detail": "Blockrechnungen sind mit den Unterrichtseinheiten verknüpft und dürfen nicht gelöscht werden."})
             if invoice.tuition_months.exists():
                 if invoice.sent_at or invoice.status != "draft" or invoice.payments.exists() or invoice.amount_paid:
                     raise ValidationError({"code":"tuition_invoice_protected"})
