@@ -17,6 +17,7 @@ export interface LessonBookingData {
   group_source?: 'family' | 'group';
   group_id?: string;
   group_name?: string;
+  group_ha_zone?: string;
   participant_ids?: string[];
   participant_names?: {id:string;name:string}[];
   participant_statuses?: Record<string,string>;
@@ -71,6 +72,14 @@ export default function LessonBookingDialog({
   const [groupChoices,setGroupChoices]=useState<{id:string;name:string;members:{id:string;name:string;is_active?:boolean}[];address?:string}[]>([]);
   const [groupLoading,setGroupLoading]=useState(false);
   const [groupError,setGroupError]=useState(false);
+  const [zones,setZones]=useState<string[]>([]);
+  const [zonesFailed,setZonesFailed]=useState(false);
+  useEffect(()=>{
+    if(!open||bookingMode!=="band"||newBooking.group_source!=="group"||currentUser?.role!=="admin")return;
+    let active=true;setZonesFailed(false);
+    api.get("/core/home-assistant/connection/").then(({data})=>{if(active){setZones((data.zones||[]).map((z:{name:string})=>z.name).filter((n:string,i:number,a:string[])=>a.indexOf(n)===i));setZonesFailed(!data.connected)}}).catch(()=>{if(active)setZonesFailed(true)});
+    return()=>{active=false};
+  },[open,bookingMode,newBooking.group_source,currentUser?.role]);
   const { currentUser } = useUser();
   const teacherManuallyChanged = useRef(false);
   const durationManuallyChanged = useRef(false);
@@ -235,17 +244,18 @@ export default function LessonBookingDialog({
                       <div className="space-y-3">
                         {editingLessonId&&newBooking.band&&!newBooking.group_id ? <p className="text-sm text-gray-600">{bands.find(b=>b.id===newBooking.band)?.name||groupT('legacy')}</p> : <>
                           <div className="flex gap-3">
-                            {(['family','group'] as const).map(source=><label key={source} className="flex items-center gap-2 text-sm"><input type="radio" name="group-source" disabled={Boolean(editingLessonId&&newBooking.group_id)} checked={(newBooking.group_source||'family')===source} onChange={()=>setNewBooking(prev=>({...prev,group_source:source,group_id:'',group_name:'',participant_ids:[],participant_names:undefined,participant_statuses:{},band:'',student:''}))}/>{groupT(source==='family'?'family':'group')}</label>)}
+                            {(['family','group'] as const).map(source=><label key={source} className="flex items-center gap-2 text-sm"><input type="radio" name="group-source" disabled={Boolean(editingLessonId&&newBooking.group_id)} checked={(newBooking.group_source||'family')===source} onChange={()=>setNewBooking(prev=>({...prev,group_source:source,group_id:'',group_name:'',group_ha_zone:'',participant_ids:[],participant_names:undefined,participant_statuses:{},band:'',student:''}))}/>{groupT(source==='family'?'family':'group')}</label>)}
                           </div>
                           <select disabled={Boolean(editingLessonId&&newBooking.group_id)||groupLoading} value={newBooking.group_id||''} className="w-full rounded-xl border px-3 py-3" onChange={e=>{
                             const choice=groupChoices.find(g=>g.id===e.target.value);
                             const active=(choice?.members||[]).filter(m=>m.is_active!==false);
-                            setNewBooking(prev=>({...prev,group_id:e.target.value,group_name:choice?.name||'',participant_ids:prev.group_source==='group'?active.map(m=>m.id):[],participant_names:undefined,participant_statuses:{},band:'',student:''}));
+                            setNewBooking(prev=>({...prev,group_id:e.target.value,group_name:choice?.name||'',group_ha_zone:'',participant_ids:prev.group_source==='group'?active.map(m=>m.id):[],participant_names:undefined,participant_statuses:{},band:'',student:''}));
                           }}>
                             <option value="">{groupT(groupLoading?'loading':'choose')}</option>
                             {newBooking.group_id&&!groupChoice&&<option value={newBooking.group_id}>{newBooking.group_name||newBooking.group_id}</option>}
                             {groupChoices.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
                           </select>
+                          {newBooking.group_source==='group'&&newBooking.group_id&&!newBooking.is_online&&<label className="block text-sm">{groupT('haZone')}<select className="block w-full rounded-lg border p-2" value={newBooking.group_ha_zone||''} onChange={e=>setNewBooking(prev=>({...prev,group_ha_zone:e.target.value}))}><option value="">{groupT('chooseZone')}</option>{newBooking.group_ha_zone&&!zones.includes(newBooking.group_ha_zone)&&<option>{newBooking.group_ha_zone}</option>}{zones.map(zone=><option key={zone} value={zone}>{zone}</option>)}</select>{zonesFailed&&<span className="text-xs text-amber-700">{groupT('zonesUnavailable')}</span>}</label>}
                           {groupError&&<p className="text-sm text-red-600">{groupT('loadError')}</p>}
                           {newBooking.group_id&&<fieldset className="space-y-2 border rounded-lg p-3"><legend className="text-sm font-medium">{groupT('participants')}</legend>
                             {groupMembers.map(member=><label key={member.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedParticipants.includes(member.id)} disabled={newBooking.group_source==='group'||historicalGroup} onChange={e=>setNewBooking(prev=>({...prev,participant_ids:e.target.checked?[...(prev.participant_ids||[]),member.id]:(prev.participant_ids||[]).filter(id=>id!==member.id)}))}/>{member.name}</label>)}
@@ -468,7 +478,7 @@ export default function LessonBookingDialog({
               />
             </div>
 
-            {!editingLessonId && currentUser?.role === 'admin' && bookingMode === 'individual' &&
+            {!editingLessonId && currentUser?.role === 'admin' && (bookingMode === 'individual' || (bookingMode==='band'&&newBooking.group_id)) &&
               currentUser?.preferences?.technical?.icloud_calendar_url && (
               <div className="grid grid-cols-1 gap-3 rounded-xl border border-indigo-100 bg-indigo-50 p-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -520,7 +530,7 @@ export default function LessonBookingDialog({
                       {['inherit','completed','student_cancelled','teacher_cancelled','no_show'].map(status=><option key={status} value={status}>{groupT('attendance.'+status)}</option>)}
                     </select></label>)}
                   </div>}
-                  {open && currentUser?.role === "admin" && editingLessonId && !newBooking.group_id && <LessonAttendancePanel key={editingLessonId} lessonId={editingLessonId} />}
+                  {open && currentUser?.role === "admin" && editingLessonId && <LessonAttendancePanel key={editingLessonId} lessonId={editingLessonId} />}
 
                   {newBooking.status === "cancelled" && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
