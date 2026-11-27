@@ -1034,7 +1034,8 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
             _, master, _ = _master_and_overrides(_raw(saved.data))
             ICloudCalendarSeries.objects.get_or_create(user=user,calendar_url=calendar_url,uid=str(master["UID"]),
                 defaults={"studio":studio,"teacher":teacher,"remote_url":str(saved.url),"group_booking":group_booking})
-        _import_series(user, studio, calendar_url, saved, stats)
+        with transaction.atomic():
+            _import_series(user, studio, calendar_url, saved, stats)
     return stats
 
 
