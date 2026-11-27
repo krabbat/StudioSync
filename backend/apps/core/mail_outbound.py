@@ -48,7 +48,7 @@ class MailSendError(Exception):
 
 def _valid_email(value):
     address = (value or "").strip()
-    if not address:
+    if not address or address.casefold().endswith(".invalid"):
         return ""
     try:
         return validate_international_email(address)
@@ -63,7 +63,7 @@ def _recipient_address(student):
         parent_email = _valid_email(family.primary_parent.email)
         if parent_email:
             return parent_email, "Elternkontakt"
-    return _valid_email(student.user.email), "Schüler"
+    return _valid_email(student.contact_email or student.user.email), "Schüler"
 
 
 def active_student_recipients(studio):
