@@ -76,7 +76,7 @@ def group_snapshot(lesson):
         return {}
     return {"family":str(lesson.teaching_family_id or ""), "group":str(lesson.teaching_group_id or ""),
             "name":lesson.group_name_snapshot, "zone":lesson.group_ha_zone, "is_online":lesson.is_online, "online_meeting_url":lesson.online_meeting_url,
-            "members":[{"id":str(p.student_id),"name":p.name_snapshot} for p in lesson.participants.all()]}
+            "members":[{"id":str(p.student_id),"name":p.name_snapshot,"first_name":p.first_name_snapshot,"instrument":p.instrument_snapshot} for p in lesson.participants.all()]}
 
 
 def group_fields(series):
@@ -414,7 +414,10 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                 with transaction.atomic():
                     Lesson.objects.bulk_create([lesson])
                     if grouped:
-                        LessonParticipant.objects.bulk_create([LessonParticipant(lesson=lesson,student_id=m["id"],name_snapshot=m["name"]) for m in series.group_booking["members"]])
+                        pupils = {str(p.pk):p for p in Student.objects.filter(studio=studio,pk__in=participant_ids).select_related("user")}
+                        LessonParticipant.objects.bulk_create([LessonParticipant(lesson=lesson,student_id=m["id"],name_snapshot=m["name"],
+                            first_name_snapshot=m.get("first_name",pupils[m["id"]].user.first_name),
+                            instrument_snapshot=m.get("instrument",pupils[m["id"]].instrument)) for m in series.group_booking["members"]])
                     link.lesson=lesson
                     link.save()
                 stats["imported"] += 1
