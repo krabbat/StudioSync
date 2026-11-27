@@ -3,11 +3,26 @@ Lesson API serializers
 """
 
 from rest_framework import serializers
+from django.db import transaction
+from django.db.models import Q
 
-from apps.lessons.models import Lesson, LessonNote, LessonPlan, RecurringPattern, StudentGoal
+from apps.lessons.models import Lesson, LessonParticipant, LessonNote, LessonPlan, RecurringPattern, StudentGoal
 
 
-class LessonListSerializer(serializers.ModelSerializer):
+class GroupLessonReadMixin(serializers.Serializer):
+    group_participants = serializers.SerializerMethodField()
+
+    def get_group_participants(self, obj):
+        if not (obj.teaching_family_id or obj.teaching_group_id):
+            return []
+        qs = obj.participants.all()
+        request = self.context.get("request")
+        if request and request.user.role not in ("admin","teacher"):
+            qs = qs.filter(student__user=request.user)
+        return [{"id":str(p.student_id),"name":p.name_snapshot,"status":p.status} for p in qs]
+
+
+class LessonListSerializer(GroupLessonReadMixin, serializers.ModelSerializer):
     """Simple serializer for lesson lists"""
 
     student_name = serializers.SerializerMethodField()
@@ -34,7 +49,7 @@ class LessonListSerializer(serializers.ModelSerializer):
     def get_student_name(self, obj):
         if obj.student_id:
             return obj.student.user.get_full_name()
-        return obj.guest_name or None
+        return obj.group_name_snapshot or obj.guest_name or None
 
     def get_student_instrument(self, obj):
         if obj.student_id:
@@ -85,6 +100,10 @@ class LessonListSerializer(serializers.ModelSerializer):
             "student_address",
             "band",
             "band_name",
+            "teaching_family",
+            "teaching_group",
+            "group_name_snapshot",
+            "group_participants",
             "room",
             "room_name",
             "lesson_type",
@@ -105,7 +124,7 @@ class LessonListSerializer(serializers.ModelSerializer):
         ]
 
 
-class LessonDetailSerializer(serializers.ModelSerializer):
+class LessonDetailSerializer(GroupLessonReadMixin, serializers.ModelSerializer):
     """Detailed serializer for single lesson view"""
 
     student = serializers.SerializerMethodField()
@@ -195,7 +214,7 @@ def _reject_lesson_overlap(instance, teacher, student, room, start, end):
         overlap = overlap.exclude(pk=instance.pk)
     if teacher and overlap.filter(teacher=teacher).exists():
         raise serializers.ValidationError("That teacher already has a lesson at this time.")
-    if student and overlap.filter(student=student).exists():
+    if student and overlap.filter(Q(student=student) | Q(participants__student=student)).exists():
         raise serializers.ValidationError("That student already has a lesson at this time.")
     if room and overlap.filter(room=room).exists():
         raise serializers.ValidationError("That room is already booked at this time.")
@@ -203,6 +222,8 @@ def _reject_lesson_overlap(instance, teacher, student, room, start, end):
 
 class LessonCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating lessons"""
+    participant_ids = serializers.ListField(child=serializers.UUIDField(), write_only=True, required=False, max_length=100)
+    participant_statuses = serializers.DictField(child=serializers.ChoiceField(choices=LessonParticipant.STATUS_CHOICES), write_only=True, required=False)
 
     class Meta:
         model = Lesson
@@ -212,6 +233,10 @@ class LessonCreateSerializer(serializers.ModelSerializer):
             "student",
             "guest_name",
             "guest_address",
+            "teaching_family",
+            "teaching_group",
+            "participant_ids",
+            "participant_statuses",
             "band",
             "room",
             "lesson_type",
@@ -235,11 +260,46 @@ class LessonCreateSerializer(serializers.ModelSerializer):
         band = _lesson_value(data, instance, "band")
         room = _lesson_value(data, instance, "room")
         guest_name = (_lesson_value(data, instance, "guest_name") or "").strip()
+        family = _lesson_value(data, instance, "teaching_family")
+        group = _lesson_value(data, instance, "teaching_group")
+        source = family or group
+        old_source = bool(instance and (instance.teaching_family_id or instance.teaching_group_id))
+        old_ids = set(instance.participants.values_list("student_id",flat=True)) if old_source else set()
+        ids = data.get("participant_ids")
+        selected = set(ids) if ids is not None else old_ids
+        if old_source and not source:
+            raise serializers.ValidationError({"code":"group_type_immutable"})
+        if source:
+            request = self.context.get("request")
+            if request and request.user.role != "admin":
+                raise serializers.ValidationError({"code":"group_admin_required"})
+            if (family and group) or student or band or guest_name or _lesson_value(data,instance,"lesson_type")!="group":
+                raise serializers.ValidationError({"code":"invalid_group_source"})
+            studio = _lesson_value(data,instance,"studio")
+            if studio is None or source.studio_id != studio.pk:
+                raise serializers.ValidationError({"code":"invalid_group_source"})
+            if len(selected)<2 or (ids is not None and len(ids)!=len(selected)):
+                raise serializers.ValidationError({"code":"group_needs_two"})
+            source_changed = not instance or family != instance.teaching_family or group != instance.teaching_group
+            if instance and instance.status not in ("scheduled","in_progress") and (source_changed or selected != old_ids):
+                raise serializers.ValidationError({"code":"historical_participants_immutable"})
+            if source_changed or selected != old_ids:
+                members = (family.students if family else group.members).filter(studio=studio,is_active=True,user__role="student")
+                available = set(members.values_list("pk",flat=True))
+                if source.archived_at or (group and selected != available) or not selected.issubset(available):
+                    raise serializers.ValidationError({"code":"invalid_group_members"})
+            if source_changed and instance:
+                raise serializers.ValidationError({"code":"group_type_immutable"})
+            for key in data.get("participant_statuses",{}):
+                if key not in {str(pk) for pk in selected}:
+                    raise serializers.ValidationError({"code":"invalid_participant"})
+        elif selected or data.get("participant_statuses"):
+            raise serializers.ValidationError({"code":"invalid_group_source"})
         if guest_name and (student or band):
             raise serializers.ValidationError(
                 {"guest_name": "Ein Sondertermin darf keinem Schüler oder Ensemble gleichzeitig zugeordnet werden."}
             )
-        if not student and not band and not room and not guest_name:
+        if not student and not band and not room and not guest_name and not source:
             raise serializers.ValidationError(
                 "Bitte einen Schüler, ein Ensemble oder einen Namen für den Sondertermin eintragen."
             )
@@ -268,7 +328,40 @@ class LessonCreateSerializer(serializers.ModelSerializer):
         studio = _lesson_value(data, instance, "studio")
         _reject_lesson_mismatch(teacher, student, room, studio, start, end)
         _reject_lesson_overlap(instance, teacher, student, room, start, end)
+        if source and start and end:
+            conflicts = Lesson.objects.filter(studio=studio,status__in=["scheduled","in_progress"],
+                scheduled_start__lt=end,scheduled_end__gt=start).filter(Q(student_id__in=selected)|Q(participants__student_id__in=selected))
+            if instance: conflicts=conflicts.exclude(pk=instance.pk)
+            if conflicts.exists(): raise serializers.ValidationError({"code":"participant_overlap"})
         return data
+
+    def _save_participants(self, instance, ids, statuses):
+        if ids is not None:
+            from apps.core.models import Student
+            instance.participants.exclude(student_id__in=ids).delete()
+            existing=set(instance.participants.values_list("student_id",flat=True))
+            for student in Student.objects.filter(pk__in=set(ids)-existing).select_related("user"):
+                LessonParticipant.objects.create(lesson=instance,student=student,name_snapshot=student.user.get_full_name())
+        for key,value in statuses.items():
+            instance.participants.filter(student_id=key).update(status=value)
+
+    @transaction.atomic
+    def create(self, validated_data):
+        ids=validated_data.pop("participant_ids",None)
+        statuses=validated_data.pop("participant_statuses",{})
+        source=validated_data.get("teaching_family") or validated_data.get("teaching_group")
+        if source: validated_data["group_name_snapshot"]=str(source)
+        instance=super().create(validated_data)
+        self._save_participants(instance,ids,statuses)
+        return instance
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        ids=validated_data.pop("participant_ids",None)
+        statuses=validated_data.pop("participant_statuses",{})
+        instance=super().update(instance,validated_data)
+        self._save_participants(instance,ids,statuses)
+        return instance
 
 
 class StudentGoalSerializer(serializers.ModelSerializer):
