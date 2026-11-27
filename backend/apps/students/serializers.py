@@ -163,7 +163,7 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
         if not request or request.user.role != "admin":
             raise serializers.ValidationError("Nur Administratoren dürfen Familien zuordnen.")
         studio = self.instance.studio if self.instance else studio_for_request(request)
-        if family and (not studio or family.studio_id != studio.id):
+        if family and (not studio or family.studio_id != studio.id or family.archived_at):
             raise serializers.ValidationError("Familie gehört nicht zu diesem Studio.")
         return family
 
@@ -286,7 +286,14 @@ class StudentCreateUpdateSerializer(serializers.ModelSerializer):
             validated_data["contact_email"] = validated_data.pop("email")
         user.save()
 
-        return super().update(instance, validated_data)
+        previous_family = instance.family_id
+        updated = super().update(instance, validated_data)
+        if previous_family and previous_family != updated.family_id:
+            from apps.core.models import FamilyAccess
+            for grant in FamilyAccess.objects.filter(family_id=previous_family, students=updated):
+                grant.students.remove(updated)
+            FamilyAccess.objects.filter(family_id=previous_family, user_id=updated.user_id).delete()
+        return updated
 
 
 class TeachingContractSerializer(serializers.ModelSerializer):
