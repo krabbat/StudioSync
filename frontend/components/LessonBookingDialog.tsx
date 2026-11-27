@@ -19,7 +19,7 @@ export interface LessonBookingData {
   group_name?: string;
   group_ha_zone?: string;
   participant_ids?: string[];
-  participant_names?: {id:string;name:string}[];
+  participant_names?: {id:string;name:string;first_name?:string;instrument?:string}[];
   participant_statuses?: Record<string,string>;
   room: string;
   date: string;
@@ -70,7 +70,7 @@ export default function LessonBookingDialog({
   const { currentUser } = useUser();
   const tr = useTranslations("Schedule");
   const groupT = useTranslations("TeachingGroups");
-  const [groupChoices,setGroupChoices]=useState<{id:string;name:string;members:{id:string;name:string;is_active?:boolean}[];address?:string}[]>([]);
+  const [groupChoices,setGroupChoices]=useState<{id:string;name:string;members:{id:string;name:string;first_name?:string;instrument?:string;is_active?:boolean}[];address?:string}[]>([]);
   const [groupLoading,setGroupLoading]=useState(false);
   const [groupError,setGroupError]=useState(false);
   const [zones,setZones]=useState<string[]>([]);
@@ -125,6 +125,7 @@ export default function LessonBookingDialog({
   const groupMembers=editingLessonId&&newBooking.participant_names
     ? [...newBooking.participant_names,...(newBooking.group_source==='group'?[]:(groupChoice?.members||[]).filter(m=>m.is_active!==false&&!newBooking.participant_names?.some(p=>p.id===m.id)))]
     : (groupChoice?.members||[]).filter(m=>m.is_active!==false);
+  const groupInstrument=Array.from(new Set(groupMembers.filter(m=>selectedParticipants.includes(m.id)).map(m=>m.instrument?.trim()).filter(Boolean))).join(", ");
   const historicalGroup=Boolean(editingLessonId&&newBooking.group_id&&newBooking.status!=="scheduled"&&newBooking.status!=="in_progress");
   const bookingStudent = students.find((student: any) => student.id === newBooking.student);
   const cityLine = [bookingStudent?.postal_code, bookingStudent?.city].filter(Boolean).join(" ");
@@ -260,6 +261,7 @@ export default function LessonBookingDialog({
                           {newBooking.group_id&&<fieldset className="space-y-2 border rounded-lg p-3"><legend className="text-sm font-medium">{groupT('participants')}</legend>
                             {groupMembers.map(member=><label key={member.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedParticipants.includes(member.id)} disabled={newBooking.group_source==='group'||historicalGroup} onChange={e=>setNewBooking(prev=>({...prev,participant_ids:e.target.checked?[...(prev.participant_ids||[]),member.id]:(prev.participant_ids||[]).filter(id=>id!==member.id)}))}/>{member.name}</label>)}
                             <p className="text-xs text-gray-500">{groupT('participantCount',{count:selectedParticipants.length})}</p>
+                            {groupInstrument&&<p className="text-sm font-medium">{groupT("instrument")}: {groupInstrument}</p>}
                           </fieldset>}
                         </>}
                       </div>
