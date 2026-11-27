@@ -3,6 +3,7 @@ from collections import Counter
 import unicodedata
 
 from apps.core.models import Family, TeachingGroup, Student
+from apps.lessons.group_titles import group_title
 from apps.core.views.icloud_calendar import ICloudSetupError
 
 
@@ -20,14 +21,21 @@ def member_snapshot(pupil, instrument=None):
             "instrument": pupil.instrument if instrument is None else instrument}
 
 
+def source_titles(source, snapshot=""):
+    family = isinstance(source, Family)
+    names = [str(source), snapshot]
+    return {normal(value) for name in names if name for value in
+            (name, group_title(name, family=family))}
+
+
 def group_source(studio, title):
     """Exact family/group name only; never treat a surname as an individual."""
     key = normal(title)
     if not key:
         return None
     families = [f for f in Family.objects.filter(studio=studio, archived_at__isnull=True).select_related("primary_parent")
-                if normal(str(f)) == key]
-    groups = [g for g in TeachingGroup.objects.filter(studio=studio, archived_at__isnull=True) if normal(g.name) == key]
+                if key in source_titles(f)]
+    groups = [g for g in TeachingGroup.objects.filter(studio=studio, archived_at__isnull=True) if key in source_titles(g)]
     matches = families + groups
     if not matches:
         return None
