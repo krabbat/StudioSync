@@ -652,7 +652,7 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pb-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 print:space-y-2">
+    <div className="max-w-[1600px] w-full min-w-0 mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-12 space-y-4 print:space-y-2">
       <style jsx global>{`
         @media print {
           nav,
@@ -680,135 +680,8 @@ export default function SchedulePage() {
         }
       `}</style>
 
-      {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
-        <div className="space-y-2">
-          <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{tr('schedule')}</h1>
-          <p className="text-gray-500 font-medium max-w-lg">
-            {tr('orchestrateYourWeeklyLessonCalendar')}
-          </p>
-        </div>
-        <div className={`grid ${hasIcloudCalendar ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} gap-2 sm:gap-3 no-print`}>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => refetchLessons()}
-            title={tr('refresh')}
-            className="w-full"
-          >
-            <RefreshCw className={`w-4 h-4 ${lessonsLoading ? "animate-spin" : ""}`} />
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setUse24Hour(!use24Hour)}
-            className="gap-2 w-full"
-            title={tr("timezoneLabel", {timezone: localTimeZone})}
-          >
-            <Clock className="w-4 h-4" />
-            <span className="hidden sm:inline">
-              {use24Hour ? "24h" : "12h"} <span className="text-[9px] text-gray-400 font-bold ml-1">{shortTimeZone}</span>
-            </span>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowSubscribeModal(true)}
-            className="gap-2 w-full"
-          >
-            <Link className="w-4 h-4" />
-            <span className="hidden sm:inline">{tr('subscribe')}</span>
-          </Button>
-          {hasIcloudCalendar && (
-            <Button type="button" variant="outline" onClick={() => void syncAppleNow()}
-              disabled={icloudBusy} className="gap-2 w-full" title="Bidirektional mit iCloud synchronisieren">
-              <RefreshCw className={`w-4 h-4 ${icloudBusy ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">iCloud-Abgleich</span>
-            </Button>
-          )}
-          <Button
-            variant="default" // Changed from outline with inline style
-            onClick={handlePrint}
-            className="gap-2 w-full"
-          >
-            <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">{tr('print')}</span>
-          </Button>
-          {["admin", "teacher", "student"].includes(currentUser?.role || "") && (
-            <Button
-              onClick={() => {
-                resetBooking();
-                setShowBookingModal(true);
-              }}
-              className={`gap-2 hover:scale-105 w-full ${hasIcloudCalendar ? "col-span-3 sm:col-span-5" : "col-span-2 sm:col-span-4"}`}
-            >
-              <Plus className="w-4 h-4" />
-              {tr('newBooking')}
-            </Button>
-          )}
-        </div>
-      </header>
-
-      {icloudIssues.length > 0 && (
-        <section role="alert" className="no-print rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h2 className="font-bold">iCloud-Kalender: Konflikte und Hinweise</h2>
-            <button type="button" onClick={() => setIcloudIssues([])}
-              className="rounded-lg border border-amber-300 px-2 py-1 text-xs font-semibold">
-              Schließen
-            </button>
-          </div>
-          {icloudIssues.map((item, index) => (
-            <div key={index} className="mt-2 rounded-lg bg-white/75 p-3">
-              <strong>{item.title}</strong>
-              <p className="mt-1 whitespace-pre-line">{item.error}</p>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* View & Color Toggles */}
-      <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-2 no-print">
-        <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
-          <button
-            onClick={() => setViewMode("week")}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            {tr('week')}
-          </button>
-          <button
-            onClick={() => setViewMode("month")}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            {tr('month')}
-          </button>
-        </div>
-
-        <div className="flex justify-center items-center gap-2">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:inline">{tr('colorBy')}</span>
-          <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
-            <button
-              onClick={() => setColorMode("status")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "status" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              {tr('status')}
-            </button>
-            <button
-              onClick={() => setColorMode("student")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "student" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              {tr('student')}
-            </button>
-            <button
-              onClick={() => setColorMode("instrument")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "instrument" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              {tr('instrument')}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Period Navigation */}
-      <div className="flex justify-between items-center bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm no-print mb-6">
+      <div className="flex justify-between items-center bg-white px-4 sm:px-6 py-2 sm:py-3 rounded-2xl border border-gray-100 shadow-sm no-print">
         <Button variant="ghost" size="icon" onClick={previousPeriod} className="text-gray-600">
           <ChevronLeft className="w-6 h-6" />
         </Button>
@@ -837,19 +710,23 @@ export default function SchedulePage() {
       </div>
 
       {/* Schedule Grid */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col h-[70vh]">
-        <div className="overflow-auto custom-scrollbar flex-1 relative">
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col w-full min-w-0 h-[calc(100dvh-12rem)] min-h-[240px]">
+        <div className="overflow-x-hidden overflow-y-auto overscroll-x-none touch-pan-y custom-scrollbar flex-1 min-h-0 min-w-0 relative">
           {viewMode === "week" ? (
-            <table className="w-full min-w-full md:min-w-[1000px] border-separate border-spacing-0">
+            <table className="w-full table-fixed border-separate border-spacing-0">
+               <colgroup>
+                 <col className="w-[52px] sm:w-[72px]" />
+                 {weekDays.map((day) => <col key={day.toISOString()} />)}
+               </colgroup>
               <thead className="bg-slate-200 sticky top-0 z-20" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                 <tr>
-                  <th className="px-2 py-3 sm:px-6 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest w-24 sticky left-0 z-30 bg-slate-200 border-r border-b border-slate-300/60" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
+                  <th className="px-1 py-3 sm:py-4 text-center text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest z-30 bg-slate-200 border-r border-b border-slate-300/60" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                     {tr('time')}
                   </th>
                   {weekDays.map((day, idx) => (
                     <th
                       key={idx}
-                      className={`px-2 py-3 sm:px-4 sm:py-4 text-center min-w-[100px] sm:min-w-[140px] bg-slate-200 border-b border-slate-300/60 ${idx < 6 ? "border-r border-slate-300/60" : ""}`}
+                      className={`px-1 py-3 sm:py-4 text-center bg-slate-200 border-b border-slate-300/60 ${idx < 6 ? "border-r border-slate-300/60" : ""}`}
                       style={{ backgroundColor: WEEK_CHROME_COLOR }}
                     >
                       <div
@@ -869,7 +746,7 @@ export default function SchedulePage() {
               <tbody className="divide-y divide-gray-50">
                 {timeSlots.map((hour) => (
                   <tr key={hour} className={`group h-24 ${hour % 2 === 0 ? "bg-slate-100/80" : "bg-white"}`}>
-                    <td className="h-24 p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 sticky left-0 z-10 text-center align-top" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
+                    <td className="h-24 p-0 text-xs font-bold text-gray-500 border-r border-slate-300/60 bg-slate-200 z-10 text-center align-top" style={{ backgroundColor: WEEK_CHROME_COLOR }}>
                       <div className="relative h-24">
                         <span className="absolute inset-x-0 top-1">{formatGridHour(hour)}</span>
                       </div>
@@ -1002,7 +879,7 @@ export default function SchedulePage() {
               </tbody>
             </table>
           ) : (
-            <div className="flex flex-col h-full min-w-[700px]">
+            <div className="flex flex-col h-full w-full min-w-0">
               <div className="grid grid-cols-7 bg-gray-50/80 backdrop-blur-sm sticky top-0 z-20 border-b border-gray-100 shrink-0">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayName) => (
                   <div key={dayName} className="py-3 px-2 text-center text-[10px] sm:text-xs font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 last:border-0">
@@ -1035,14 +912,14 @@ export default function SchedulePage() {
                         setBookingMode("individual");
                         setShowBookingModal(true);
                       }}
-                      className={`min-h-[100px] border-b border-r border-gray-100 p-1 sm:p-2 hover:bg-gray-50/50 transition-colors ${!isCurrentMonth ? "bg-gray-50/40" : ""} flex flex-col`}
+                      className={`min-h-[100px] min-w-0 border-b border-r border-gray-100 p-1 sm:p-2 hover:bg-gray-50/50 transition-colors ${!isCurrentMonth ? "bg-gray-50/40" : ""} flex flex-col`}
                     >
                       <div className="flex justify-end mb-1">
                         <span className={`text-xs sm:text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? "bg-primary text-white" : isCurrentMonth ? "text-gray-900" : "text-gray-400"}`}>
                           {format(day, "d")}
                         </span>
                       </div>
-                      <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
+                      <div className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto space-y-1 custom-scrollbar">
                         {dayLessons.map((lesson: any) => (
                           <div
                             key={lesson.id}
@@ -1102,6 +979,133 @@ export default function SchedulePage() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Header */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
+        <div className="space-y-2">
+          <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight">{tr('schedule')}</h1>
+          <p className="text-gray-500 font-medium max-w-lg">
+            {tr('orchestrateYourWeeklyLessonCalendar')}
+          </p>
+        </div>
+        <div className={`grid ${hasIcloudCalendar ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} gap-2 sm:gap-3 no-print`}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetchLessons()}
+            title={tr('refresh')}
+            className="w-full"
+          >
+            <RefreshCw className={`w-4 h-4 ${lessonsLoading ? "animate-spin" : ""}`} />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setUse24Hour(!use24Hour)}
+            className="gap-2 w-full"
+            title={tr("timezoneLabel", {timezone: localTimeZone})}
+          >
+            <Clock className="w-4 h-4" />
+            <span className="hidden sm:inline">
+              {use24Hour ? "24h" : "12h"} <span className="text-[9px] text-gray-400 font-bold ml-1">{shortTimeZone}</span>
+            </span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowSubscribeModal(true)}
+            className="gap-2 w-full"
+          >
+            <Link className="w-4 h-4" />
+            <span className="hidden sm:inline">{tr('subscribe')}</span>
+          </Button>
+          {hasIcloudCalendar && (
+            <Button type="button" variant="outline" onClick={() => void syncAppleNow()}
+              disabled={icloudBusy} className="gap-2 w-full" title="Bidirektional mit iCloud synchronisieren">
+              <RefreshCw className={`w-4 h-4 ${icloudBusy ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">iCloud-Abgleich</span>
+            </Button>
+          )}
+          <Button
+            variant="default" // Changed from outline with inline style
+            onClick={handlePrint}
+            className="gap-2 w-full"
+          >
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">{tr('print')}</span>
+          </Button>
+          {["admin", "teacher", "student"].includes(currentUser?.role || "") && (
+            <Button
+              onClick={() => {
+                resetBooking();
+                setShowBookingModal(true);
+              }}
+              className={`gap-2 hover:scale-105 w-full ${hasIcloudCalendar ? "col-span-3 sm:col-span-5" : "col-span-2 sm:col-span-4"}`}
+            >
+              <Plus className="w-4 h-4" />
+              {tr('newBooking')}
+            </Button>
+          )}
+        </div>
+      </header>
+
+      {icloudIssues.length > 0 && (
+        <section role="alert" className="no-print rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 className="font-bold">iCloud-Kalender: Konflikte und Hinweise</h2>
+            <button type="button" onClick={() => setIcloudIssues([])}
+              className="rounded-lg border border-amber-300 px-2 py-1 text-xs font-semibold">
+              Schließen
+            </button>
+          </div>
+          {icloudIssues.map((item, index) => (
+            <div key={index} className="mt-2 rounded-lg bg-white/75 p-3">
+              <strong>{item.title}</strong>
+              <p className="mt-1 whitespace-pre-line">{item.error}</p>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* View & Color Toggles */}
+      <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-2 no-print">
+        <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setViewMode("week")}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {tr('week')}
+          </button>
+          <button
+            onClick={() => setViewMode("month")}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {tr('month')}
+          </button>
+        </div>
+
+        <div className="flex justify-center items-center gap-2">
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:inline">{tr('colorBy')}</span>
+          <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+            <button
+              onClick={() => setColorMode("status")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "status" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              {tr('status')}
+            </button>
+            <button
+              onClick={() => setColorMode("student")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "student" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              {tr('student')}
+            </button>
+            <button
+              onClick={() => setColorMode("instrument")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${colorMode === "instrument" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              {tr('instrument')}
+            </button>
+          </div>
         </div>
       </div>
 
