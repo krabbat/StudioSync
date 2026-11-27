@@ -38,6 +38,7 @@ import { shareFilesOrDownload } from '@/lib/shareFile'
 interface Invoice {
     id: string
     invoice_number: string
+    test_only?: boolean
     total_amount: number | string
     balance_due: number | string
     payment_status: 'pending' | 'paid' | 'overdue' | 'cancelled'
@@ -386,15 +387,15 @@ export default function BillingPage() {
 
     // Calculate totals
     const paidAmount = typedInvoices
-        .filter(i => i.payment_status !== 'cancelled')
+        .filter(i => !i.test_only && i.payment_status !== 'cancelled')
         .reduce((sum, i) => sum + Number(i.payment_received || 0), 0)
 
     const pendingAmount = typedInvoices
-        .filter(i => i.payment_status === 'pending')
+        .filter(i => !i.test_only && i.payment_status === 'pending')
         .reduce((sum, i) => sum + Number(i.payment_remaining || 0), 0)
 
     const overdueAmount = typedInvoices
-        .filter(i => i.payment_status === 'overdue')
+        .filter(i => !i.test_only && i.payment_status === 'overdue')
         .reduce((sum, i) => sum + Number(i.payment_remaining || 0), 0)
 
     // Filter invoices
