@@ -25,9 +25,10 @@ class Migration(migrations.Migration):
             ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
             ("lesson_id", models.UUIDField()),
             ("lesson_date", models.DateField()),
+            ("test_only", models.BooleanField(default=True)),
             ("reset_at", models.DateTimeField(blank=True, null=True)),
             ("reset_by", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to="core.user")),
             ("plan", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="units", to="billing.blockbillingplan")),
             ("bill", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name="units", to="billing.blockinvoice")),
-        ], options={"constraints": [models.UniqueConstraint(fields=("plan", "lesson_id"), name="unique_block_billed_lesson")]}),
+        ], options={"constraints": [models.UniqueConstraint(fields=("plan", "lesson_id", "test_only"), name="unique_block_billed_lesson")]}),
     ]
