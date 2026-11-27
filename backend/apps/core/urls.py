@@ -116,6 +116,11 @@ urlpatterns = (
             name="mail-inbox-detail",
         ),
         re_path(
+            r"^mail/cache/families/(?P<family_id>[0-9a-fA-F-]{36})/overview/?$",
+            MailStudentOverviewView.as_view(),
+            name="mail-family-overview",
+        ),
+        re_path(
             r"^mail/cache/students/?$",
             MailStudentCatalogView.as_view(),
             name="mail-student-catalog",
