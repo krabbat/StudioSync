@@ -75,7 +75,7 @@ def group_snapshot(lesson):
     if not (lesson.teaching_family_id or lesson.teaching_group_id):
         return {}
     return {"family":str(lesson.teaching_family_id or ""), "group":str(lesson.teaching_group_id or ""),
-            "name":lesson.group_name_snapshot, "zone":lesson.group_ha_zone,
+            "name":lesson.group_name_snapshot, "zone":lesson.group_ha_zone, "is_online":lesson.is_online, "online_meeting_url":lesson.online_meeting_url,
             "members":[{"id":str(p.student_id),"name":p.name_snapshot} for p in lesson.participants.all()]}
 
 
@@ -91,7 +91,7 @@ def group_fields(series):
     if len(ids)<2 or Student.objects.filter(studio=series.studio,pk__in=ids).count()!=len(ids):
         raise ICloudSetupError("Ungültige Gruppen-Teilnehmerliste.")
     return {"teaching_family":family,"teaching_group":group,"group_name_snapshot":booking["name"],
-            "group_ha_zone":booking["zone"],"lesson_type":"group"}
+            "group_ha_zone":booking["zone"],"lesson_type":"group","is_online":booking.get("is_online",False),"online_meeting_url":booking.get("online_meeting_url","")}
 
 
 def _master_and_overrides(content):
