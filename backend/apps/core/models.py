@@ -279,6 +279,7 @@ class Family(models.Model):
     address = models.TextField(blank=True)
 
     # Billing
+    individual_billing = models.BooleanField(default=False)
     billing_email = models.EmailField(blank=True)  # Defaults to primary_parent.email
 
     # Timestamps
