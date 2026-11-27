@@ -126,6 +126,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     full_name = serializers.SerializerMethodField()
     student_profile = serializers.SerializerMethodField()
+    family_access = serializers.SerializerMethodField()
+
+    def get_family_access(self, obj):
+        from apps.core.views.family_access import portal_grants
+        return portal_grants(obj).exists()
     teacher_profile = serializers.SerializerMethodField()
     studio = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
@@ -147,6 +152,7 @@ class UserSerializer(serializers.ModelSerializer):
             "avatar",
             "preferences",
             "student_profile",
+            "family_access",
             "teacher_profile",
             "studio",
             "is_active",
@@ -605,7 +611,7 @@ class StudentSerializer(serializers.ModelSerializer):
         if not request or request.user.role != "admin":
             raise serializers.ValidationError("Nur Administratoren dürfen Familien zuordnen.")
         studio = self.instance.studio if self.instance else studio_for_request(request)
-        if family and (not studio or family.studio_id != studio.id):
+        if family and (not studio or family.studio_id != studio.id or family.archived_at):
             raise serializers.ValidationError("Familie gehört nicht zu diesem Studio.")
         return family
 
