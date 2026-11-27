@@ -80,6 +80,7 @@ interface ExternalEvent {
 // The labels and appointment offsets must use this same scale.
 const WEEK_HOUR_HEIGHT = 96;
 const WEEK_CHROME_COLOR = "#e2e8f0";
+const participantNames = (lesson:any) => (lesson.group_participants||[]).map((p:{first_name?:string;name:string})=>p.first_name||p.name).filter(Boolean).join(", ");
 
 export default function SchedulePage() {
   const tr = useTranslations('Schedule')
@@ -908,7 +909,7 @@ export default function SchedulePage() {
                                     top: (getMinutes(parseISO(lesson.scheduled_start)) / 60) * WEEK_HOUR_HEIGHT,
                                     height: Math.max(24, (lesson.duration_minutes / 60) * WEEK_HOUR_HEIGHT),
                                   }}
-                                  title={`${format(parseISO(lesson.scheduled_start), "HH:mm")} – ${format(parseISO(lesson.scheduled_end), "HH:mm")} · ${lesson.student_name || lesson.band_name || "Unterricht"}`}
+                                  title={`${format(parseISO(lesson.scheduled_start), "HH:mm")} – ${format(parseISO(lesson.scheduled_end), "HH:mm")} · ${lesson.student_name || lesson.band_name || "Unterricht"}${participantNames(lesson)?" · "+participantNames(lesson):""}${lesson.student_instrument?" · "+lesson.student_instrument:""}`}
                                   className={`
                                     absolute inset-x-1 z-10 overflow-hidden p-1 rounded-lg border-l-[3px] shadow-sm hover:shadow-md transition-all cursor-pointer group/card
                                     ${(colorMode === "status" || lesson.status === "scheduled" || lesson.status === "cancelled" || lesson.status === "completed" || lesson.status === "in_progress" || lesson.status === "no_show") ? (
@@ -958,6 +959,7 @@ export default function SchedulePage() {
                                   >
                                     {lesson.student_instrument}
                                   </p>
+                                  {participantNames(lesson)&&<p className="text-[9px] sm:text-[10px] leading-tight truncate" title={participantNames(lesson)}>{participantNames(lesson)}</p>}
                                   {!lesson.is_online && lesson.student_address && (
                                     <p className="text-[9px] sm:text-[10px] mt-0.5 truncate text-gray-600"
                                        title={lesson.student_address}>
@@ -1074,6 +1076,7 @@ export default function SchedulePage() {
                             >
                               {lesson.band_name || lesson.student_name || (lesson.lesson_type ? lesson.lesson_type.charAt(0).toUpperCase() + lesson.lesson_type.slice(1) : "Event")}
                             </span>
+                            {participantNames(lesson)&&<div className="text-[9px] sm:text-[10px] truncate" title={[participantNames(lesson),lesson.student_instrument].filter(Boolean).join(" · ")}>{[participantNames(lesson),lesson.student_instrument].filter(Boolean).join(" · ")}</div>}
                           </div>
                         ))}
                         {/* External events in month view */}
