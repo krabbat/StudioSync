@@ -21,6 +21,7 @@ def payload(studio,teacher,student_ids,**source):
 @pytest.mark.django_db
 def test_group_roster_and_historical_snapshot(authenticated_client,studio,teacher,student):
     second=second_pupil(studio)
+    Student.objects.filter(pk__in=[student.pk,second.pk]).update(instrument="Gitarre")
     base="/api/students/groups/"
     result=authenticated_client.post(base,{"name":"Blockflöte","student_ids":[str(student.pk),str(second.pk)]},format="json")
     assert result.status_code==201,result.data
@@ -35,6 +36,12 @@ def test_group_roster_and_historical_snapshot(authenticated_client,studio,teache
     assert listed.status_code==200
     rows=listed.data.get("results",[]) if isinstance(listed.data,dict) else listed.data
     assert len(rows)==1 and len(rows[0]["group_participants"])==2
+    assert rows[0]["student_instrument"]=="Gitarre"
+    assert {p["first_name"] for p in rows[0]["group_participants"]}=={student.user.first_name,second.user.first_name}
+    assert all(p["instrument"]=="Gitarre" for p in rows[0]["group_participants"])
+    Student.objects.filter(pk__in=[student.pk,second.pk]).update(instrument="Klavier")
+    from apps.lessons.serializers import LessonListSerializer
+    assert LessonListSerializer(lesson).data["student_instrument"]=="Gitarre"
     assert Lesson.objects.filter(studio=studio).count()==1
     assert authenticated_client.patch(base+str(group.pk)+"/",{"student_ids":[str(student.pk)]},format="json").status_code==200
     assert lesson.participants.count()==2
