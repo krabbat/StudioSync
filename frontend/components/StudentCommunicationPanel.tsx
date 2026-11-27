@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useTranslations, useLocale } from 'next-intl'
 import {
     ArrowDown, ArrowUpRight, FilePenLine, Mail, MailOpen,
     Paperclip, RefreshCw, Send,
@@ -34,21 +35,20 @@ interface MailOverviewPage {
     counts: { received: number; sent: number; draft: number }
 }
 
-const kindName: Record<MailKind, string> = {
-    received: 'Empfangen',
-    sent: 'Gesendet',
-    draft: 'Entwurf',
-}
-
-const dateText = (iso: string) => {
+const dateText = (iso: string, locale: string) => {
     const timestamp = Date.parse(iso)
     return Number.isNaN(timestamp) ? '' : new Date(timestamp).toLocaleString(
-        'de-DE', { day: '2-digit', month: '2-digit', year: 'numeric',
+        locale, { day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit' },
     )
 }
 
-export default function StudentCommunicationPanel({ studentId }: { studentId: string }) {
+export default function StudentCommunicationPanel({ studentId, familyId, contactIndex, composeUrl }: { studentId?: string; familyId?: string; contactIndex?: number; composeUrl?: string }) {
+    const t = useTranslations('FamilyCommunication')
+    const locale = useLocale()
+    const scope = familyId ? familyId + ':' + (contactIndex ?? 'all') : studentId || ''
+    const endpoint = familyId ? '/core/mail/cache/families/'+familyId+'/overview/' : '/core/mail/cache/students/'+studentId+'/overview/'
+    const contactParams = contactIndex === undefined ? {} : {contact:contactIndex}
     const [messages, setMessages] = useState<MailOverviewItem[]>([])
     const [total, setTotal] = useState(0)
     const [counts, setCounts] = useState({ received: 0, sent: 0, draft: 0 })
@@ -66,7 +66,7 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
     useEffect(() => {
         let active = true
         const generation = ++generationRef.current
-        const newStudent = lastLoadedStudent.current !== studentId
+        const newStudent = lastLoadedStudent.current !== scope
         if (newStudent) {
             setMessages([])
             setTotal(0)
@@ -79,11 +79,11 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
         setError('')
         setPageError('')
         void api.get<MailOverviewPage>(
-            `/core/mail/cache/students/${studentId}/overview/`,
-            { params: { offset: 0, limit: PAGE_SIZE } },
+            endpoint,
+            { params: { ...contactParams, offset: 0, limit: PAGE_SIZE } },
         ).then(({ data }) => {
             if (!active || generation !== generationRef.current) return
-            lastLoadedStudent.current = studentId
+            lastLoadedStudent.current = scope
             setMessages(data.messages)
             setTotal(data.total)
             setCounts(data.counts)
@@ -93,14 +93,14 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
         }).catch((failure: any) => {
             if (active && generation === generationRef.current) {
                 setError(failure?.response?.data?.detail ||
-                    'Der Schriftverkehr konnte nicht geladen werden.')
+                    t('loadError'))
                 setSyncing(false)
             }
         }).finally(() => {
             if (active && generation === generationRef.current) setLoading(false)
         })
         return () => { active = false }
-    }, [studentId, revision])
+    }, [scope, revision])
 
     useEffect(() => {
         // Refresh the first page while the server populates the mail cache.
@@ -117,8 +117,8 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
         setPageError('')
         try {
             const { data } = await api.get<MailOverviewPage>(
-                `/core/mail/cache/students/${studentId}/overview/`,
-                { params: { offset: nextOffset, limit: PAGE_SIZE } },
+                endpoint,
+                { params: { ...contactParams, offset: nextOffset, limit: PAGE_SIZE } },
             )
             if (generation !== generationRef.current) return
             setMessages(existing => {
@@ -134,14 +134,14 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
         } catch (failure: any) {
             if (generation === generationRef.current) {
                 setPageError(failure?.response?.data?.detail ||
-                    'Weitere Nachrichten konnten nicht geladen werden.')
+                    t('moreError'))
             }
         } finally {
             if (generation === generationRef.current) setLoadingMore(false)
         }
     }
 
-    const filterUrl = `/dashboard/messages?student=${encodeURIComponent(studentId)}`
+    const filterUrl = studentId ? '/dashboard/messages?student='+encodeURIComponent(studentId) : '/dashboard/messages?view=mail'
     const messageUrl = (item: MailOverviewItem) => {
         const base = filterUrl + '&folder=' + encodeURIComponent(item.folder)
         return item.category === 'draft'
@@ -153,44 +153,44 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
         <section className="bg-white rounded-3xl border border-gray-100 p-5 md:p-8 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">Kommunikation</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{t('title')}</h2>
                     <p className="text-sm text-gray-500 mt-1">
-                        Alle zugeordneten E-Mails und Entwürfe. Öffnen und Bearbeiten im Mailclient.
+                        {t('description')}
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <button type="button" onClick={() => setRevision(value => value + 1)}
                         className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"
-                        aria-label="Kommunikationsübersicht aktualisieren">
-                        <RefreshCw size={16} /> Aktualisieren
+                        aria-label={t('refresh')}>
+                        <RefreshCw size={16} /> {t('refresh')}
                     </button>
-                    <Link href={filterUrl + '&compose=1'}
+                    <Link href={composeUrl || filterUrl + '&compose=1'}
                         className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm">
-                        <Send size={16} /> Neue E-Mail
+                        <Send size={16} /> {t('compose')}
                     </Link>
                     <Link href={filterUrl}
                         className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-                        Mailclient öffnen <ArrowUpRight size={16} />
+                        {t('openMail')} <ArrowUpRight size={16} />
                     </Link>
                 </div>
             </div>
 
             <div className="flex flex-wrap gap-x-5 gap-y-2 border-b border-gray-100 pb-4 mb-2 text-sm"
-                aria-label="Anzahl der zugeordneten Nachrichten">
-                <span className="font-semibold text-gray-800">{total} insgesamt</span>
-                <span className="text-gray-600">{counts.received} empfangen</span>
-                <span className="text-gray-600">{counts.sent} gesendet</span>
-                <span className="text-gray-600">{counts.draft} Entwürfe</span>
+                aria-label={t('counts')}>
+                <span className="font-semibold text-gray-800">{t('total',{count:total})}</span>
+                <span className="text-gray-600">{t('receivedCount',{count:counts.received})}</span>
+                <span className="text-gray-600">{t('sentCount',{count:counts.sent})}</span>
+                <span className="text-gray-600">{t('draftCount',{count:counts.draft})}</span>
             </div>
 
-            {loading && <p className="py-5 text-sm text-gray-500">Schriftverkehr wird geladen …</p>}
+            {loading && <p className="py-5 text-sm text-gray-500">{t('loading')}</p>}
             {syncing && <p className="py-2 text-xs text-gray-500" role="status">
-                Posteingang, Gesendet und Archiv werden im Hintergrund aktualisiert.
+                {t('syncing')}
             </p>}
             {error && <p className="py-4 text-sm text-red-700" role="alert">{error}</p>}
             {!loading && !error && messages.length === 0 && (
                 <p className="rounded-xl bg-gray-50 p-5 text-sm text-gray-500">
-                    Noch keine zugeordneten Nachrichten oder Entwürfe vorhanden.
+                    {t('empty')}
                 </p>
             )}
             {!loading && !error && messages.length > 0 && (
@@ -207,17 +207,17 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
                                 <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <strong className="truncate text-sm text-gray-900">
-                                            {item.subject || '(Ohne Betreff)'}
+                                            {item.subject || t('noSubject')}
                                         </strong>
                                         {item.has_attachment && <Paperclip size={14}
-                                            className="text-gray-400" aria-label="Mit Anhang" />}
+                                            className="text-gray-400" aria-label={t('attachment')} />}
                                         <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                                            {kindName[item.category]}
+                                            {t(item.category)}
                                         </span>
                                         {item.folder !== 'inbox' && item.folder !== 'sent' &&
                                             item.folder !== 'drafts' && (
                                             <span className="text-xs text-gray-500">
-                                                {item.folder === 'archive' ? 'Archiv' : item.folder}
+                                                {item.folder === 'archive' ? t('archive') : item.folder}
                                             </span>
                                         )}
                                     </div>
@@ -229,7 +229,7 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
                                     )}
                                 </div>
                                 <span className="shrink-0 text-xs text-gray-400">
-                                    {dateText(item.date)}
+                                    {dateText(item.date,locale)}
                                 </span>
                                 <ArrowUpRight size={15} className="mt-1 shrink-0 text-gray-400" />
                             </Link>
@@ -241,8 +241,8 @@ export default function StudentCommunicationPanel({ studentId }: { studentId: st
                             disabled={loadingMore}
                             className="mt-5 flex w-full justify-center items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 disabled:opacity-50">
                             <ArrowDown size={16} />
-                            {loadingMore ? 'Weitere Nachrichten werden geladen …'
-                                : `Weitere Nachrichten laden (${messages.length} von ${total})`}
+                            {loadingMore ? t('loadingMore')
+                                : t('more',{shown:messages.length,total})}
                         </button>
                     )}
                 </>
