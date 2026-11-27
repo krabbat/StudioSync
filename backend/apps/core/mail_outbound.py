@@ -334,7 +334,7 @@ def _save_sent_copy(client, mailbox, message, raw_message=None):
         ) from exc
 
 
-def _smtp_utf8_bytes(*, sender, recipient, studio_name, subject, plain, html, attachments, message_id):
+def _smtp_utf8_bytes(*, sender, recipient, studio_name, subject, plain, html, attachments, message_id, reply_to=None):
     """Build RFC 6532 headers for real international mailbox addresses."""
     msg = StandardEmailMessage(policy=SMTPUTF8)
     msg["Subject"] = subject
@@ -347,8 +347,12 @@ def _smtp_utf8_bytes(*, sender, recipient, studio_name, subject, plain, html, at
     )
     msg["To"] = Address(username=target_local, domain=target_domain)
     msg["Message-ID"] = message_id
+    if reply_to:
+        local, domain = reply_to.rsplit("@", 1)
+        msg["Reply-To"] = Address(username=local, domain=domain)
     msg.set_content(plain)
-    msg.add_alternative(html, subtype="html")
+    if html is not None:
+        msg.add_alternative(html, subtype="html")
     for filename, data, mime in attachments:
         maintype, subtype = mime.split("/", 1)
         msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
