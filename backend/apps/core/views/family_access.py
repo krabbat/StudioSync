@@ -60,7 +60,7 @@ def grant_data(grant):
             "name": grant.user.get_full_name(), "email": grant.user.email,
             "student_ids": [str(s.pk) for s in students],
             "adult_review": [str(s.pk) for s in students if age_review(s)],
-            "can_view_communication": grant.can_view_communication,
+            "can_view_communication": grant.can_view_communication, "revoked": bool(grant.revoked_at),
             "login_enabled": grant.user.is_active and grant.user.is_approved and grant.user.has_usable_password()}
 
 
@@ -160,7 +160,8 @@ class FamilyGrantAdminView(APIView):
         if request.data.get("password"):
             activate_account(grant.user, request.data)
         grant.can_view_communication = communication
-        grant.save(update_fields=["can_view_communication"])
+        grant.revoked_at = None
+        grant.save(update_fields=["can_view_communication","revoked_at"])
         grant.students.set(rows)
         return Response(grant_data(grant))
 
@@ -170,14 +171,15 @@ class FamilyGrantAdminView(APIView):
         grant = family.access_grants.filter(pk=grant_id).first()
         if not grant:
             raise NotFound()
-        grant.delete()
+        grant.revoked_at = timezone.now()
+        grant.save(update_fields=["revoked_at"])
         return Response(status=204)
 
 
 def portal_grants(user):
     if user.role not in ("parent","student") or not user.is_active or not user.is_approved:
         return FamilyAccess.objects.none()
-    grants = FamilyAccess.objects.filter(user=user, family__archived_at__isnull=True)
+    grants = FamilyAccess.objects.filter(user=user, family__archived_at__isnull=True, revoked_at__isnull=True)
     # A pupil acting as guardian must still belong to the same family.
     if user.role == "student":
         grants = grants.filter(family__students__user=user)
@@ -203,7 +205,7 @@ def portal_student(grant, student_id):
 
 
 def student_invoices(student):
-    return Invoice.objects.filter(studio=student.studio).filter(
+    return Invoice.objects.filter(studio=student.studio, sent_at__isnull=False).filter(
         Q(student=student)|Q(tuition_months__student=student)).exclude(status="draft").distinct()
 
 
@@ -269,7 +271,7 @@ class FamilyPortalStudentView(APIView):
         contract = TeachingContract.objects.filter(student=student).first()
         account = lesson_account_response(student)
         # Only customer-facing totals, not private correction notes or tracker diagnostics.
-        summary = account.get("summary") if account.get("available") else None
+        summary = {**account.get("summary",{}), "quota":account.get("quota",44)} if account.get("available") else None
         lessons = Lesson.objects.filter(student=student,studio=student.studio).order_by("-scheduled_start")[:100]
         invoices = student_invoices(student)[:100]
         resources = allowed_resources(student).order_by("title")[:200]
