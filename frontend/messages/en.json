@@ -6,6 +6,7 @@
     "imported": "Contact imported. Please save."
   },
   "TeachingGroups": {
+    "instrument": "Instrument",
     "haZone": "Home Assistant zone",
     "chooseZone": "Select lesson zone",
     "zonesUnavailable": "HA zones could not be loaded.",
