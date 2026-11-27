@@ -133,7 +133,7 @@ def generate_blocks(plan_id):
         invoice = Invoice.objects.create(
             studio_id=plan.student.studio_id, student=plan.student,
             issue_date=today, due_date=today + timedelta(days=7), status="draft",
-            notes="Unterricht am " + ", ".join(d.strftime("%d.%m.%Y") for d in dates),
+            notes=("TESTRECHNUNG – keine Zahlungsaufforderung. " if plan.test_only else "") + "Unterricht am " + ", ".join(d.strftime("%d.%m.%Y") for d in dates),
         )
         InvoiceLineItem.objects.create(
             invoice=invoice, student=plan.student, student_name_snapshot=plan.student.user.get_full_name(),
@@ -141,7 +141,7 @@ def generate_blocks(plan_id):
             quantity=Decimal("1"), unit_price=plan.block_amount,
         )
         invoice.calculate_totals()
-        bill = BlockInvoice.objects.create(plan=plan, invoice=invoice)
+        bill = BlockInvoice.objects.create(plan=plan, invoice=invoice, test_only=plan.test_only)
         BlockBillingUnit.objects.bulk_create([
             BlockBillingUnit(plan=plan, lesson_id=item.pk, lesson_date=day, bill=bill)
             for item, day in zip(chunk, dates)
@@ -160,7 +160,10 @@ def deliver_block(bill_id):
         bill.attempted_at = timezone.now()
         bill.save(update_fields=["attempted_at"])
     try:
-        return send_invoice(bill.invoice_id)
+        sent = send_invoice(bill.invoice_id)
+        if sent:
+            BlockInvoice.objects.filter(pk=bill_id).update(delivery_error="")
+        return sent
     except InvoiceDeliveryError as exc:
         BlockInvoice.objects.filter(pk=bill_id).update(delivery_error=str(exc))
     except Exception:
