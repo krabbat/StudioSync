@@ -15,9 +15,13 @@ class StudentBillingProfileSerializer(serializers.ModelSerializer):
 
 
 class InvoiceLineItemSerializer(serializers.ModelSerializer):
+    allocated_paid = serializers.SerializerMethodField()
+    def get_allocated_paid(self, obj):
+        from .family_payments import line_paid
+        return str(line_paid(obj))
     class Meta:
         model = InvoiceLineItem
-        fields = ["id", "description", "quantity", "unit_price", "total_price", "created_at", "student", "student_name_snapshot"]
+        fields = ["id", "description", "quantity", "unit_price", "total_price", "created_at", "student", "student_name_snapshot", "allocated_paid"]
         read_only_fields = ["total_price", "created_at", "student", "student_name_snapshot"]
 
 
