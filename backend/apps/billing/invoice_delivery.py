@@ -87,6 +87,8 @@ def send_invoice(invoice_id, *, resend=False):
         from django.core.validators import validate_email
         try:
             validate_email(snapshot["recipient_email"])
+            if snapshot["recipient_email"].casefold().endswith(".invalid"):
+                raise ValidationError("invalid recipient")
             validate_email(sender_email)
         except ValidationError as exc:
             raise InvoiceDeliveryError("Die Rechnungs- oder Absender-E-Mail ist ungültig.") from exc
