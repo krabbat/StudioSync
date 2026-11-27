@@ -31,6 +31,10 @@ def test_group_roster_and_historical_snapshot(authenticated_client,studio,teache
     assert response.status_code==201,response.data
     lesson=Lesson.objects.get(teaching_group=group)
     assert lesson.participants.count()==2
+    listed=authenticated_client.get("/api/lessons/")
+    assert listed.status_code==200
+    rows=listed.data.get("results",[]) if isinstance(listed.data,dict) else listed.data
+    assert len(rows)==1 and len(rows[0]["group_participants"])==2
     assert Lesson.objects.filter(studio=studio).count()==1
     assert authenticated_client.patch(base+str(group.pk)+"/",{"student_ids":[str(student.pk)]},format="json").status_code==200
     assert lesson.participants.count()==2
