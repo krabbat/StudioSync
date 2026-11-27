@@ -464,7 +464,7 @@ export default function InstructorsPage() {
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{tr('facultyEmailCommunication')}</label>
                             <input
-                                type="email"
+                                type="text" inputMode="email"
                                 required
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
