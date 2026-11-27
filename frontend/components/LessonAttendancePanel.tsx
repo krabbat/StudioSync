@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import api from '@/services/api'
+import { useTranslations } from 'next-intl'
 import { toast } from 'react-hot-toast'
 
 type Evidence = {
     zone_name?: string; tracker?: string; checked_at?: string; present?: boolean
     attendance_seconds?: number; arrival?: string | null; departure?: string | null
     total_seconds?: number; total_arrival?: string | null; total_departure?: string | null
-    statistics_day?: string; error?: string
+    statistics_day?: string; error?: string; review_required?: boolean
 }
 type Detail = { status: string; ha_attendance?: Evidence; ha_manual_override?: boolean; ha_finalized_at?: string | null; scheduled_start?: string }
 
@@ -17,6 +18,7 @@ const clock = (value?: string | null) => value ? new Date(value).toLocaleTimeStr
 const duration = (value?: number) => value == null ? '–' : Math.floor(value / 60) + ' Min. ' + (value % 60) + ' Sek.'
 
 export default function LessonAttendancePanel({ lessonId }: { lessonId: string }) {
+    const groupT=useTranslations('TeachingGroups')
     const [detail, setDetail] = useState<Detail | null>(null)
     const [busy, setBusy] = useState(false)
     useEffect(() => {
@@ -58,6 +60,7 @@ export default function LessonAttendancePanel({ lessonId }: { lessonId: string }
                 <p>Anwesenheit: {duration(data.attendance_seconds)} · Ankunft: {clock(data.arrival)} · Abfahrt: {clock(data.departure)}</p>
                 <p className="text-xs text-gray-500">Letzte Prüfung: {new Date(data.checked_at).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}</p>
             </> : <p className="text-gray-500">Noch keine Anwesenheitsdaten erfasst.</p>}
+            {data.review_required && <p className="font-semibold text-amber-800">{groupT("reviewRequired")}</p>}
             {data.error && <p className="text-amber-800">{data.error}</p>}
             {data.statistics_day && <p>Gesamtaufenthalt: {duration(data.total_seconds)} · {clock(data.total_arrival)}–{clock(data.total_departure)}</p>}
             {detail?.ha_manual_override && <p className="text-gray-500">Status manuell festgelegt.</p>}
