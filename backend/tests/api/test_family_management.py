@@ -48,3 +48,28 @@ def test_membership_does_not_silently_move_student(authenticated_client, studio,
     assert response.status_code == 400
     student.refresh_from_db()
     assert student.family_id == first.pk
+
+
+@pytest.mark.django_db
+def test_member_data_includes_own_contact_without_emergency_contact(authenticated_client, studio, student):
+    family = Family.objects.create(studio=studio, name="Familie Test")
+    student.family = family
+    student.contact_email = "contact@example.org"
+    student.emergency_contact_name = ""
+    student.save(update_fields=["family", "contact_email", "emergency_contact_name"])
+    student.user.first_name = "Maria"
+    student.user.last_name = "von Test"
+    student.user.phone = "030123456"
+    student.user.save(update_fields=["first_name", "last_name", "phone"])
+    response = authenticated_client.get(f"{BASE}{family.pk}/member-data/")
+    assert response.status_code == 200, response.data
+    assert len(response.data) == 1
+    row = response.data[0]
+    assert row["id"] == str(student.pk)
+    assert row["contacts"] == []
+    assert row["person"] == {"name":"Maria von Test", "first_name":"Maria", "last_name":"von Test",
+                             "relation":"", "email":"contact@example.org", "phone":"030123456"}
+    student.contact_email = "student-technical@example.invalid"
+    student.save(update_fields=["contact_email"])
+    response = authenticated_client.get(f"{BASE}{family.pk}/member-data/")
+    assert response.data[0]["person"]["email"] == ""
