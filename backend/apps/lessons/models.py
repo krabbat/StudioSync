@@ -217,6 +217,8 @@ class LessonParticipant(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="participants")
     student = models.ForeignKey("core.Student", on_delete=models.PROTECT, related_name="group_participations")
     name_snapshot = models.CharField(max_length=255)
+    first_name_snapshot = models.CharField(max_length=150, blank=True)
+    instrument_snapshot = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="inherit")
 
     class Meta:
