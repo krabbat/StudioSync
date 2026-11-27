@@ -191,6 +191,7 @@ export default function LessonsPage() {
             toast.error(tr('cancellationKindRequired'))
             return
         }
+        if(bookingMode==='band'&&newBooking.group_source==='group'&&newBooking.group_id&&!newBooking.is_online&&!newBooking.group_ha_zone){toast.error(groupT('selectZone'));return}
         setLessonSubmitting(true)
         try {
             const start = new Date(`${newBooking.date}T${newBooking.time}`)
@@ -222,7 +223,7 @@ export default function LessonsPage() {
                 payload.teaching_group=newBooking.group_source==='group'?newBooking.group_id:null
                 payload.group_ha_zone=newBooking.group_source==="group"&&!newBooking.is_online?newBooking.group_ha_zone||"":""
                 payload.participant_ids=newBooking.participant_ids
-                payload.participant_statuses=newBooking.participant_statuses||{}
+                payload.participant_statuses=Object.fromEntries(Object.entries(newBooking.participant_statuses||{}).filter(([id])=>newBooking.participant_ids?.includes(id)))
             } else if (bookingMode === 'band') {
                 payload.band = newBooking.band
                 payload.student = null
