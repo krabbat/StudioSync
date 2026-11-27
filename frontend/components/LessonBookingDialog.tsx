@@ -114,7 +114,7 @@ export default function LessonBookingDialog({
   const groupChoice=groupChoices.find(g=>g.id===newBooking.group_id);
   const selectedParticipants=newBooking.participant_ids||[];
   const groupMembers=editingLessonId&&newBooking.participant_names
-    ? [...newBooking.participant_names,...(groupChoice?.members||[]).filter(m=>!newBooking.participant_names?.some(p=>p.id===m.id))]
+    ? [...newBooking.participant_names,...(newBooking.group_source==='group'?[]:(groupChoice?.members||[]).filter(m=>m.is_active!==false&&!newBooking.participant_names?.some(p=>p.id===m.id)))]
     : (groupChoice?.members||[]).filter(m=>m.is_active!==false);
   const historicalGroup=Boolean(editingLessonId&&newBooking.group_id&&newBooking.status!=="scheduled"&&newBooking.status!=="in_progress");
   const bookingStudent = students.find((student: any) => student.id === newBooking.student);
@@ -150,6 +150,7 @@ export default function LessonBookingDialog({
                 <Button
                   key={mode}
                   type="button"
+                  disabled={Boolean(editingLessonId&&newBooking.group_id&&mode!=="band")}
                   onClick={() => {
                     setBookingMode(mode);
                     if (mode === "band")
@@ -292,7 +293,7 @@ export default function LessonBookingDialog({
                         }}
                         className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                       >
-                        <option value="">{tr('noSpecificStudentBand')}</option>
+                        <option value="">{groupT('noSpecificStudent')}</option>
                         <optgroup label="Students">
                           {students.map((s: any) => (
                             <option key={s.id} value={s.id}>
@@ -300,13 +301,13 @@ export default function LessonBookingDialog({
                             </option>
                           ))}
                         </optgroup>
-                        <optgroup label="Bands">
-                          {bands.map((b: any) => (
+                        {editingLessonId&&newBooking.band&&<optgroup label={groupT("legacy")}>
+                          {bands.filter(b=>b.id===newBooking.band).map((b: any) => (
                             <option key={b.id} value={b.id}>
                               {b.name}
                             </option>
                           ))}
-                        </optgroup>
+                        </optgroup>}
                       </select>
                     )}
                   </div>
@@ -473,7 +474,7 @@ export default function LessonBookingDialog({
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-700">Wiederholung (Apple-Kalender)</label>
                   <select value={newBooking.recurrence}
-                    onChange={e => setNewBooking({ ...newBooking, recurrence: e.target.value as LessonBooking['recurrence'] })}
+                    onChange={e => setNewBooking({ ...newBooking, recurrence: e.target.value as LessonBookingData['recurrence'] })}
                     className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
                     <option value="none">Einmaliger Termin</option>
                     <option value="weekly">Jede Woche</option>
