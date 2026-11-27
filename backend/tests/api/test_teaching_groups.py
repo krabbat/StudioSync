@@ -26,7 +26,7 @@ def test_group_roster_and_historical_snapshot(authenticated_client,studio,teache
     assert result.status_code==201,result.data
     group=TeachingGroup.objects.get(pk=result.data["id"])
     assert group.members.count()==2
-    data=payload(studio,teacher,[student.pk,second.pk],teaching_group=str(group.pk))
+    data=payload(studio,teacher,[student.pk,second.pk],teaching_group=str(group.pk),group_ha_zone="Unterrichtsort")
     response=authenticated_client.post("/api/lessons/",data,format="json")
     assert response.status_code==201,response.data
     lesson=Lesson.objects.get(teaching_group=group)
