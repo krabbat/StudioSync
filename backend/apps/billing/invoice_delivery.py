@@ -74,7 +74,9 @@ def send_invoice(invoice_id, *, resend=False):
         if invoice.status == "cancelled":
             raise InvoiceDeliveryError("Eine stornierte Rechnung kann nicht versendet werden.")
 
-        snapshot = invoice.document_snapshot or invoice_snapshot(invoice)
+        snapshot = dict(invoice.document_snapshot or invoice_snapshot(invoice))
+        if not already_sent:
+            snapshot.update(already_paid=str(invoice.amount_paid), balance_due=str(max(invoice.balance_due, 0)))
         missing = missing_billing_fields(invoice, snapshot)
         if missing:
             raise InvoiceDeliveryError("Rechnungsversand nicht möglich. Es fehlen: " + ", ".join(missing))
@@ -177,4 +179,6 @@ def invoice_pdf_bytes(invoice):
     """Download immutable archived PDF, or preview current draft without freezing it."""
     if invoice.pdf_document:
         return bytes(invoice.pdf_document)
-    return render_invoice_pdf(invoice_snapshot(invoice))
+    snapshot = dict(invoice.document_snapshot or invoice_snapshot(invoice))
+    snapshot.update(already_paid=str(invoice.amount_paid), balance_due=str(max(invoice.balance_due, 0)))
+    return render_invoice_pdf(snapshot)
