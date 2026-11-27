@@ -20,6 +20,7 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
     """Simple student info for family view"""
 
     name = serializers.CharField(source="user.get_full_name", read_only=True)
+    user_id = serializers.UUIDField(read_only=True)
     monthly_amount = serializers.SerializerMethodField()
 
     def get_monthly_amount(self, obj):
@@ -28,7 +29,7 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ["id", "name", "instrument", "monthly_amount", "is_active"]
+        fields = ["id", "user_id", "name", "instrument", "monthly_amount", "is_active", "birth_date"]
 
 
 class FamilySerializer(serializers.ModelSerializer):
@@ -45,7 +46,7 @@ class FamilySerializer(serializers.ModelSerializer):
             "id",
             "studio",
             "name", "display_name", "address_line1", "postal_code", "city",
-            "ha_zone_entity_id", "contacts", "billing_recipient_name", "payment_method", "individual_billing",
+            "ha_zone_entity_id", "contacts", "billing_recipient_name", "payment_method", "individual_billing", "archived_at",
             "primary_parent",
             "primary_parent_details",
             "secondary_parent",
@@ -57,7 +58,7 @@ class FamilySerializer(serializers.ModelSerializer):
             "students",
             "created_at",
         ]
-        read_only_fields = ["studio", "created_at"]
+        read_only_fields = ["studio", "created_at", "archived_at"]
         extra_kwargs = {
             "primary_parent": {"required": False, "allow_null": True},
             "secondary_parent": {"required": False, "allow_null": True},
