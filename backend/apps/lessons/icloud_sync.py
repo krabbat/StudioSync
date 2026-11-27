@@ -23,6 +23,9 @@ from apps.core.views.icloud_calendar import (
     ICloudSetupError, _allowed_calendar_url, _connect, _credentials, _discover,
     _settings,
 )
+from apps.lessons.icloud_notes import (
+    common_instrument, format_notes, group_source, normal, parse_group_notes, single_notes,
+)
 from apps.lessons.models import (
     ICloudCalendarOccurrence, ICloudCalendarSeries, Lesson, LessonParticipant,
 )
@@ -54,7 +57,7 @@ def _hash(value):
     return sha256(value.encode("utf-8")).hexdigest()
 
 
-def _lesson_signature(lesson):
+def _lesson_signature(lesson, *, legacy=False):
     values = [
         lesson.scheduled_start.astimezone(utc_timezone.utc).isoformat(),
         lesson.scheduled_end.astimezone(utc_timezone.utc).isoformat(),
@@ -68,7 +71,17 @@ def _lesson_signature(lesson):
     if lesson.teaching_family_id or lesson.teaching_group_id:
         values.extend([str(lesson.teaching_family_id or ""), str(lesson.teaching_group_id or ""),
                        lesson.group_ha_zone, lesson.group_name_snapshot])
+        if not legacy:
+            values.append(sorted((str(p.student_id), p.instrument_snapshot, p.first_name_snapshot)
+                                 for p in lesson.participants.all()))
     return _hash(json.dumps(values, ensure_ascii=False))
+
+
+def _signature_matches(link):
+    lesson = link.lesson
+    return bool(lesson and link.synced_signature and (
+        link.synced_signature == _lesson_signature(lesson) or
+        link.synced_signature == _lesson_signature(lesson, legacy=True)))
 
 
 def group_snapshot(lesson):
@@ -79,8 +92,8 @@ def group_snapshot(lesson):
             "members":[{"id":str(p.student_id),"name":p.name_snapshot,"first_name":p.first_name_snapshot,"instrument":p.instrument_snapshot} for p in lesson.participants.all()]}
 
 
-def group_fields(series):
-    booking = series.group_booking
+def group_fields(series, booking=None):
+    booking = series.group_booking if booking is None else booking
     if not booking:
         return {}
     family = Family.objects.filter(pk=booking["family"],studio=series.studio).first() if booking["family"] else None
@@ -92,6 +105,35 @@ def group_fields(series):
         raise ICloudSetupError("Ungültige Gruppen-Teilnehmerliste.")
     return {"teaching_family":family,"teaching_group":group,"group_name_snapshot":booking["name"],
             "group_ha_zone":booking["zone"],"lesson_type":"group","is_online":booking.get("is_online",False),"online_meeting_url":booking.get("online_meeting_url","")}
+
+
+def _description_for_lesson(lesson):
+    if lesson.teaching_family_id or lesson.teaching_group_id:
+        members = group_snapshot(lesson)["members"]
+        instrument = common_instrument(members)
+        if instrument:
+            return format_notes(instrument, lesson.summary, members), True
+    elif lesson.student_id and lesson.student.instrument:
+        return format_notes(lesson.student.instrument, lesson.summary), True
+    return lesson.summary or "", False
+
+
+def _replace_group_members(lesson, booking):
+    # Preserve individual attendance decisions on pupils who remain booked.
+    existing = {str(p.student_id):p for p in lesson.participants.all()}
+    members = booking["members"]
+    ids = {m["id"] for m in members}
+    if any(p.status != "inherit" for key,p in existing.items() if key not in ids):
+        raise ICloudSetupError("Gruppentermin: Eine bereits individuell erfasste Teilnahme darf nicht entfernt werden.")
+    lesson.participants.exclude(student_id__in=ids).delete()
+    for member in members:
+        p = existing.get(member["id"])
+        attrs = {"name_snapshot": member["name"], "first_name_snapshot": member.get("first_name", ""),
+                 "instrument_snapshot": member.get("instrument", "")}
+        if p is None:
+            LessonParticipant.objects.create(lesson=lesson, student_id=member["id"], **attrs)
+        else:
+            LessonParticipant.objects.filter(pk=p.pk).update(**attrs)
 
 
 def _master_and_overrides(content):
@@ -161,6 +203,7 @@ def _expand(content, now=None):
             "title": _raw(candidate.get("SUMMARY", master.get("SUMMARY", ""))),
             "location": _raw(candidate.get("LOCATION", master.get("LOCATION", ""))),
             "description": _raw(candidate.get("DESCRIPTION", master.get("DESCRIPTION", ""))),
+            "structured_notes": bool(candidate.get("X-STUDIOSYNC-NOTES-FORMAT", master.get("X-STUDIOSYNC-NOTES-FORMAT"))),
         }
 
     # An exception can move a remote occurrence into this window even if its
@@ -177,6 +220,7 @@ def _expand(content, now=None):
                 "title": _raw(override.get("SUMMARY", master.get("SUMMARY", ""))),
                 "location": _raw(override.get("LOCATION", master.get("LOCATION", ""))),
                 "description": _raw(override.get("DESCRIPTION", master.get("DESCRIPTION", ""))),
+                "structured_notes": bool(override.get("X-STUDIOSYNC-NOTES-FORMAT", master.get("X-STUDIOSYNC-NOTES-FORMAT"))),
             }
     return [result[key] for key in sorted(result)]
 
@@ -293,7 +337,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
     dirty = [
         entry for entry in series.occurrences.select_related("lesson")
         if entry.lesson and entry.synced_signature and
-        _lesson_signature(entry.lesson) != entry.synced_signature
+        not _signature_matches(entry)
     ]
     if not made and remote_hash != series.remote_hash and dirty:
         # An explicit Apple deletion is a local cancellation, including when
@@ -342,11 +386,30 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
         or _raw(master.get("X-STUDIOSYNC-GUEST-ADDRESS", "")).strip()
     )[:500]
     grouped = bool(series.group_booking)
-    if not grouped and master.get("X-STUDIOSYNC-GROUP-BOOKING"):
-        _set_error(series, "Gruppentermin ohne lokale Zuordnung; bitte in StudioSync prüfen.")
+    # A brand-new Apple event can identify a family or roster by its exact
+    # title and the two human-readable note lines, without proprietary IDs.
+    try:
+        if not grouped and not guest_name and not series.student_id and not master.get("X-STUDIOSYNC-STUDENT-ID"):
+            source = group_source(studio, series.title)
+            if source:
+                booking, _ = parse_group_notes(source, _raw(master.get("DESCRIPTION", "")), series.location)
+                series.group_booking = booking
+                grouped = True
+        if not grouped and master.get("X-STUDIOSYNC-GROUP-BOOKING"):
+            raise ICloudSetupError("Gruppentermin ohne eindeutige lokale Zuordnung.")
+        fields = group_fields(series) if grouped else {}
+        source = (fields.get("teaching_family") or fields.get("teaching_group")) if grouped else None
+        structured_master = grouped and (series.group_booking.get("notes_format") or master.get("X-STUDIOSYNC-NOTES-FORMAT"))
+        if structured_master:
+            if normal(series.title) != normal(series.group_booking["name"]) and normal(series.title) != normal(str(source)):
+                raise ICloudSetupError("Gruppenwechsel eines bestehenden Termins bitte in StudioSync prüfen.")
+            booking, _ = parse_group_notes(source, _raw(master.get("DESCRIPTION", "")), series.location, series.group_booking)
+            series.group_booking = booking
+    except ICloudSetupError as exc:
+        series.save()
+        _set_error(series, str(exc))
         stats["unassigned"] += 1
         return series
-    fields = group_fields(series) if grouped else {}
     participant_ids = [m["id"] for m in series.group_booking.get("members", [])]
     if grouped or guest_name:
         series.student = None
@@ -379,15 +442,43 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             remote_is_unchanged
             and lesson is not None
             and link.synced_signature
-            and link.synced_signature == _lesson_signature(lesson)
+            and _signature_matches(link)
         ):
             # Both copies already agree: don't rewrite an unrelated lesson's
             # status, cancellation details or timestamps on every full sync.
+            current = _lesson_signature(lesson)
+            if link.synced_signature != current:
+                link.synced_signature = current
+                link.save(update_fields=["synced_signature", "updated_at"])
             continue
         if not lesson and link.synced_signature:
             # A previously linked StudioSync lesson was deleted locally.
             # Do not recreate it on the next pull; export a cancelled exception.
             continue
+        if lesson and lesson.status in COMPLETED_STATUSES:
+            link.synced_signature = _lesson_signature(lesson)
+            link.save(update_fields=["synced_signature", "updated_at"])
+            continue
+        if lesson and lesson.pk in locally_changed:
+            continue
+        entry_booking = series.group_booking
+        entry_fields = fields
+        entry_ids = participant_ids
+        summary = entry["description"]
+        if grouped and (structured_master or entry.get("structured_notes")):
+            try:
+                if normal(entry["title"]) not in {normal(series.title), normal(str(source)), normal(series.group_booking["name"])}:
+                    raise ICloudSetupError("Gruppentermin: Abweichender Titel einer Serieninstanz.")
+                previous = group_snapshot(lesson) if lesson else series.group_booking
+                entry_booking, summary = parse_group_notes(source, summary, entry["location"], previous)
+                entry_fields = group_fields(series, entry_booking)
+                entry_ids = [m["id"] for m in entry_booking["members"]]
+            except ICloudSetupError as exc:
+                collisions.append(str(exc))
+                stats["unassigned"] += 1
+                continue
+        elif not grouped and series.student_id:
+            summary = single_notes(series.student, summary)
         if not lesson and not entry["cancelled"]:
             # Attach an existing local lesson before creating a new one.
             matching = None if grouped else Lesson.objects.filter(
@@ -398,7 +489,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
             if matching:
                 lesson = matching
             else:
-                blocking = _conflict(None, series.student, series.teacher, start, end, participant_ids)
+                blocking = _conflict(None, series.student, series.teacher, start, end, entry_ids)
                 if blocking:
                     collisions.append(_collision_detail(series, entry, blocking))
                     stats["conflicts"] += 1
@@ -407,17 +498,17 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                     studio=studio, student=series.student, teacher=series.teacher,
                     guest_name=guest_name, guest_address=guest_address,
                     scheduled_start=start, scheduled_end=end, status="scheduled",
-                    location=entry["location"][:200], summary=entry["description"][:5000],
-                    **(fields if grouped else {"lesson_type":"private"}),
+                    location=entry["location"][:200], summary=summary[:5000],
+                    **(entry_fields if grouped else {"lesson_type":"private"}),
                 )
                 # Never call save(): that would send one email per imported lesson.
                 with transaction.atomic():
                     Lesson.objects.bulk_create([lesson])
                     if grouped:
-                        pupils = {str(p.pk):p for p in Student.objects.filter(studio=studio,pk__in=participant_ids).select_related("user")}
+                        pupils = {str(p.pk):p for p in Student.objects.filter(studio=studio,pk__in=entry_ids).select_related("user")}
                         LessonParticipant.objects.bulk_create([LessonParticipant(lesson=lesson,student_id=m["id"],name_snapshot=m["name"],
                             first_name_snapshot=m.get("first_name",pupils[m["id"]].user.first_name),
-                            instrument_snapshot=m.get("instrument",pupils[m["id"]].instrument)) for m in series.group_booking["members"]])
+                            instrument_snapshot=m.get("instrument",pupils[m["id"]].instrument)) for m in entry_booking["members"]])
                     link.lesson=lesson
                     link.save()
                 stats["imported"] += 1
@@ -432,7 +523,7 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                 link.synced_signature = _lesson_signature(lesson)
             else:
                 blocking = (
-                    _conflict(lesson, series.student, series.teacher, start, end, list(lesson.participants.values_list("student_id",flat=True)) if grouped else ())
+                    _conflict(lesson, series.student, series.teacher, start, end, entry_ids if grouped else ())
                     if not entry["cancelled"] else None
                 )
                 if blocking:
@@ -442,11 +533,19 @@ def _import_series(user, studio, calendar_url, remote_event, stats):
                 changes = {
                     "scheduled_start": start, "scheduled_end": end,
                     "location": entry["location"][:200],
-                    "summary": entry["description"][:5000],
+                    "summary": summary[:5000],
                     "guest_name": guest_name,
                     "guest_address": guest_address,
                     "status": "scheduled",
                 }
+                if grouped and (structured_master or entry.get("structured_notes")):
+                    try:
+                        _replace_group_members(lesson, entry_booking)
+                    except ICloudSetupError as exc:
+                        collisions.append(str(exc))
+                        stats["unassigned"] += 1
+                        continue
+                    changes["group_ha_zone"] = entry_fields["group_ha_zone"]
                 Lesson.objects.filter(pk=lesson.pk).update(**changes)
                 for key, value in changes.items():
                     setattr(lesson, key, value)
@@ -480,15 +579,18 @@ def _ical_for_lesson(lesson):
     event.add("dtstart", lesson.scheduled_start.astimezone(LOCAL_TZ))
     event.add("dtend", lesson.scheduled_end.astimezone(LOCAL_TZ))
     event.add("summary", lesson.student.user.get_full_name() if lesson.student_id else (lesson.group_name_snapshot or lesson.guest_name or "MUSart Unterricht"))
-    event.add("location", lesson.guest_address or lesson.location or "")
+    event.add("location", lesson.guest_address or lesson.location or lesson.group_ha_zone or "")
     if lesson.guest_name and not lesson.student_id:
         event.add("X-STUDIOSYNC-GUEST-NAME", lesson.guest_name)
         if lesson.guest_address:
             event.add("X-STUDIOSYNC-GUEST-ADDRESS", lesson.guest_address)
     if lesson.teaching_family_id or lesson.teaching_group_id:
         event.add("X-STUDIOSYNC-GROUP-BOOKING", "1")
-    if lesson.summary:
-        event.add("description", lesson.summary)
+    description, structured = _description_for_lesson(lesson)
+    if description:
+        event.add("description", description)
+    if structured:
+        event.add("X-STUDIOSYNC-NOTES-FORMAT", "1")
     if lesson.student_id:
         event.add("X-STUDIOSYNC-STUDENT-ID", str(lesson.student_id))
     event.add("X-STUDIOSYNC-TEACHER-ID", str(lesson.teacher_id))
@@ -524,7 +626,7 @@ def _push_changes(series, remote, stats):
             link.lesson is not None and link.lesson.status == "cancelled"
             and (
                 link.synced_signature == "pending-delete"
-                or link.synced_signature != _lesson_signature(link.lesson)
+                or not _signature_matches(link)
             )
             for link in links
         ):
@@ -548,13 +650,13 @@ def _push_changes(series, remote, stats):
             lesson is not None and lesson.status == "cancelled"
             and (
                 entry.synced_signature == "pending-delete"
-                or entry.synced_signature != _lesson_signature(lesson)
+                or not _signature_matches(entry)
             )
         )
         if lesson is None:
             # Old tombstones from previous deployments must not be re-uploaded.
             continue
-        if lesson is not None and _lesson_signature(lesson) == entry.synced_signature:
+        if lesson is not None and _signature_matches(entry):
             continue
         if lesson is not None and lesson.status in COMPLETED_STATUSES:
             # Calendar never controls the teaching/accounting classification.
@@ -594,8 +696,11 @@ def _push_changes(series, remote, stats):
                 return
             _set_property(target, "DTSTART", lesson.scheduled_start.astimezone(LOCAL_TZ))
             _set_property(target, "DTEND", lesson.scheduled_end.astimezone(LOCAL_TZ))
-            _set_property(target, "LOCATION", lesson.guest_address or lesson.location or "")
-            _set_property(target, "DESCRIPTION", lesson.summary or "")
+            _set_property(target, "LOCATION", lesson.guest_address or lesson.location or lesson.group_ha_zone or "")
+            description, structured = _description_for_lesson(lesson)
+            _set_property(target, "DESCRIPTION", description)
+            if structured:
+                _set_property(target, "X-STUDIOSYNC-NOTES-FORMAT", "1")
             if lesson.guest_name and not lesson.student_id:
                 _set_property(target, "SUMMARY", lesson.guest_name)
                 _set_property(target, "X-STUDIOSYNC-GUEST-NAME", lesson.guest_name)
@@ -1012,9 +1117,17 @@ def create_icloud_series(user, *, student, teacher, start, end, frequency, until
     event.add("dtstart", start.astimezone(LOCAL_TZ))
     event.add("dtend", end.astimezone(LOCAL_TZ))
     event.add("summary", group_booking["name"] if group_booking else student.user.get_full_name())
-    if summary:
-        event.add("description", str(summary)[:5000])
+    instrument = common_instrument(group_booking["members"]) if group_booking else student.instrument
+    description = format_notes(instrument, str(summary)[:5000], group_booking["members"] if group_booking else None) if instrument else str(summary)[:5000]
+    if description:
+        event.add("description", description)
+    if instrument:
+        event.add("X-STUDIOSYNC-NOTES-FORMAT", "1")
     if group_booking:
+        if instrument:
+            group_booking = {**group_booking, "notes_format": 1}
+        if group_booking.get("zone"):
+            event.add("location", group_booking["zone"])
         event.add("X-STUDIOSYNC-GROUP-BOOKING", "1")
     else:
         event.add("X-STUDIOSYNC-STUDENT-ID", str(student.id))
