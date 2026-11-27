@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from apps.core.international_email import InternationalEmailField
 
 from apps.core.security import merge_preferences, redact_preferences
 from apps.core.tenancy import studio_for_request
@@ -60,6 +61,7 @@ class BandSerializer(serializers.ModelSerializer):
 
 class FamilySerializer(serializers.ModelSerializer):
     """Serializer for Family relationships"""
+    billing_email = InternationalEmailField(required=False, allow_blank=True)
 
     students_count = serializers.SerializerMethodField()
 
@@ -412,6 +414,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class StudioSerializer(serializers.ModelSerializer):
     """Serializer for studio settings"""
+    email = InternationalEmailField()
 
     cover_image = serializers.ImageField(required=False, allow_null=True)
     logo = serializers.ImageField(required=False, allow_null=True)
@@ -663,7 +666,7 @@ class SetupWizardCompleteSerializer(serializers.Serializer):
 
     # Step 2: Studio Info
     studio_name = serializers.CharField(max_length=200)
-    studio_email = serializers.EmailField()
+    studio_email = InternationalEmailField()
     studio_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     address_line1 = serializers.CharField(max_length=200, required=False, allow_blank=True)
     address_line2 = serializers.CharField(max_length=200, required=False, allow_blank=True)
@@ -675,7 +678,7 @@ class SetupWizardCompleteSerializer(serializers.Serializer):
     currency = serializers.CharField(max_length=3, default="USD")
 
     # Step 3: Admin Account
-    admin_email = serializers.EmailField()
+    admin_email = InternationalEmailField()
     admin_first_name = serializers.CharField(max_length=100)
     admin_last_name = serializers.CharField(max_length=100)
     admin_password = serializers.CharField(write_only=True, min_length=8)
@@ -722,7 +725,7 @@ class SetupWizardCompleteSerializer(serializers.Serializer):
     smtp_port = serializers.IntegerField(default=587)
     smtp_username = serializers.CharField(max_length=255, required=False, allow_blank=True)
     smtp_password = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    smtp_from_email = serializers.EmailField(required=False, allow_blank=True)
+    smtp_from_email = InternationalEmailField(required=False, allow_blank=True)
     smtp_use_tls = serializers.BooleanField(default=True)
 
     # Step 6: Sample Data
