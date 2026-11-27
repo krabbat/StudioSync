@@ -141,7 +141,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
                             {t('businessEmail')}
                         </label>
                         <input
-                            type="email"
+                            type="text" inputMode="email"
                             id="studio-email"
                             required
                             value={studio_info.studio_email}
@@ -294,7 +294,7 @@ export const StudioAdminStep = ({ data, updateStudioInfo, updateAdminAccount, on
                             <HelpTooltip content="This email will be used to log into the StudioSync dashboard." />
                         </label>
                         <input
-                            type="email"
+                            type="text" inputMode="email"
                             id="admin-email"
                             autoComplete="email"
                             required
