@@ -1,4 +1,10 @@
 {
+  "FamilyContactImport": {
+    "importPerson": "Use as contact",
+    "importEmergency": "Import saved emergency contacts",
+    "hint": "Import the selected student or their saved emergency contacts. The relationship can be added afterwards.",
+    "imported": "Contact imported. Please save."
+  },
   "TeachingGroups": {
     "haZone": "Home Assistant zone",
     "chooseZone": "Select lesson zone",
