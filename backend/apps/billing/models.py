@@ -64,6 +64,9 @@ class Invoice(models.Model):
         "core.Student", on_delete=models.SET_NULL, null=True, blank=True, related_name="invoices"
     )
 
+    family = models.ForeignKey(
+        "core.Family", on_delete=models.PROTECT, null=True, blank=True, related_name="invoices"
+    )
     # Attribution
     teacher = models.ForeignKey(
         "core.Teacher",
@@ -174,6 +177,10 @@ class InvoiceLineItem(models.Model):
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
 
+    # Student attribution survives changes to family membership.
+    student = models.ForeignKey("core.Student", on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="invoice_positions")
+    student_name_snapshot = models.CharField(max_length=255, blank=True)
     # Optional lesson reference
     lesson = models.ForeignKey(
         "lessons.Lesson",
@@ -197,6 +204,16 @@ class InvoiceLineItem(models.Model):
         """Auto-calculate total price"""
         self.total_price = self.quantity * self.unit_price
         super().save(*args, **kwargs)
+
+
+class TuitionMonth(models.Model):
+    """Unique allocation of a student's monthly fee to an invoice."""
+    student = models.ForeignKey("core.Student", on_delete=models.PROTECT, related_name="billed_months")
+    month = models.DateField()
+    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name="tuition_months")
+    line_item = models.ForeignKey(InvoiceLineItem, on_delete=models.PROTECT, related_name="tuition_months")
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["student", "month"], name="unique_student_tuition_month")]
 
 
 class Payment(models.Model):
