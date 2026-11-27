@@ -11,7 +11,7 @@ from apps.core.models import (
     TeachingContract, TeachingYearAccount, TeachingLessonAdjustment,
     TeachingLessonClassification, TeachingManualAbsence,
 )
-from apps.lessons.models import Lesson
+from apps.lessons.models import Lesson, LessonParticipant
 
 
 def _anniversary(first, year):
@@ -121,6 +121,42 @@ def lesson_account_response(student, requested_year=None):
             "credited": impact,
             "reason": classification.reason if classification else lesson.cancellation_reason,
         })
+
+    # A shared appointment is one calendar record, but each pupil has an
+    # independent participation and quota credit. Never infer attendance
+    # from a teacher's short/failed visit without a decided group rule.
+    for participation in LessonParticipant.objects.filter(
+        student=student, lesson__studio=student.studio,
+        lesson__scheduled_start__date__gte=year_start,
+        lesson__scheduled_start__date__lt=year_end,
+    ).select_related("lesson").order_by("lesson__scheduled_start"):
+        lesson = participation.lesson
+        effective = participation.status
+        if effective == "inherit":
+            if lesson.status == "completed":
+                effective = "completed"
+            elif lesson.status == "cancelled":
+                effective = lesson.cancellation_kind or "unknown"
+            elif lesson.status == "no_show":
+                effective = "unknown"
+            else:
+                continue
+        impact = int(effective in ("completed", "student_cancelled", "no_show"))
+        is_delivered = effective == "completed"
+        delivered += int(is_delivered)
+        credited += impact
+        student_cancelled += int(effective in ("student_cancelled", "no_show"))
+        teacher_cancelled += int(effective == "teacher_cancelled")
+        unknown += int(effective == "unknown")
+        entries.append({
+            "id":str(lesson.pk),
+            "date":timezone.localtime(lesson.scheduled_start).date().isoformat(),
+            "status":"completed" if is_delivered else "no_show" if effective=="no_show" else "cancelled",
+            "lesson_type":"group",
+            "kind":"student_cancelled" if effective=="no_show" else effective if effective.endswith("_cancelled") else "",
+            "delivered":is_delivered, "credited":impact, "reason":"",
+        })
+    entries.sort(key=lambda entry: entry["date"])
 
     adjustments = []
     if account is not None:
