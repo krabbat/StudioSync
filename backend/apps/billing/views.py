@@ -252,8 +252,15 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": "Only admins can delete invoices."}, status=status.HTTP_403_FORBIDDEN
             )
-        if self.get_object().tuition_months.exists():
-            raise ValidationError({"code": "tuition_invoice_protected"})
+        invoice = self.get_object()
+        with transaction.atomic():
+            invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
+            if invoice.tuition_months.exists():
+                if invoice.sent_at or invoice.status != "draft" or invoice.payments.exists() or invoice.amount_paid:
+                    raise ValidationError({"code":"tuition_invoice_protected"})
+                invoice.tuition_months.all().delete()
+                invoice.delete()
+                return Response(status=204)
         return super().destroy(request, *args, **kwargs)
 
 class SubscriptionPlanViewSet(viewsets.ModelViewSet):
