@@ -12,7 +12,7 @@ from email.utils import getaddresses
 from django.db import connection
 from django.db.models import Exists, OuterRef, Q
 
-from apps.core.models import MailDraft, MailDraftAttachment, MailMessageCache, Student
+from apps.core.models import Family, MailDraft, MailDraftAttachment, MailMessageCache, Student
 
 
 def normalize_address(address):
@@ -114,7 +114,7 @@ def _sort_timestamp(value):
 
 
 def mail_student_overview(studio, owner, account_key, student_id,
-                          limit=40, offset=0):
+                          limit=40, offset=0, *, family_id=None, contact_index=None):
     """All matching received/sent mail and local drafts, paginated newest first.
 
     Search all cached IMAP folders (including archive) and private PostgreSQL
@@ -123,14 +123,37 @@ def mail_student_overview(studio, owner, account_key, student_id,
     """
     sid = str(student_id)
     catalog, by_address = student_catalog(studio)
-    if sid not in catalog:
-        return None
+    family = None
+    if family_id is not None:
+        family = Family.objects.filter(pk=family_id, studio=studio).first()
+        if family is None:
+            return None
+        member_ids = {str(value) for value in family.students.values_list("pk", flat=True)} & set(catalog)
+        if contact_index is not None:
+            if contact_index < 0 or contact_index >= len(family.contacts or []):
+                raise ValueError("invalid contact")
+            contact = family.contacts[contact_index]
+            addresses = {normalize_address(contact.get("email"))} if isinstance(contact, dict) else set()
+            member_ids = set()
+        else:
+            addresses = {address for member in member_ids for address in catalog[member]["addresses"]}
+            addresses.update(normalize_address(c.get("email")) for c in (family.contacts or []) if isinstance(c, dict))
+            addresses.update(normalize_address(value) for value in (
+                family.billing_email, family.primary_parent.email if family.primary_parent_id else "",
+                family.secondary_parent.email if family.secondary_parent_id else ""))
+        identity = {"id": str(family.pk), "name": str(family), "addresses": []}
+    else:
+        if sid not in catalog:
+            return None
+        member_ids = {sid}
+        addresses = set(catalog[sid]["addresses"])
+        identity = catalog[sid]
+    addresses = sorted(a for a in addresses if a and not a.endswith(".invalid"))
     if not isinstance(offset, int) or not isinstance(limit, int) or (
         offset < 0 or offset > 1_000_000 or limit < 1 or limit > 100
     ):
         raise ValueError("Ungültige Seitenauswahl.")
 
-    addresses = catalog[sid]["addresses"]
     through = offset + limit + 1
     base_mail = MailMessageCache.objects.filter(
         folder_cache__studio=studio,
@@ -154,11 +177,13 @@ def mail_student_overview(studio, owner, account_key, student_id,
         for address in addresses:
             address_queries |= Q(contact_addresses__contains=[address])
             address_queries |= Q(email__iexact=address)
-        mail_qs = base_mail.filter(
-            Q(manual_student_ids__contains=[sid]) |
-            (Q(manual_student_ids__isnull=True) & address_queries)
-        )
-        draft_query = Q(student_ids__contains=[sid])
+        manual_query = Q(pk__in=[])
+        draft_query = Q(pk__in=[])
+        for member in member_ids:
+            manual_query |= Q(manual_student_ids__contains=[member])
+            draft_query |= Q(student_ids__contains=[member])
+        mail_qs = base_mail.filter(manual_query |
+            (Q(manual_student_ids__isnull=True) & address_queries))
         for address in addresses:
             draft_query |= Q(recipient__iexact=address)
             draft_query |= Q(additional_recipient__iexact=address)
@@ -173,7 +198,8 @@ def mail_student_overview(studio, owner, account_key, student_id,
         # lets local tests exercise precisely the same association semantics.
         mail_matches = [
             row for row in base_mail.iterator(chunk_size=500)
-            if sid in assigned_student_ids(row, catalog, by_address)
+            if ((row.manual_student_ids is not None and bool(member_ids.intersection(str(v) for v in row.manual_student_ids))) or
+                (row.manual_student_ids is None and bool(set(addresses).intersection(normalize_address(a) for a in (row.contact_addresses or [row.email])))))
         ]
         mail_total = len(mail_matches)
         sent_count = sum(row.folder_cache.folder == "sent" for row in mail_matches)
@@ -181,7 +207,7 @@ def mail_student_overview(studio, owner, account_key, student_id,
         address_set = set(addresses)
         draft_matches = [
             draft for draft in base_drafts.iterator(chunk_size=500)
-            if sid in [str(value) for value in draft.student_ids] or
+            if member_ids.intersection(str(value) for value in draft.student_ids) or
             normalize_address(draft.recipient) in address_set or
             normalize_address(draft.additional_recipient) in address_set
         ]
@@ -224,7 +250,7 @@ def mail_student_overview(studio, owner, account_key, student_id,
         reverse=True,
     )
     return {
-        "student": catalog[sid],
+        "student": identity,
         "messages": merged[offset:offset + limit],
         "total": total,
         "offset": offset,
