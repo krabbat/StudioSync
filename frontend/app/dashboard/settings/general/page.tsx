@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast'
 import ImageCropper from '@/components/ImageCropper'
 import ICloudCalendarSettings from '@/components/ICloudCalendarSettings'
 import HomeAssistantConnectionSettings from '@/components/HomeAssistantConnectionSettings'
+import BillingAutomationSettings from '@/components/BillingAutomationSettings'
 import { formatPhoneNumber } from '@/lib/utils'
 import { TIMEZONES, CURRENCIES } from '@/types/setup'
 import { detectLocation } from '@/lib/geolocate'
@@ -20,7 +21,8 @@ function GeneralSettingsContents() {
   const searchParams = useSearchParams()
     const { currentUser, setCurrentUser } = useUser()
     const [activeTab, setActiveTab] = useState('appearance')
-    const [technicalTab, setTechnicalTab] = useState<'mail' | 'caldav' | 'ha'>('mail')
+    const billingT = useTranslations('BillingAutomation')
+    const [technicalTab, setTechnicalTab] = useState<'mail' | 'caldav' | 'ha' | 'billing'>('mail')
     const [loading, setLoading] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
     const [isImporting, setIsImporting] = useState(false)
@@ -1227,7 +1229,7 @@ function GeneralSettingsContents() {
                         <div className="max-w-3xl">
                             <h2 className="text-lg font-semibold text-gray-900 mb-6">{t('serverTechnicalSettings')}</h2>
                             <div className="flex flex-wrap gap-1 border-b border-gray-200 mb-6" role="tablist" aria-label="Technik">
-                                {([{ id: 'mail', label: 'Mail-Server' }, { id: 'caldav', label: 'CalDAV Kalender' }, { id: 'ha', label: 'Home Assistant API' }] as const).map(tab => (
+                                {([{ id: 'mail', label: 'Mail-Server' }, { id: 'caldav', label: 'CalDAV Kalender' }, { id: 'ha', label: 'Home Assistant API' }, { id: 'billing', label: billingT('tab') }] as const).map(tab => (
                                     <button key={tab.id} type="button" role="tab" id={`technical-tab-${tab.id}`}
                                         aria-selected={technicalTab === tab.id} aria-controls={`technical-panel-${tab.id}`}
                                         onClick={() => setTechnicalTab(tab.id)}
@@ -1387,6 +1389,9 @@ function GeneralSettingsContents() {
                             <div role="tabpanel" id="technical-panel-ha" aria-labelledby="technical-tab-ha" className={technicalTab === 'ha' ? '' : 'hidden'}>
                                 <HomeAssistantConnectionSettings />
 
+                            </div>
+                            <div role="tabpanel" id="technical-panel-billing" aria-labelledby="technical-tab-billing" className={technicalTab === 'billing' ? '' : 'hidden'}>
+                                {technicalTab === 'billing' && <BillingAutomationSettings />}
                             </div>
                         </div>
                     )}
