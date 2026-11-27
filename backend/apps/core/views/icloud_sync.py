@@ -140,7 +140,7 @@ class ICloudSeriesCreateView(_AdminICloudView):
             ids=data["participant_ids"]
             pupils=Student.objects.filter(studio=studio,pk__in=ids).select_related("user").order_by("pk")
             booking={"family":str(family.pk) if family else "", "group":str(group.pk) if group else "",
-                     "name":str(family or group),"zone":data.get("group_ha_zone",""),
+                     "name":str(family or group),"zone":data.get("group_ha_zone",""),"is_online":data.get("is_online",False),"online_meeting_url":data.get("online_meeting_url",""),
                      "members":[{"id":str(p.pk),"name":p.user.get_full_name()} for p in pupils]}
         try:
             stats = create_icloud_series(
