@@ -101,6 +101,12 @@ class Lesson(models.Model):
         related_name="lessons",
     )
 
+    teaching_family = models.ForeignKey("core.Family", null=True, blank=True,
+        on_delete=models.PROTECT, related_name="group_lessons")
+    teaching_group = models.ForeignKey("core.TeachingGroup", null=True, blank=True,
+        on_delete=models.PROTECT, related_name="lessons")
+    group_name_snapshot = models.CharField(max_length=200, blank=True)
+
     # Lesson details
     lesson_type = models.CharField(max_length=20, choices=LESSON_TYPE_CHOICES, default="private")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="scheduled")
@@ -196,6 +202,25 @@ class Lesson(models.Model):
         """Calculate lesson duration in minutes"""
         delta = self.scheduled_end - self.scheduled_start
         return int(delta.total_seconds() / 60)
+
+
+class LessonParticipant(models.Model):
+    """Snapshot of pupils booked for one shared appointment."""
+    STATUS_CHOICES = [
+        ("inherit", "Use appointment status"),
+        ("completed", "Completed"),
+        ("student_cancelled", "Student cancellation"),
+        ("teacher_cancelled", "Teacher cancellation"),
+        ("no_show", "No show"),
+    ]
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="participants")
+    student = models.ForeignKey("core.Student", on_delete=models.PROTECT, related_name="group_participations")
+    name_snapshot = models.CharField(max_length=255)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="inherit")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["lesson","student"], name="unique_lesson_participant")]
+        ordering = ["name_snapshot", "id"]
 
 
 class LessonNote(models.Model):
