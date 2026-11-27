@@ -109,7 +109,7 @@ export default function EmailSettingsStep({ data, updateData, onNext, onBack }: 
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">{t('fromEmailAddress')}</label>
             <input
-              type="email"
+              type="text" inputMode="email"
               name="smtp_from_email"
               value={data.smtp_from_email}
               onChange={handleChange}
