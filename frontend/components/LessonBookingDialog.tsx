@@ -1,6 +1,6 @@
 "use client";
 
-import { type Dispatch, type FormEvent, type SetStateAction, useEffect, useRef } from "react";
+import { type Dispatch, type FormEvent, type SetStateAction, useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import { useUser } from "@/contexts/UserContext";
@@ -14,6 +14,12 @@ export interface LessonBookingData {
   student: string;
   teacher: string;
   band: string;
+  group_source?: 'family' | 'group';
+  group_id?: string;
+  group_name?: string;
+  participant_ids?: string[];
+  participant_names?: {id:string;name:string}[];
+  participant_statuses?: Record<string,string>;
   room: string;
   date: string;
   time: string;
@@ -61,6 +67,10 @@ export default function LessonBookingDialog({
   preferredTeacherId, use24Hour = true,
 }: LessonBookingDialogProps) {
   const tr = useTranslations("Schedule");
+  const groupT = useTranslations("TeachingGroups");
+  const [groupChoices,setGroupChoices]=useState<{id:string;name:string;members:{id:string;name:string;is_active?:boolean}[];address?:string}[]>([]);
+  const [groupLoading,setGroupLoading]=useState(false);
+  const [groupError,setGroupError]=useState(false);
   const { currentUser } = useUser();
   const teacherManuallyChanged = useRef(false);
   const durationManuallyChanged = useRef(false);
@@ -91,9 +101,25 @@ export default function LessonBookingDialog({
     return () => { active = false };
   }, [open, editingLessonId, bookingMode, newBooking.student, setNewBooking]);
 
+  useEffect(()=>{
+    if(!open || bookingMode!=="band" || currentUser?.role!=="admin")return;
+    let alive=true;
+    setGroupLoading(true);setGroupError(false);setGroupChoices([]);
+    const family=newBooking.group_source!=="group";
+    api.get(family?'/students/families/':'/students/groups/').then(({data})=>{
+      if(alive)setGroupChoices(data.map((g:any)=>({id:g.id,name:family?g.display_name:g.name,members:family?g.students:g.members,address:family?[g.address_line1,[g.postal_code,g.city].filter(Boolean).join(' ')].filter(Boolean).join(', '):''})));
+    }).catch(()=>{if(alive)setGroupError(true)}).finally(()=>{if(alive)setGroupLoading(false)});
+    return()=>{alive=false};
+  },[open,bookingMode,currentUser?.role,newBooking.group_source]);
+  const groupChoice=groupChoices.find(g=>g.id===newBooking.group_id);
+  const selectedParticipants=newBooking.participant_ids||[];
+  const groupMembers=editingLessonId&&newBooking.participant_names
+    ? [...newBooking.participant_names,...(groupChoice?.members||[]).filter(m=>!newBooking.participant_names?.some(p=>p.id===m.id))]
+    : (groupChoice?.members||[]).filter(m=>m.is_active!==false);
+  const historicalGroup=Boolean(editingLessonId&&newBooking.group_id&&newBooking.status!=="scheduled"&&newBooking.status!=="in_progress");
   const bookingStudent = students.find((student: any) => student.id === newBooking.student);
   const cityLine = [bookingStudent?.postal_code, bookingStudent?.city].filter(Boolean).join(" ");
-  const bookingAddress = [bookingStudent?.address_line1, cityLine].filter(Boolean).join(", ");
+  const bookingAddress = bookingMode==="band"&&newBooking.group_id ? groupChoice?.address||"" : [bookingStudent?.address_line1, cityLine].filter(Boolean).join(", ");
 
   const timeOptions = Array.from({ length: (22 - 13) * 4 }, (_, i) => {
     const hour = 13 + Math.floor(i / 4);
@@ -119,7 +145,7 @@ export default function LessonBookingDialog({
             {/* Booking Mode Selector */}
             <div className="flex p-1 bg-gray-50 rounded-2xl border border-gray-100 mb-2">
               {(["individual", "band", "event", "special"] as const)
-                .filter((mode) => mode !== "special" || ['admin', 'teacher'].includes(currentUser?.role || ''))
+                .filter((mode) => (mode !== "special" || ['admin', 'teacher'].includes(currentUser?.role || '')) && (mode!=="band" || currentUser?.role==="admin" || (editingLessonId&&newBooking.band)))
                 .map((mode) => (
                 <Button
                   key={mode}
@@ -127,7 +153,7 @@ export default function LessonBookingDialog({
                   onClick={() => {
                     setBookingMode(mode);
                     if (mode === "band")
-                      setNewBooking((prev) => ({ ...prev, lesson_type: "group" }));
+                      setNewBooking((prev) => ({ ...prev, lesson_type: "group",student:"",band:editingLessonId?prev.band:"",group_source:prev.group_source||"family",recurrence:"none" }));
                     if (mode === "individual")
                       setNewBooking((prev) => ({ ...prev, lesson_type: "private" }));
                     if (mode === "event")
@@ -149,7 +175,7 @@ export default function LessonBookingDialog({
                       : undefined
                   }
                 >
-                  {mode === "individual" ? tr("modeIndividual") : mode === "band" ? tr("modeBand") : mode === "special" ? "Sondertermin" : tr("modeEvent")}
+                  {mode === "individual" ? tr("modeIndividual") : mode === "band" ? groupT("groupLesson") : mode === "special" ? "Sondertermin" : tr("modeEvent")}
                 </Button>
               ))}
             </div>
@@ -188,7 +214,7 @@ export default function LessonBookingDialog({
                   <div className="space-y-2">
                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
                       {bookingMode === "band"
-                        ? tr("bandGroup")
+                        ? groupT("source")
                         : bookingMode === "special" ? "Name"
                         : bookingMode === "individual"
                           ? tr("student")
@@ -205,21 +231,27 @@ export default function LessonBookingDialog({
                         className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700"
                       />
                     ) : bookingMode === "band" ? (
-                      <select
-                        required
-                        value={newBooking.band}
-                        onChange={(e) =>
-                          setNewBooking({ ...newBooking, band: e.target.value, student: "" })
-                        }
-                        className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
-                      >
-                        <option value="">{tr('selectBand')}</option>
-                        {bands.map((b: any) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="space-y-3">
+                        {editingLessonId&&newBooking.band&&!newBooking.group_id ? <p className="text-sm text-gray-600">{bands.find(b=>b.id===newBooking.band)?.name||groupT('legacy')}</p> : <>
+                          <div className="flex gap-3">
+                            {(['family','group'] as const).map(source=><label key={source} className="flex items-center gap-2 text-sm"><input type="radio" name="group-source" disabled={Boolean(editingLessonId&&newBooking.group_id)} checked={(newBooking.group_source||'family')===source} onChange={()=>setNewBooking(prev=>({...prev,group_source:source,group_id:'',group_name:'',participant_ids:[],participant_names:undefined,participant_statuses:{},band:'',student:''}))}/>{groupT(source==='family'?'family':'group')}</label>)}
+                          </div>
+                          <select disabled={Boolean(editingLessonId&&newBooking.group_id)||groupLoading} value={newBooking.group_id||''} className="w-full rounded-xl border px-3 py-3" onChange={e=>{
+                            const choice=groupChoices.find(g=>g.id===e.target.value);
+                            const active=(choice?.members||[]).filter(m=>m.is_active!==false);
+                            setNewBooking(prev=>({...prev,group_id:e.target.value,group_name:choice?.name||'',participant_ids:prev.group_source==='group'?active.map(m=>m.id):[],participant_names:undefined,participant_statuses:{},band:'',student:''}));
+                          }}>
+                            <option value="">{groupT(groupLoading?'loading':'choose')}</option>
+                            {newBooking.group_id&&!groupChoice&&<option value={newBooking.group_id}>{newBooking.group_name||newBooking.group_id}</option>}
+                            {groupChoices.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                          </select>
+                          {groupError&&<p className="text-sm text-red-600">{groupT('loadError')}</p>}
+                          {newBooking.group_id&&<fieldset className="space-y-2 border rounded-lg p-3"><legend className="text-sm font-medium">{groupT('participants')}</legend>
+                            {groupMembers.map(member=><label key={member.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedParticipants.includes(member.id)} disabled={newBooking.group_source==='group'||historicalGroup} onChange={e=>setNewBooking(prev=>({...prev,participant_ids:e.target.checked?[...(prev.participant_ids||[]),member.id]:(prev.participant_ids||[]).filter(id=>id!==member.id)}))}/>{member.name}</label>)}
+                            <p className="text-xs text-gray-500">{groupT('participantCount',{count:selectedParticipants.length})}</p>
+                          </fieldset>}
+                        </>}
+                      </div>
                     ) : bookingMode === "individual" ? (
                       <select
                         required
@@ -408,11 +440,12 @@ export default function LessonBookingDialog({
                 </label>
                 <select
                   value={newBooking.lesson_type}
+                  disabled={bookingMode==="band"}
                   onChange={(e) => setNewBooking({ ...newBooking, lesson_type: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border-transparent focus:bg-white border-2 focus:border-primary-dark rounded-xl font-bold text-gray-700 outline-none transition-all appearance-none"
                 >
                   <option value="private">{tr('privateLesson')}</option>
-                  <option value="group">{tr('groupLessonBand')}</option>
+                  {bookingMode==="band"&&<option value="group">{groupT('groupLesson')}</option>}
                   <option value="workshop">{tr('workshop')}</option>
                   <option value="recital">{tr('recital')}</option>
                   <option value="makeup">{tr('makeupLesson')}</option>
@@ -481,11 +514,16 @@ export default function LessonBookingDialog({
                     </select>
                   </div>
 
-                  {open && currentUser?.role === "admin" && editingLessonId && <LessonAttendancePanel key={editingLessonId} lessonId={editingLessonId} />}
+                  {bookingMode==="band"&&newBooking.group_id&&<div className="space-y-2"><h4 className="text-sm font-semibold">{groupT('individualAttendance')}</h4>
+                    {selectedParticipants.map(id=><label key={id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>{groupMembers.find(m=>m.id===id)?.name||id}</span><select className="rounded-lg border p-2" value={newBooking.participant_statuses?.[id]||'inherit'} onChange={e=>setNewBooking(prev=>({...prev,participant_statuses:{...prev.participant_statuses,[id]:e.target.value}}))}>
+                      {['inherit','completed','student_cancelled','teacher_cancelled','no_show'].map(status=><option key={status} value={status}>{groupT('attendance.'+status)}</option>)}
+                    </select></label>)}
+                  </div>}
+                  {open && currentUser?.role === "admin" && editingLessonId && !newBooking.group_id && <LessonAttendancePanel key={editingLessonId} lessonId={editingLessonId} />}
 
                   {newBooking.status === "cancelled" && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      {bookingMode === "individual" && (
+                      {(bookingMode === "individual" || (bookingMode==="band"&&newBooking.group_id)) && (
                         <>
                           <label htmlFor="lesson-cancellation-kind" className="text-xs font-black text-red-400 uppercase tracking-widest">
                             {tr('cancellationKind')}
