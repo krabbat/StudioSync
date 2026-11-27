@@ -395,3 +395,33 @@ class Subscription(models.Model):
     def __str__(self):
         return f"{self.student} - {self.plan.name} ({self.status})"
 
+
+
+class BlockBillingPlan(models.Model):
+    """Explicit per-pupil billing agreement, independent of annual quotas."""
+    student = models.OneToOneField("core.Student", on_delete=models.PROTECT, related_name="block_billing")
+    enabled = models.BooleanField(default=False)
+    starts_on = models.DateField()
+    units_per_block = models.PositiveSmallIntegerField(default=4)
+    block_amount = models.DecimalField(max_digits=8, decimal_places=2)
+    test_only = models.BooleanField(default=True)
+
+
+class BlockInvoice(models.Model):
+    plan = models.ForeignKey(BlockBillingPlan, on_delete=models.PROTECT, related_name="bills")
+    invoice = models.OneToOneField(Invoice, on_delete=models.PROTECT, related_name="block_bill")
+    attempted_at = models.DateTimeField(null=True, blank=True)
+    delivery_error = models.TextField(blank=True, default="")
+
+
+class BlockBillingUnit(models.Model):
+    """Snapshot identity; calendar deletion cannot erase an invoiced unit."""
+    plan = models.ForeignKey(BlockBillingPlan, on_delete=models.PROTECT, related_name="units")
+    lesson_id = models.UUIDField()
+    lesson_date = models.DateField()
+    bill = models.ForeignKey(BlockInvoice, on_delete=models.PROTECT, null=True, blank=True, related_name="units")
+    reset_at = models.DateTimeField(null=True, blank=True)
+    reset_by = models.ForeignKey("core.User", on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["plan", "lesson_id"], name="unique_block_billed_lesson")]
