@@ -30,14 +30,14 @@ def visible_invoices(user):
     if getattr(user, "role", None) == "admin":
         return Invoice.objects.filter(studio__in=studios)
     if getattr(user, "role", None) == "teacher" and hasattr(user, "teacher_profile"):
-        return Invoice.objects.filter(studio=user.teacher_profile.studio)
+        return Invoice.objects.filter(studio=user.teacher_profile.studio).exclude(block_bill__test_only=True)
     if hasattr(user, "student_profile"):
         student = user.student_profile
-        return Invoice.objects.filter(Q(student=student) | Q(band__in=student.bands.all())).distinct()
+        return Invoice.objects.filter(Q(student=student) | Q(band__in=student.bands.all())).exclude(block_bill__test_only=True).distinct()
     if getattr(user, "role", None) == "parent":
         return Invoice.objects.filter(
             Q(student__family__primary_parent=user) | Q(student__family__secondary_parent=user)
-        ).distinct()
+        ).exclude(block_bill__test_only=True).distinct()
     return Invoice.objects.none()
 
 
@@ -45,7 +45,7 @@ def payable_invoices(user):
     """Invoices this user is allowed to pay. Teachers are read-only."""
     if getattr(user, "role", None) == "teacher":
         return Invoice.objects.none()
-    return visible_invoices(user)
+    return visible_invoices(user).exclude(block_bill__test_only=True)
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
@@ -207,7 +207,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             remaining = open_amount(invoice)
             if remaining > 0:
                 profile = getattr(invoice.student, "billing_profile", None) if invoice.student else None
-                method = invoice.family.payment_method if invoice.family_id else (profile.payment_method if profile else "bank_transfer")
+                method = "cash" if hasattr(invoice, "block_bill") else invoice.family.payment_method if invoice.family_id else (profile.payment_method if profile else "bank_transfer")
                 if invoice.tuition_months.exists():
                     book_allocated_payment(invoice, None, method, request.user, manual_full=True)
                     return Response(self.get_serializer(invoice).data)
