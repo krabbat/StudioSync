@@ -9,7 +9,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.core.models import Family, Student, Studio
 from .models import Invoice, InvoiceLineItem, TuitionMonth
-from .invoice_pdf import invoice_snapshot, lesson_subject
+from .invoice_pdf import lesson_subject
 from .payment_status import berlin_today
 
 
@@ -70,10 +70,6 @@ def generate_month(studio_id, month, family_id=None):
                 quantity=Decimal("1"), unit_price=student.teaching_contract.monthly_amount)
             TuitionMonth.objects.create(student=student, month=month, invoice=invoice, line_item=item)
         invoice.calculate_totals()
-        # Freeze identity and charge details when generating, not on later membership changes.
-        invoice.document_snapshot = invoice_snapshot(invoice)
-        if family:
-            invoice.document_snapshot["family_name"] = str(family)
-        invoice.save(update_fields=["document_snapshot", "updated_at"])
+        # Line items and student/month allocations are frozen; recipient details freeze at issue.
         created.append(invoice)
     return created, skipped
