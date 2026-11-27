@@ -8,7 +8,7 @@ import api from '@/services/api'
 
 type Member={id:string;user_id:string;name:string;birth_date?:string|null}
 type Contact={name:string;first_name?:string;last_name?:string;email:string}
-type Grant={id:string;user_id:string;name:string;email:string;student_ids:string[];adult_review:string[];can_view_communication:boolean;login_enabled:boolean}
+type Grant={id:string;user_id:string;name:string;email:string;student_ids:string[];adult_review:string[];revoked:boolean;can_view_communication:boolean;login_enabled:boolean}
 export default function FamilyAccessPanel({familyId,members,contacts}:{familyId:string;members:Member[];contacts:Contact[]}) {
     const t=useTranslations('FamilyAccess')
     const [grants,setGrants]=useState<Grant[]>([])
@@ -45,7 +45,7 @@ export default function FamilyAccessPanel({familyId,members,contacts}:{familyId:
     return <section className="space-y-4">
         <h3 className="font-semibold">{t('title')}</h3>
         <p className="text-sm text-gray-500">{t('hint')}</p>
-        {grants.map(g=><div key={g.id} className="border rounded-lg p-3 space-y-2"><div className="flex flex-wrap justify-between gap-3"><div><strong>{g.name}</strong><p className="text-sm">{g.email}</p></div><div className="flex gap-2"><Button variant="outline" onClick={()=>edit(g)}>{t('edit')}</Button><Button variant="outline" disabled={busy} onClick={()=>void revoke(g)}>{t('revoke')}</Button></div></div><p className="text-sm">{g.student_ids.map(id=>members.find(m=>m.id===id)?.name).filter(Boolean).join(', ')}</p>{g.can_view_communication&&<p className="text-sm">{t('communication')}</p>}{g.adult_review.length>0&&<p className="text-sm text-amber-700">{t('adultReview',{names:g.adult_review.map(id=>members.find(m=>m.id===id)?.name).filter(Boolean).join(', ')})}</p>}</div>)}
+        {grants.map(g=><div key={g.id} className="border rounded-lg p-3 space-y-2"><div className="flex flex-wrap justify-between gap-3"><div><strong>{g.name}</strong>{g.revoked&&<span className="ml-2 text-sm text-gray-500">{t('revoked')}</span>}<p className="text-sm">{g.email}</p></div><div className="flex gap-2"><Button variant="outline" onClick={()=>edit(g)}>{t(g.revoked?'reactivate':'edit')}</Button>{!g.revoked&&<Button variant="outline" disabled={busy} onClick={()=>void revoke(g)}>{t('revoke')}</Button>}</div></div><p className="text-sm">{g.student_ids.map(id=>members.find(m=>m.id===id)?.name).filter(Boolean).join(', ')}</p>{g.can_view_communication&&<p className="text-sm">{t('communication')}</p>}{g.adult_review.length>0&&<p className="text-sm text-amber-700">{t('adultReview',{names:g.adult_review.map(id=>members.find(m=>m.id===id)?.name).filter(Boolean).join(', ')})}</p>}</div>)}
         {!grants.length&&loaded&&<p className="text-sm text-gray-500">{t('empty')}</p>}
         <div className="border-t pt-4 space-y-3">
             <h4 className="font-semibold">{t(editId?'edit':'newGrant')}</h4>
