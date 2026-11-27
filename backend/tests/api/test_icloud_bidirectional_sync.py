@@ -265,3 +265,117 @@ def test_local_cancellation_reason_does_not_recolour_another_icloud_lesson(
     assert edited.cancellation_reason == reason
     assert untouched.status == "scheduled"
     assert untouched.cancellation_reason == ""
+
+
+def _apple_group_event(start, title, description, *, count=1, location=""):
+    cal = Calendar()
+    cal.add("prodid", "-//MUSart calendar notes tests//DE")
+    cal.add("version", "2.0")
+    event = Event()
+    event.add("uid", "apple-native-group@example.org")
+    event.add("dtstamp", start)
+    event.add("dtstart", start)
+    event.add("dtend", start + timedelta(minutes=45))
+    event.add("summary", title)
+    event.add("description", description)
+    if location:
+        event.add("location", location)
+    if count > 1:
+        event.add("rrule", {"freq": "weekly", "count": count})
+    cal.add_component(event)
+    return cal.to_ical().decode("utf-8")
+
+
+def _apple_group_fixture(studio, student, *, family=True):
+    from apps.core.models import Family, TeachingGroup, Student, User
+    student.user.first_name = "Anna Maria"
+    student.user.save(update_fields=["first_name"])
+    student.instrument = "Gitarre"
+    student.save(update_fields=["instrument"])
+    user = User.objects.create_user(email="apple-group-member@example.org", password="Test123456!",
+                                    role="student", first_name="Max", last_name="Beispiel")
+    second = Student.objects.create(studio=studio, user=user, instrument="Gitarre")
+    if family:
+        source = Family.objects.create(studio=studio, name="Familie Beispiel", ha_zone_entity_id="Familie Beispiel")
+        Student.objects.filter(pk__in=[student.pk, second.pk]).update(family=source)
+    else:
+        source = TeachingGroup.objects.create(studio=studio, name="Gitarrengruppe")
+        source.members.set([student, second])
+    return source, second
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("family,count", [(True, 1), (True, 3), (False, 1)])
+def test_apple_native_group_import(admin_user, studio, student, teacher, family, count):
+    from apps.lessons.icloud_sync import _import_series, _ical_for_lesson
+    source, second = _apple_group_fixture(studio, student, family=family)
+    start = timezone.now() + timedelta(days=3)
+    remote = _remote(_apple_group_event(start, str(source), "Gitarre\nAnna Maria, Max\nNeue Stücke",
+                                      count=count, location="Musikraum"))
+    stats = {"imported":0,"exported":0,"cancelled":0,"unassigned":0,"conflicts":0}
+    series = _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    assert not series.last_error, series.last_error
+    assert stats["imported"] == count
+    assert Lesson.objects.count() == count
+    for lesson in Lesson.objects.all():
+        assert lesson.lesson_type == "group"
+        assert lesson.student_id is None
+        assert lesson.summary == "Neue Stücke"
+        assert lesson.group_ha_zone == ("" if family else "Musikraum")
+        assert set(lesson.participants.values_list("student_id", flat=True)) == {student.pk, second.pk}
+        assert set(lesson.participants.values_list("first_name_snapshot", flat=True)) == {"Anna Maria", "Max"}
+        assert set(lesson.participants.values_list("instrument_snapshot", flat=True)) == {"Gitarre"}
+        event = Calendar.from_ical(_ical_for_lesson(lesson)).walk("VEVENT")[0]
+        lines = str(event["DESCRIPTION"]).splitlines()
+        assert lines[0] == "Gitarre"
+        assert set(lines[1].split(", ")) == {"Anna Maria", "Max"}
+        assert lines[2] == "Neue Stücke"
+    _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    assert stats["imported"] == count
+    assert Lesson.objects.count() == count
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("notes", ["Gitarre", "Gitarre\nAnna Maria, Unbekannt", "Klavier\nAnna Maria, Max"])
+def test_invalid_apple_group_notes_do_not_create_appointments(admin_user, studio, student, teacher, notes):
+    from apps.lessons.icloud_sync import _import_series
+    source, _ = _apple_group_fixture(studio, student)
+    remote = _remote(_apple_group_event(timezone.now()+timedelta(days=3), str(source), notes))
+    stats = {"imported":0,"exported":0,"cancelled":0,"unassigned":0,"conflicts":0}
+    series = _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    assert series.last_error
+    assert stats["unassigned"] == 1
+    assert not Lesson.objects.exists()
+
+
+@pytest.mark.django_db
+def test_apple_group_note_edits_preserve_occurrence_identity(admin_user, studio, student, teacher):
+    from apps.lessons.icloud_sync import _import_series
+    from apps.core.models import Student, User
+    source, second = _apple_group_fixture(studio, student)
+    third_user = User.objects.create_user(email="third-apple-member@example.org",password="Test123456!",role="student",first_name="Tom",last_name="Beispiel")
+    third = Student.objects.create(studio=studio,user=third_user,family=source,instrument="Gitarre")
+    start = timezone.now() + timedelta(days=3)
+    remote = _remote(_apple_group_event(start, str(source), "Gitarre\nAnna Maria, Max"))
+    stats = {"imported":0,"exported":0,"cancelled":0,"unassigned":0,"conflicts":0}
+    _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    lesson = Lesson.objects.get()
+    old_id = lesson.pk
+    remote.data = _apple_group_event(start, str(source), "Gitarre\nAnna Maria, Tom\nGeändert")
+    series = _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    assert not series.last_error, series.last_error
+    lesson.refresh_from_db()
+    assert lesson.pk == old_id and Lesson.objects.count() == 1
+    assert set(lesson.participants.values_list("student_id",flat=True)) == {student.pk,third.pk}
+    assert lesson.summary == "Geändert"
+    lesson.status = "completed"
+    lesson.save(update_fields=["status"])
+    # Finish the prior local change through a fresh sync before another Apple edit.
+    _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    from apps.lessons.icloud_sync import _push_changes
+    _push_changes(series,remote,stats)
+    remote.data = _apple_group_event(start, str(source), "Gitarre\nAnna Maria, Max")
+    _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    lesson.refresh_from_db()
+    assert lesson.status == "completed"
+    assert set(lesson.participants.values_list("student_id",flat=True)) == {student.pk,third.pk}
