@@ -36,7 +36,7 @@ def generate_month(studio_id, month, family_id=None):
     if family_id is not None and family_id not in families:
         raise ValidationError({"code": "invalid_family"})
     students = Student.objects.filter(studio=studio, is_active=True, user__role="student",
-                                       teaching_contract__isnull=False)
+                                       teaching_contract__isnull=False).exclude(block_billing__enabled=True)
     if family_id is not None:
         students = students.filter(family_id=family_id)
     students = list(students.select_related("user", "teaching_contract").order_by("pk"))
