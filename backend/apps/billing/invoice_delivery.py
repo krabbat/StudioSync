@@ -77,7 +77,7 @@ def send_invoice(invoice_id, *, resend=False):
 
         snapshot = dict(invoice.document_snapshot or invoice_snapshot(invoice))
         block = getattr(invoice, "block_bill", None)
-        if block and block.plan.test_only:
+        if block and block.test_only:
             if snapshot.get("recipient_email", "").strip().rsplit("@", 1)[-1].casefold() != "musart.de":
                 raise InvoiceDeliveryError("Testversand ist ausschließlich an @musart.de erlaubt.")
 
@@ -105,13 +105,15 @@ def send_invoice(invoice_id, *, resend=False):
 
         paid = float(snapshot["balance_due"]) <= 0
         subject = f"MUSart – Rechnung {invoice.invoice_number}"
-        if block and block.plan.test_only:
+        if block and block.test_only:
             subject = "[TEST] " + subject
         intro = (
             "Der Rechnungsbetrag wurde bereits beglichen."
             if paid else
             f"Bitte beachten Sie die Fälligkeit am {snapshot['due_date']}."
         )
+        if block and block.test_only:
+            intro = "Dies ist eine Testrechnung. Bitte nicht bezahlen."
         body = (
             f"Guten Tag {snapshot['recipient_name']},\n\n"
             f"anbei erhalten Sie Ihre MUSart-Rechnung {invoice.invoice_number} als PDF.\n"
@@ -213,6 +215,8 @@ def send_invoice(invoice_id, *, resend=False):
                     except Exception:
                         pass
 
+        if block:
+            type(block).objects.filter(pk=block.pk).update(delivery_error="")
         if already_sent:
             # Do not touch previously issued invoice data or its original send timestamp.
             return True
