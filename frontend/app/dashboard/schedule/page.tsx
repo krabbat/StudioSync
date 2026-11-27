@@ -107,6 +107,9 @@ export default function SchedulePage() {
   }, []);
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const calendarScrollRef = useRef<HTMLDivElement>(null);
+  const nowLineRef = useRef<HTMLDivElement>(null);
+  const followTimeRef = useRef(true);
+  const lastAutoScrollTopRef = useRef<number | null>(null);
   const swipeStart = useRef<{ id: number; x: number; y: number } | null>(null);
   const swipeDirection = useRef<-1 | 1 | null>(null);
 
@@ -178,6 +181,58 @@ export default function SchedulePage() {
     && isSameDay(startOfWeek(now, { weekStartsOn: 1 }), weekStart)
     && nowHour >= businessStart && nowHour < businessEnd;
   const nowLabel = now ? format(now, "HH:mm") : "";
+
+  // Returning to the current period or changing view starts a fresh follow session.
+  useLayoutEffect(() => {
+    followTimeRef.current = true;
+    lastAutoScrollTopRef.current = null;
+  }, [viewMode, queryStartDate]);
+
+  // Follow the actual rendered line, accounting for the sticky weekday header
+  // and the available viewport height. Never scroll the surrounding dashboard.
+  useLayoutEffect(() => {
+    if (!showNowLine || lessonsLoading) return;
+    const surface = calendarScrollRef.current;
+    const line = nowLineRef.current;
+    if (!surface || !line) return;
+
+    const follow = () => {
+      if (!followTimeRef.current) return;
+      const headerHeight = surface.querySelector("thead")?.getBoundingClientRect().height ?? 0;
+      const linePosition = line.getBoundingClientRect().top
+        - surface.getBoundingClientRect().top + surface.scrollTop;
+      const visibleHoursHeight = Math.max(0, surface.clientHeight - headerHeight);
+      const target = Math.max(0, Math.min(
+        linePosition - headerHeight - visibleHoursHeight / 2,
+        surface.scrollHeight - surface.clientHeight,
+      ));
+
+      // The line advances just 1.4px per minute; direct updates avoid repeated
+      // smooth-scroll animations and do not interfere with horizontal swipes.
+      if (Math.abs(surface.scrollTop - target) >= 0.5) surface.scrollTop = target;
+      lastAutoScrollTopRef.current = surface.scrollTop;
+    };
+
+    follow();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(follow);
+    observer.observe(surface);
+    return () => observer.disconnect();
+  }, [showNowLine, nowLabel, currentDate, viewMode, lessonsLoading]);
+
+  const handleCalendarScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    if (!showNowLine || event.target !== event.currentTarget) return;
+    const expected = lastAutoScrollTopRef.current;
+    if (expected !== null && Math.abs(event.currentTarget.scrollTop - expected) <= 1) return;
+    // Manual scrolling pauses following until Today or a new period is selected.
+    followTimeRef.current = false;
+  };
+
+  const goToToday = () => {
+    followTimeRef.current = true;
+    lastAutoScrollTopRef.current = null;
+    setCurrentDate(new Date());
+  };
 
   // Resolve the teacher by name rather than relying on a fixed database ID.
   const preferredTeacherId = teachers.find((teacher: any) =>
@@ -913,11 +968,12 @@ export default function SchedulePage() {
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl overflow-hidden print-full-width flex flex-col w-full min-w-0 flex-1 min-h-[180px]">
         <div key={viewMode}
           ref={calendarScrollRef}
+          onScroll={handleCalendarScroll}
           onTouchStart={handleCalendarTouchStart}
           onTouchMove={handleCalendarTouchMove}
           onTouchEnd={handleCalendarTouchEnd}
           onTouchCancel={() => { swipeStart.current = null; }}
-          style={{ touchAction: "pan-y pinch-zoom" }}
+          style={{ touchAction: "pan-y pinch-zoom", scrollBehavior: "auto" }}
           className={`overflow-x-hidden ${viewMode === "week" ? "overflow-y-auto" : "overflow-y-hidden"} overscroll-x-none schedule-scroll-area flex-1 min-h-0 min-w-0 relative`}>
           {viewMode === "week" ? (
             <table className="w-full table-fixed border-separate border-spacing-0">
@@ -958,7 +1014,7 @@ export default function SchedulePage() {
                         <span className={`absolute inset-x-0 top-1 ${showNowLine && ((hour === nowHour && nowOffset < 22) || (hour === nowHour + 1 && nowOffset > WEEK_HOUR_HEIGHT - 12)) ? "invisible" : ""}`}>{formatGridHour(hour)}</span>
                         {showNowLine && hour === nowHour && (
                           <>
-                            <div aria-hidden="true" className="no-print pointer-events-none absolute left-0 -right-px z-30 h-px bg-red-600/35" style={{ top: nowOffset }} />
+                            <div ref={nowLineRef} aria-hidden="true" className="no-print pointer-events-none absolute left-0 -right-px z-30 h-px bg-red-600/35" style={{ top: nowOffset }} />
                             <span className="no-print pointer-events-none absolute left-1 z-30 -translate-y-1/2 px-0.5 text-[10px] font-normal leading-none tabular-nums text-[#b75a5a]" style={{ backgroundColor: WEEK_CHROME_COLOR, top: hour === businessStart ? Math.max(8, nowOffset) : nowOffset }}>{nowLabel}</span>
                           </>
                         )}
@@ -1256,7 +1312,7 @@ export default function SchedulePage() {
             <Printer className="w-4 h-4" />
             <span className="inline">{tr('print')}</span>
           </Button>
-          <Button variant="default" size="sm" className="gap-2" onClick={() => setCurrentDate(new Date())}>
+          <Button variant="default" size="sm" className="gap-2" onClick={goToToday}>
             <CalendarIcon className="w-4 h-4" />
             {tr('today')}
           </Button>
