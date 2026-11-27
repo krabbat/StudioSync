@@ -21,6 +21,7 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
     """Simple student info for family view"""
 
     name = serializers.CharField(source="user.get_full_name", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", read_only=True)
     user_id = serializers.UUIDField(read_only=True)
     monthly_amount = serializers.SerializerMethodField()
 
@@ -30,7 +31,7 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ["id", "user_id", "name", "instrument", "monthly_amount", "is_active", "birth_date"]
+        fields = ["id", "user_id", "name", "first_name", "instrument", "monthly_amount", "is_active", "birth_date"]
 
 
 class FamilySerializer(serializers.ModelSerializer):
