@@ -67,6 +67,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
     const t = useTranslations('Sidebar')
+    const familyT = useTranslations('FamilyAccess')
     const pathname = usePathname()
     const { currentUser } = useUser()
     const { flags } = useFeatureFlags()
@@ -102,6 +103,7 @@ export default function Sidebar({ isOpen, onClose, onOpen }: SidebarProps) {
             items: [
                 { name: t('dashboard'), href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student'] },
                 { name: t('myAccount'), href: '/dashboard/my-account', icon: UserRound, roles: ['student'] },
+                ...(currentUser?.family_access || currentUser?.role==='parent' ? [{name:familyT('portal'),href:'/dashboard/family',icon:Users,roles:['student','parent'] as UserRole[]}] : []),
                 { name: t('studio'), href: '/dashboard/studios', icon: Building2, roles: ['admin', 'teacher', 'student'] },
             ],
         },
