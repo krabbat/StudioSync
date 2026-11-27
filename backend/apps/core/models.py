@@ -280,6 +280,7 @@ class Family(models.Model):
 
     # Billing
     individual_billing = models.BooleanField(default=False)
+    archived_at = models.DateTimeField(null=True, blank=True)
     billing_email = models.EmailField(blank=True)  # Defaults to primary_parent.email
 
     # Timestamps
@@ -292,6 +293,19 @@ class Family(models.Model):
 
     def __str__(self):
         return self.name or (f"Familie {self.primary_parent.last_name}" if self.primary_parent_id else "Familie")
+
+
+class FamilyAccess(models.Model):
+    """Explicit read-only access granted by a studio administrator."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="access_grants")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="family_access_grants")
+    students = models.ManyToManyField("Student", blank=True, related_name="family_access_grants")
+    can_view_communication = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["family", "user"], name="unique_family_access_user")]
 
 
 class BandManager(models.Manager):
