@@ -1,5 +1,7 @@
 {
   "FamilyAccess": {
+    "revoked": "Revoked",
+    "reactivate": "Reactivate access",
     "title": "Access permissions",
     "hint": "Only explicitly approved profiles and correspondence are available in the family portal.",
     "edit": "Edit",
