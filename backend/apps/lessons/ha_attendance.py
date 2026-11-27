@@ -116,6 +116,10 @@ def intervals(data, start, end, tracker):
 
 
 def subject(lesson):
+    if getattr(lesson, "teaching_family_id", None):
+        return norm(lesson.teaching_family.ha_zone_entity_id)
+    if getattr(lesson, "teaching_group_id", None):
+        return norm(lesson.group_ha_zone)
     if lesson.student_id:
         student = lesson.student
         family = getattr(student, "family", None)
@@ -207,7 +211,7 @@ def lessons_for(studio, activation):
     teacher = teacher_scope(studio)
     return Lesson.objects.filter(studio=studio, teacher_id=teacher,
         scheduled_start__gte=activation, is_online=False).filter(
-        Q(student__isnull=False) | ~Q(guest_name="")).select_related("student__user", "student__family")
+        Q(student__isnull=False) | ~Q(guest_name="") | Q(teaching_family__isnull=False) | Q(teaching_group__isnull=False)).select_related("student__user", "student__family", "teaching_family", "teaching_group")
 
 
 @contextmanager
@@ -240,7 +244,8 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
         obj = Lesson.objects.select_for_update().get(pk=lesson.pk)
         if (obj.scheduled_start != lesson.scheduled_start or obj.scheduled_end != lesson.scheduled_end
                 or obj.student_id != lesson.student_id or obj.guest_name != lesson.guest_name
-                or obj.status == "cancelled"):
+                or obj.teaching_family_id != lesson.teaching_family_id or obj.teaching_group_id != lesson.teaching_group_id
+                or obj.group_ha_zone != lesson.group_ha_zone or obj.status == "cancelled"):
             return
         info = dict(obj.ha_attendance or {})
         previous_status = obj.status
@@ -265,8 +270,17 @@ def update_live(lesson, zone, tracker, current, rows, assigned, now):
             obj.ha_watch_active = False
         if not obj.ha_manual_override and not obj.ha_finalized_at and obj.status in {"scheduled", "in_progress"}:
             decision = attendance_decision(obj, now, valid, amount, present)
+            if decision == "no_show" and (obj.teaching_family_id or obj.teaching_group_id):
+                # A short teacher visit does not prove absence of every pupil.
+                info["review_required"] = True
+                info["error"] = "Gruppentermin: Mindestanwesenheit nicht erreicht"
+                obj.ha_finalized_at = now
+                obj.status = "scheduled"
+                decision = None
             if decision:
                 obj.status = decision
+                if decision == "completed":
+                    info.pop("review_required", None)
                 if decision in {"completed", "no_show"}:
                     obj.ha_finalized_at = now
                 if decision == "completed":
