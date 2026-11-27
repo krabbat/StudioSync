@@ -47,6 +47,7 @@ interface Lesson {
     teaching_family?:string
     teaching_group?:string
     group_name_snapshot?:string
+    group_ha_zone?:string
     group_participants?:{id:string;name:string;status:string}[]
     room?: string
     duration_minutes?: number
@@ -153,6 +154,7 @@ export default function LessonsPage() {
             group_source:lesson.teaching_group?'group':'family',
             group_id:lesson.teaching_group||lesson.teaching_family||'',
             group_name:lesson.group_name_snapshot||'',
+            group_ha_zone:lesson.group_ha_zone||'',
             participant_ids:(lesson.group_participants||[]).map(p=>p.id),
             participant_names:lesson.group_participants||[],
             participant_statuses:Object.fromEntries((lesson.group_participants||[]).map(p=>[p.id,p.status])),
@@ -218,6 +220,7 @@ export default function LessonsPage() {
                 payload.lesson_type='group';payload.student=null;payload.band=null
                 payload.teaching_family=newBooking.group_source==='group'?null:newBooking.group_id
                 payload.teaching_group=newBooking.group_source==='group'?newBooking.group_id:null
+                payload.group_ha_zone=newBooking.group_source==="group"&&!newBooking.is_online?newBooking.group_ha_zone||"":""
                 payload.participant_ids=newBooking.participant_ids
                 payload.participant_statuses=newBooking.participant_statuses||{}
             } else if (bookingMode === 'band') {
@@ -232,8 +235,8 @@ export default function LessonsPage() {
             }
 
             if (!editingLessonId && newBooking.recurrence !== 'none') {
-                if (bookingMode !== 'individual' || currentUser?.role !== 'admin') {
-                    toast.error('Wiederholungen sind nur für Schülertermine durch Administratoren vorgesehen.')
+                if ((bookingMode !== 'individual' && !(bookingMode==='band'&&newBooking.group_id)) || currentUser?.role !== 'admin') {
+                    toast.error('Wiederholungen sind für Schüler- und Gruppentermine durch Administratoren vorgesehen.')
                     return
                 }
                 await api.post('/core/calendar/icloud/series/create/', {
