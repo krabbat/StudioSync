@@ -206,7 +206,7 @@ def portal_student(grant, student_id):
 
 def student_invoices(student):
     return Invoice.objects.filter(studio=student.studio, sent_at__isnull=False).filter(
-        Q(student=student)|Q(tuition_months__student=student)).exclude(status="draft").distinct()
+        Q(student=student)|Q(tuition_months__student=student)).exclude(status="draft").exclude(block_bill__test_only=True).distinct()
 
 
 def invoice_share(invoice, student):
