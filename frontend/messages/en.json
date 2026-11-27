@@ -2404,5 +2404,31 @@
     "save": "Save",
     "delete": "Delete",
     "confirmDeleteAbsence": "Delete this absence?"
+  },
+  "BlockBilling": {
+    "heading": "Billing model and lesson block",
+    "model": "Billing model",
+    "monthly": "Monthly billing",
+    "block": "Billing per lesson block",
+    "startsOn": "Billing start date",
+    "units": "Lessons per block",
+    "amount": "Block price (€)",
+    "testOnly": "Test delivery restricted to @musart.de",
+    "hint": "Only completed lessons count towards a block invoice. Save cash payment and recipient details first. Annual lesson totals are retained.",
+    "save": "Save billing model",
+    "saved": "Billing model saved.",
+    "loading": "Loading billing information …",
+    "loadFailed": "Could not load block billing.",
+    "saveFailed": "Could not save block billing.",
+    "openUnits": "Outstanding lesson units",
+    "unbilledUnits": "Not yet invoiced: {count} units",
+    "sent": "Sent",
+    "checkDelivery": "Check delivery",
+    "draft": "Draft",
+    "reset": "Reset billing counter",
+    "resetWarning": "Only the counter is reset. Lesson history and existing invoices remain; outstanding invoices are not marked paid.",
+    "confirm": "Reset",
+    "cancel": "Cancel",
+    "resetDone": "Billing counter reset."
   }
 }
