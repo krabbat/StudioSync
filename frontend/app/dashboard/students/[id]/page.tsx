@@ -29,6 +29,8 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     const [enrollmentDraft, setEnrollmentDraft] = useState('')
     const [savingEnrollment, setSavingEnrollment] = useState(false)
     const [newPassword, setNewPassword] = useState('')
+    const [loginEmail,setLoginEmail]=useState('')
+    const accessT=useTranslations('FamilyAccess')
     const [confirmNewPassword, setConfirmNewPassword] = useState('')
     const [passwordSaving, setPasswordSaving] = useState(false)
     const [editingLogin, setEditingLogin] = useState(false)
@@ -39,6 +41,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
             try {
                 const response = await api.get(`/students/${studentId}/`)
                 setStudent(response.data)
+                setLoginEmail(response.data.login_email || "")
                 setEnrollmentDraft(response.data.enrollment_date || '')
             } catch (error) {
                 console.error('Failed to load student:', error)
@@ -78,13 +81,14 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
         setPasswordSaving(true)
         try {
             await api.post(`/students/${studentId}/set-password/`, {
+                login_email: loginEmail,
                 password: newPassword,
                 confirm_password: confirmNewPassword
             })
             setNewPassword('')
             setConfirmNewPassword('')
             setEditingLogin(false)
-            setStudent((previous: any) => previous ? { ...previous, login_enabled: true } : previous)
+            setStudent((previous: any) => previous ? { ...previous, login_enabled: true, login_email:loginEmail } : previous)
             toast.success(tr('passwordSaved'))
         } catch (error: any) {
             const message = error?.response?.data?.password?.[0] ||
@@ -325,6 +329,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                 {editingLogin && (
                                     <div className="space-y-3">
                                         <p className="text-xs text-gray-500">{tr('loginPasswordInfo')}</p>
+                                        <label className="block text-sm">{accessT('loginEmail')}<input type="email" className="w-full px-4 py-3 border rounded-xl" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/></label>
                                         <input type="password" autoComplete="new-password"
                                             aria-label={tr('newPassword')} placeholder={tr('newPassword')}
                                             value={newPassword} onChange={e => setNewPassword(e.target.value)}
