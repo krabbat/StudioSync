@@ -6,6 +6,7 @@
     "imported": "Ansprechpartner übernommen. Bitte speichern."
   },
   "TeachingGroups": {
+    "instrument": "Instrument",
     "haZone": "Home-Assistant-Zone",
     "chooseZone": "Unterrichtszone auswählen",
     "zonesUnavailable": "HA-Zonen konnten nicht geladen werden.",
