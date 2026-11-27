@@ -379,3 +379,38 @@ def test_apple_group_note_edits_preserve_occurrence_identity(admin_user, studio,
     lesson.refresh_from_db()
     assert lesson.status == "completed"
     assert set(lesson.participants.values_list("student_id",flat=True)) == {student.pk,third.pk}
+
+
+@pytest.mark.django_db
+def test_apple_group_recurrence_override_has_own_participants(admin_user, studio, student, teacher):
+    from apps.lessons.icloud_sync import _import_series, _push_changes
+    from apps.core.models import Student, User
+    source, second = _apple_group_fixture(studio, student)
+    third_user = User.objects.create_user(email="third-override@example.org",password="Test123456!",role="student",first_name="Tom",last_name="Beispiel")
+    third = Student.objects.create(studio=studio,user=third_user,family=source,instrument="Gitarre")
+    start = timezone.now().replace(microsecond=0) + timedelta(days=3)
+    cal = Calendar.from_ical(_apple_group_event(start, str(source), "Gitarre\nAnna Maria, Max", count=2))
+    master = cal.walk("VEVENT")[0]
+    override = Event()
+    override.add("uid", str(master["UID"]))
+    override.add("dtstamp", start)
+    override.add("recurrence-id", start + timedelta(days=7))
+    override.add("dtstart", start + timedelta(days=7))
+    override.add("dtend", start + timedelta(days=7,minutes=45))
+    override.add("summary", str(source))
+    override.add("description", "Gitarre\nAnna Maria, Tom\nVertretung")
+    cal.add_component(override)
+    remote = _remote(cal.to_ical().decode("utf-8"))
+    stats = {"imported":0,"exported":0,"cancelled":0,"unassigned":0,"conflicts":0}
+    series = _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    assert not series.last_error, series.last_error
+    one, two = Lesson.objects.order_by("scheduled_start")
+    assert set(one.participants.values_list("student_id",flat=True)) == {student.pk, second.pk}
+    assert set(two.participants.values_list("student_id",flat=True)) == {student.pk, third.pk}
+    assert two.summary == "Vertretung"
+    two.summary = "Neuer Kommentar"
+    two.save(update_fields=["summary"])
+    series = _import_series(admin_user, studio, CALENDAR_URL, remote, stats)
+    _push_changes(series, remote, stats)
+    changed = [e for e in Calendar.from_ical(remote.data).walk("VEVENT") if e.get("RECURRENCE-ID")][0]
+    assert str(changed["DESCRIPTION"]) == "Gitarre\nAnna Maria, Tom\nNeuer Kommentar"
