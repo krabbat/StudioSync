@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'react-hot-toast'
 import { Mail } from 'lucide-react'
 import api from '@/services/api'
+import BlockBillingSettings from '@/components/BlockBillingSettings'
 
 type BillingProfile = {
     payment_method: 'bank_transfer' | 'paypal' | 'cash'
@@ -376,6 +377,7 @@ export default function StudentBillingDetailsCard({
                     </div>
                 </>
             )}
+            <BlockBillingSettings key={studentId} studentId={studentId} />
         </section>
     )
 }
