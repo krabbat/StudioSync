@@ -232,6 +232,12 @@ class StudentViewSet(viewsets.ModelViewSet):
         if password != request.data.get("confirm_password"):
             return Response({"confirm_password": ["Passwords do not match."]},
                             status=status.HTTP_400_BAD_REQUEST)
+        from apps.core.international_email import InternationalEmailField
+        from apps.core.models import User
+        login = request.data.get("login_email") or student.user.email
+        login = InternationalEmailField().run_validation(login)
+        if login.casefold().endswith(".invalid") or User.objects.filter(email__iexact=login).exclude(pk=student.user_id).exists():
+            raise ValidationError({"code":"email_unavailable"})
         try:
             validate_password(password, user=student.user)
         except DjangoValidationError as error:
@@ -241,9 +247,10 @@ class StudentViewSet(viewsets.ModelViewSet):
         if not account.is_active:
             return Response({"detail": "The student account is inactive."},
                             status=status.HTTP_400_BAD_REQUEST)
+        account.email = login
         account.set_password(password)
         account.is_approved = True
-        account.save(update_fields=["password", "is_approved"])
+        account.save(update_fields=["email","password", "is_approved"])
         return Response({"detail": "Student login is ready."})
 
     def perform_create(self, serializer):
