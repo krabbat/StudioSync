@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import FamilyBillingPanel from '@/components/FamilyBillingPanel'
 import FamilyCommunicationPanel from '@/components/FamilyCommunicationPanel'
+import FamilyAccessPanel from '@/components/FamilyAccessPanel'
 import { Plus, Users, Save, ArrowLeft, Loader2, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
@@ -15,7 +16,7 @@ import { fetchAllLibraryPages } from '@/lib/materialLibrary.mjs'
 type AddressStudent = { id:string; name:string; address_line1:string; postal_code:string; city:string }
 type Contact = { name: string; first_name?: string; last_name?: string; relation: string; email: string; phone: string }
 type ImportSource = { id:string; name:string; contacts:Contact[]; billing:{recipient_name:string;recipient_email:string;payment_method:string;recipient_address_line1:string;recipient_postal_code:string;recipient_city:string}|null }
-type Member = { id: string; name: string; instrument: string; monthly_amount?: string | null; is_active?: boolean }
+type Member = { id: string; user_id: string; birth_date?:string|null; name: string; instrument: string; monthly_amount?: string | null; is_active?: boolean }
 type Family = {
     id: string; name: string; display_name: string; address_line1: string; postal_code: string; city: string;
     address: string; ha_zone_entity_id: string; contacts: Contact[]; billing_recipient_name: string;
@@ -39,6 +40,7 @@ const err = (e: any) => {
 export default function FamilyManagement() {
     const router = useRouter()
     const billingT = useTranslations('FamilyBilling')
+    const accessT = useTranslations('FamilyAccess')
     const [families, setFamilies] = useState<Family[]>([])
     const [selected, setSelected] = useState<Family | null>(null)
     const [draft, setDraft] = useState<Draft | null>(null)
@@ -141,6 +143,12 @@ export default function FamilyManagement() {
             toast.success('Familie gespeichert.')
         } catch (e) { toast.error(err(e)) } finally { setSaving(false) }
     }
+    const archive = async () => {
+        if(!selected||!window.confirm(accessT('confirmArchive',{name:selected.display_name})))return
+        setSaving(true)
+        try{await api.post('/students/families/'+selected.id+'/archive/');setSelected(null);setDraft(null);await load();toast.success(accessT('archived'))}
+        catch{toast.error(accessT('error.generic'))}finally{setSaving(false)}
+    }
     const saveMembers = async () => {
         if (!selected) return
         setSaving(true)
@@ -170,7 +178,7 @@ export default function FamilyManagement() {
         </div>
         {!families.length && <p className="text-gray-500">Noch keine Familien angelegt.</p>}
     </section>
-    const tabs = [['overview','Übersicht'],['members','Familienmitglieder'],['contacts','Ansprechpartner'],['billing','Rechnungsdaten'],['accounts','Abrechnung'],['communication','Kommunikation']]
+    const tabs = [['overview','Übersicht'],['members','Familienmitglieder'],['contacts','Ansprechpartner'],['billing','Rechnungsdaten'],['accounts','Abrechnung'],['communication','Kommunikation'],['access',accessT('title')]]
     const choices = [...new Map([...(selected?.students || []),...available].map(s=>[s.id,s])).values()]
     const chosen=choices.filter(s=>memberIds.includes(s.id))
     const source=importSources.find(s=>s.id===importId)
@@ -242,7 +250,9 @@ export default function FamilyManagement() {
             {tab==='contacts' && <>{!draft.contacts.length&&<p className="text-sm text-gray-500">Noch keine Ansprechpartner hinterlegt.</p>}{draft.contacts.map((contact,i)=><div key={i} className="border rounded-lg p-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-6"><div className="flex justify-between sm:col-span-2 xl:col-span-6"><strong>Ansprechpartner {i+1}</strong><button aria-label="Ansprechpartner entfernen" onClick={()=>change('contacts',draft.contacts.filter((_,j)=>i!==j))}><X className="w-4 h-4"/></button></div>{([['first_name','Vorname'],['last_name','Nachname'],['relation','Beziehung zum Schüler'],['email','E-Mail'],['phone','Telefon']] as const).map(([k,label])=><label key={k} className={'space-y-1 text-sm min-w-0 '+(k==='email'?'xl:col-span-3':k==='phone'?'xl:col-span-3':'xl:col-span-2')}><span>{label}</span><input className={inputClass} type={k==='email'?'email':'text'} value={contact[k]} onChange={e=>change('contacts',draft.contacts.map((x,j)=>i===j?{...x,[k]:e.target.value,...(k==='first_name'||k==='last_name'?{name:[k==='first_name'?e.target.value:x.first_name,k==='last_name'?e.target.value:x.last_name].filter(Boolean).join(' ')}:{})}:x))}/></label>)}</div>)}<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end border-t border-gray-200 pt-4"><div><Button variant="outline" onClick={()=>change('contacts',[...draft.contacts,{name:'',first_name:'',last_name:'',relation:'',email:'',phone:''}])}><Plus className="w-4 h-4 mr-2"/>Ansprechpartner hinzufügen</Button></div>{importPanel('contacts')}</div></>}
             {tab==='billing' && <><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{field('Rechnungsempfänger','billing_recipient_name')}{field('Rechnungs-E-Mail','billing_email','email')}<label className="space-y-1 text-sm font-semibold">Zahlungsart<select className={inputClass} value={draft.payment_method} onChange={e=>change('payment_method',e.target.value)}><option value="bank_transfer">Banküberweisung</option><option value="paypal">PayPal</option><option value="cash">Barzahlung</option></select></label></div><p className="text-sm text-gray-500">{billingT('addressHint')}</p><label className="flex gap-3 items-start text-sm"><input type="checkbox" className="mt-1" checked={draft.individual_billing} onChange={e=>change('individual_billing',e.target.checked)}/><span><strong>{billingT('individual')}</strong><span className="block text-gray-500">{billingT('individualHint')}</span></span></label><div className="border-t border-gray-200 pt-4 flex justify-end"><div className="w-full lg:max-w-xl">{importPanel('billing')}</div></div></>}
             {tab==='accounts' && selected && <FamilyBillingPanel key={selected.id} familyId={selected.id} individualBilling={selected.individual_billing} members={selected.students}/>}
+            {tab==='access' && selected && <FamilyAccessPanel key={selected.id} familyId={selected.id} members={selected.students} contacts={selected.contacts||[]}/>}
             {tab==='communication' && selected && <FamilyCommunicationPanel key={selected.id} familyId={selected.id} members={selected.students} contacts={selected.contacts || []}/>}
+            {tab==='overview'&&selected&&<div className="border-t pt-4"><Button variant="outline" disabled={saving} onClick={()=>void archive()}>{accessT('archive')}</Button></div>}
             {['overview','contacts','billing'].includes(tab) && <Button disabled={saving} onClick={()=>void save()}><Save className="w-4 h-4 mr-2"/>Speichern</Button>}
         </div>
     </section>
