@@ -45,7 +45,7 @@ def student_catalog(studio):
             [student.instrument, *(student.instruments if isinstance(student.instruments, list) else [])]
             if isinstance(item, str) and item.strip()
         ))
-        addresses = [student.user.email]
+        addresses = [student.contact_email, student.user.email]
         if student.family_id:
             family = student.family
             addresses.extend([
@@ -53,11 +53,12 @@ def student_catalog(studio):
                 family.secondary_parent.email if family.secondary_parent else "",
                 family.billing_email,
             ])
+            addresses.extend(c.get("email", "") for c in (family.contacts or []) if isinstance(c, dict))
         billing_profile = getattr(student, "billing_profile", None)
         if billing_profile:
             addresses.append(billing_profile.recipient_email)
         safe_addresses = sorted({
-            value for item in addresses if (value := normalize_address(item))
+            value for item in addresses if (value := normalize_address(item)) and not value.endswith(".invalid")
         })
         students[sid] = {
             "id": sid,
