@@ -420,12 +420,13 @@ class BlockBillingUnit(models.Model):
     plan = models.ForeignKey(BlockBillingPlan, on_delete=models.PROTECT, related_name="units")
     lesson_id = models.UUIDField()
     lesson_date = models.DateField()
+    test_only = models.BooleanField(default=True)
     bill = models.ForeignKey(BlockInvoice, on_delete=models.PROTECT, null=True, blank=True, related_name="units")
     reset_at = models.DateTimeField(null=True, blank=True)
     reset_by = models.ForeignKey("core.User", on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["plan", "lesson_id"], name="unique_block_billed_lesson")]
+        constraints = [models.UniqueConstraint(fields=["plan", "lesson_id", "test_only"], name="unique_block_billed_lesson")]
 
 
 class BillingAutomation(models.Model):
