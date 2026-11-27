@@ -373,3 +373,38 @@ def test_admin_may_delete_sent_invoice_other_roles_may_not(
     assert Invoice.objects.filter(pk=invoice_id).exists()
     assert authenticated_client.delete(url).status_code == 204
     assert not Invoice.objects.filter(pk=invoice_id).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("supported", [True, False])
+def test_invoice_smtputf8_preserves_local_part(authenticated_client, studio, student, admin_user, supported):
+    from unittest.mock import MagicMock
+    from email import policy
+    from email.parser import BytesParser
+    address = "groß@example.org"
+    prepare_billing(studio, admin_user, student, email=address)
+    connection = MagicMock()
+    smtp = connection.connection
+    smtp.has_extn.return_value = supported
+    smtp.sendmail.return_value = {}
+    with patch("apps.billing.invoice_delivery.assert_public_host"), patch(
+        "apps.billing.invoice_delivery.get_connection", return_value=connection):
+        response = authenticated_client.post(reverse("invoice-list"), payload(student, send_now=True), format="json")
+    assert response.status_code == 201, response.data
+    invoice = Invoice.objects.get(pk=response.data["id"])
+    if not supported:
+        assert invoice.sent_at is None
+        assert response.data["email_sent"] is False
+        smtp.sendmail.assert_not_called()
+        return
+    assert invoice.sent_at is not None
+    assert response.data["email_sent"] is True
+    assert invoice.document_snapshot["recipient_email"] == address
+    args, kwargs = smtp.sendmail.call_args
+    assert args[1] == [address]
+    assert b"gro\xc3\x9f@example.org" in args[2]
+    assert kwargs["mail_options"] == ("SMTPUTF8", "BODY=8BITMIME")
+    message = BytesParser(policy=policy.default).parsebytes(args[2])
+    attachments = list(message.iter_attachments())
+    assert len(attachments) == 1
+    assert attachments[0].get_payload(decode=True).startswith(b"%PDF")
