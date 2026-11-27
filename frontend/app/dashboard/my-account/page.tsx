@@ -60,7 +60,10 @@ export default function MyAccountPage() {
                 address_line1: student.address_line1 || '',
                 postal_code: student.postal_code || '',
                 city: student.city || '',
+                email: student.email || '',
                 emergency_contact_name: student.emergency_contact_name || '',
+                emergency_contact_first_name: student.emergency_contact_first_name || '',
+                emergency_contact_last_name: student.emergency_contact_last_name || '',
                 emergency_contact_phone: student.emergency_contact_phone || '',
                 instrument: me.instrument || student.instrument || '',
             })
@@ -83,7 +86,8 @@ export default function MyAccountPage() {
                 address_line1: personal.address_line1,
                 postal_code: personal.postal_code,
                 city: personal.city,
-                emergency_contact_name: personal.emergency_contact_name,
+                emergency_contact_first_name: personal.emergency_contact_first_name,
+                emergency_contact_last_name: personal.emergency_contact_last_name,
                 emergency_contact_phone: personal.emergency_contact_phone,
             })
             try {
