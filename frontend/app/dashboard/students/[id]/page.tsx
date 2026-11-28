@@ -429,7 +429,6 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                     ) : (
                                         <div className="flex items-baseline gap-2">
                                             <span className="text-4xl font-black text-primary">{student.shared_lessons_total ?? '–'}</span>
-                                            <span className="text-xs font-bold text-gray-400 lowercase tracking-normal italic">{tr('sharedLessons')}</span>
                                         </div>
                                     )}
                                 </div>
