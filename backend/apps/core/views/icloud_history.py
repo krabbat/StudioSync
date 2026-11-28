@@ -64,7 +64,8 @@ class ICloudHistoryView(_AdminICloudView):
                 if target not in {row["url"] for row in _discover(client)}:
                     raise ICloudSetupError("Der iCloud-Kalender wurde nicht gefunden.")
                 dates = historical_dates(client.calendar(url=target), title)
-            return Response({"title": title, "dates": dates, "count": sum(row["count"] for row in dates)})
+            return Response({"title": title, "dates": dates, "count": sum(row["count"] for row in dates),
+                             "first_date": dates[0]["date"] if dates else None})
         except ICloudSetupError as exc:
             return Response({"detail": str(exc)}, status=400)
         except Exception:

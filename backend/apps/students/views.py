@@ -174,19 +174,28 @@ class StudentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="lesson-history")
     @transaction.atomic
     def lesson_history(self, request, pk=None):
-        """Set the displayed lifetime total without modifying annual quotas or invoices."""
+        """Set the lifetime total and optionally correct the original contract start."""
         if request.user.role != "admin":
             raise PermissionDenied("Nur Administratoren dürfen die Gesamtstundenzahl ändern.")
         from rest_framework import serializers
-        from apps.students.lesson_history import completed_lessons, contract_start, history_response
+        from django.utils import timezone
+        from apps.students.lesson_history import completed_lessons, history_response
 
         student = Student.objects.select_for_update().get(pk=self.get_object().pk)
-        start = contract_start(student)
-        if not start:
+        contract = TeachingContract.objects.select_for_update().filter(student=student).first()
+        if not contract:
             raise ValidationError("Für die Gesamtstundenzahl ist ein Vertrag erforderlich.")
         total = serializers.IntegerField(min_value=0, max_value=999999).run_validation(
             request.data.get("shared_lessons_total")
         )
+        start = contract.contract_start_date
+        if "contract_start_date" in request.data:
+            start = serializers.DateField().run_validation(request.data["contract_start_date"])
+            if start > timezone.localdate():
+                raise ValidationError({"contract_start_date": "Der erste Unterrichtstermin darf nicht in der Zukunft liegen."})
+            # Do not change the independently configured annual quota period.
+            contract.contract_start_date = start
+            contract.save(update_fields=["contract_start_date", "updated_at"])
         student.shared_lessons_delta = total - completed_lessons(student, start)
         student.save(update_fields=["shared_lessons_delta", "updated_at"])
         return Response(history_response(student))

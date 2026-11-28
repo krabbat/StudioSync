@@ -73,6 +73,7 @@ def test_history_api_is_read_only_and_admin_only(authenticated_client, teacher_a
         result = authenticated_client.post(endpoint, {"title": "Test Schüler"}, format="json")
     assert result.status_code == 200, result.data
     assert result.data["count"] == 3
+    assert result.data["first_date"] == "2024-11-01"
     assert ICloudCalendarSeries.objects.count() == 0
     assert teacher_authenticated_client.post(endpoint, {"title": "Test Schüler"}, format="json").status_code == 403
 

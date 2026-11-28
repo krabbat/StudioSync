@@ -63,3 +63,40 @@ def test_profile_history_without_contract(authenticated_client, student):
     assert response.data["contract_start_date"] is None
     assert response.data["shared_lessons_total"] is None
     assert authenticated_client.post(url + "lesson-history/", {"shared_lessons_total": 1}, format="json").status_code == 400
+
+
+@pytest.mark.django_db
+def test_import_history_updates_contract_start_and_total_atomically(authenticated_client, student_authenticated_client, studio, teacher, student):
+    today = timezone.localdate()
+    previous_start = today - timedelta(days=60)
+    imported_start = today - timedelta(days=200)
+    contract = TeachingContract.objects.create(
+        student=student, contract_start_date=previous_start,
+        contract_year_start=previous_start, lesson_minutes=45, monthly_amount=135,
+    )
+    when = timezone.now() - timedelta(days=100)
+    Lesson.objects.create(studio=studio, teacher=teacher, student=student,
+        scheduled_start=when, scheduled_end=when + timedelta(minutes=45),
+        status="completed", lesson_type="private")
+    endpoint = f"/api/students/{student.pk}/lesson-history/"
+    payload = {"shared_lessons_total": 75, "contract_start_date": imported_start.isoformat()}
+    assert student_authenticated_client.post(endpoint, payload, format="json").status_code == 403
+    response = authenticated_client.post(endpoint, payload, format="json")
+    assert response.status_code == 200, response.data
+    assert response.data["shared_lessons_total"] == 75
+    contract.refresh_from_db()
+    student.refresh_from_db()
+    assert contract.contract_start_date == imported_start
+    assert contract.contract_year_start == previous_start
+    assert contract.lesson_minutes == 45
+    assert student.shared_lessons_delta == 74
+    bad = {"shared_lessons_total": -1, "contract_start_date": previous_start.isoformat()}
+    assert authenticated_client.post(endpoint, bad, format="json").status_code == 400
+    contract.refresh_from_db()
+    assert contract.contract_start_date == imported_start
+    future = {"shared_lessons_total": 10, "contract_start_date": (today + timedelta(days=1)).isoformat()}
+    assert authenticated_client.post(endpoint, future, format="json").status_code == 400
+    contract.refresh_from_db()
+    student.refresh_from_db()
+    assert contract.contract_start_date == imported_start
+    assert student.shared_lessons_delta == 74
