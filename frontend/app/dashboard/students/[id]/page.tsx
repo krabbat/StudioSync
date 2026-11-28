@@ -25,9 +25,9 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     const router = useRouter()
     const [student, setStudent] = useState<any>(null)
     const [loading, setLoading] = useState(true)
-    const [editingEnrollment, setEditingEnrollment] = useState(false)
-    const [enrollmentDraft, setEnrollmentDraft] = useState('')
-    const [savingEnrollment, setSavingEnrollment] = useState(false)
+    const [editingTotal, setEditingTotal] = useState(false)
+    const [totalDraft, setTotalDraft] = useState('')
+    const [savingTotal, setSavingTotal] = useState(false)
     const [newPassword, setNewPassword] = useState('')
     const [loginEmail,setLoginEmail]=useState('')
     const accessT=useTranslations('FamilyAccess')
@@ -42,7 +42,6 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                 const response = await api.get(`/students/${studentId}/`)
                 setStudent(response.data)
                 setLoginEmail(response.data.login_email || "")
-                setEnrollmentDraft(response.data.enrollment_date || '')
             } catch (error) {
                 console.error('Failed to load student:', error)
                 toast.error(tr('loadFailed'))
@@ -54,22 +53,22 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
         if (studentId) fetchStudent()
     }, [studentId, router])
 
-    const saveEnrollmentDate = async () => {
-        if (!enrollmentDraft) {
-            toast.error(tr('enrollmentRequired'))
+    const saveLessonTotal = async () => {
+        const total = Number(totalDraft)
+        if (!totalDraft.trim() || !Number.isInteger(total) || total < 0 || total > 999999) {
+            toast.error(tr('invalidLessonTotal'))
             return
         }
-        setSavingEnrollment(true)
+        setSavingTotal(true)
         try {
-            await api.patch(`/students/${studentId}/`, { enrollment_date: enrollmentDraft })
-            setStudent((previous: any) => previous ? { ...previous, enrollment_date: enrollmentDraft } : previous)
-            setEditingEnrollment(false)
-            toast.success(tr('enrollmentSaved'))
-        } catch (error: any) {
-            const serverMessage = error?.response?.data?.enrollment_date?.[0]
-            toast.error(serverMessage || tr('enrollmentSaveFailed'))
+            const { data } = await api.post(`/students/${studentId}/lesson-history/`, { shared_lessons_total: total })
+            setStudent((previous: any) => previous ? { ...previous, ...data } : previous)
+            setEditingTotal(false)
+            toast.success(tr('lessonTotalSaved'))
+        } catch {
+            toast.error(tr('lessonTotalSaveFailed'))
         } finally {
-            setSavingEnrollment(false)
+            setSavingTotal(false)
         }
     }
 
@@ -127,6 +126,26 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     const phone = student.phone || student.user?.phone || 'No phone provided'
     const fullName = `${firstName} ${lastName}`.trim()
     const instruments = student.instruments || (student.instrument ? [student.instrument] : [])
+    const nextLesson = student.next_lesson ? new Date(student.next_lesson) : null
+    const photoUrl = proxyFileUrl(student.avatar || student.user?.avatar)
+
+    const openPhoto = () => {
+        if (!photoUrl) return
+        const popup = window.open('', '_blank', `popup=yes,width=${window.screen.availWidth},height=${window.screen.availHeight},left=0,top=0`)
+        if (!popup) {
+            toast.error(tr('photoPopupBlocked'))
+            return
+        }
+        popup.opener = null
+        popup.document.title = tr('studentPhoto', { name: fullName })
+        popup.document.body.style.cssText = 'margin:0;background:#111;display:flex;align-items:center;justify-content:center;width:100vw;height:100vh;overflow:hidden'
+        const image = popup.document.createElement('img')
+        image.src = photoUrl
+        image.alt = tr('studentPhoto', { name: fullName })
+        image.style.cssText = 'width:100%;height:100%;object-fit:contain'
+        popup.document.body.appendChild(image)
+        popup.focus()
+    }
 
     return (
         <div className="min-h-screen bg-gray-50/50 p-6 md:p-12">
@@ -166,11 +185,9 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                         <div className="absolute bottom-6 left-10 md:left-12 p-2 bg-white rounded-[2.5rem] shadow-2xl transition-transform duration-500 group-hover:scale-105">
                             <div className="w-36 h-36 rounded-[2rem] bg-gray-100 flex items-center justify-center border-4 border-white overflow-hidden shadow-inner">
                                 {student.avatar || student.user?.avatar ? (
-                                    <img
-                                        src={proxyFileUrl(student.avatar || student.user?.avatar) || undefined}
-                                        alt={tr('studentPhoto', { name: fullName })}
-                                        className="w-full h-full object-cover"
-                                    />
+                                    <button type="button" onClick={openPhoto} title={tr('openPhoto')} aria-label={tr('openPhoto')} className="w-full h-full cursor-zoom-in">
+                                        <img src={photoUrl || undefined} alt={tr('studentPhoto', { name: fullName })} className="w-full h-full object-cover" />
+                                    </button>
                                 ) : (
                                     <span className="text-4xl font-black text-gray-400 uppercase tracking-tighter">
                                         {firstName[0]}{lastName[0]}
@@ -386,48 +403,35 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                             <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] relative z-10">{tr('studioJourney')}</h2>
                             <div className="space-y-8 relative z-10">
                                 <div className="space-y-2">
+                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('partOfTheFamilySince')}</span>
+                                    <p className="text-xl font-black">{student.contract_start_date
+                                        ? new Date(`${student.contract_start_date}T00:00:00`).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })
+                                        : tr('notProvided')}</p>
+                                </div>
+                                <div className="space-y-2">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('partOfTheFamilySince')}</span>
-                                        {currentUser?.role === 'admin' && !editingEnrollment && (
-                                            <button
-                                                type="button"
-                                                onClick={() => { setEnrollmentDraft(student.enrollment_date || ''); setEditingEnrollment(true) }}
-                                                className="text-gray-400 hover:text-white"
-                                                aria-label={tr('editEnrollment')}
-                                                title={tr('editEnrollment')}
-                                            >
+                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('lessonTotal')}</span>
+                                        {currentUser?.role === 'admin' && student.contract_start_date && !editingTotal && (
+                                            <button type="button" onClick={() => { setTotalDraft(String(student.shared_lessons_total ?? 0)); setEditingTotal(true) }}
+                                                aria-label={tr('editLessonTotal')} title={tr('editLessonTotal')} className="text-gray-400 hover:text-white">
                                                 <Edit className="w-4 h-4" />
                                             </button>
                                         )}
                                     </div>
-                                    {editingEnrollment ? (
+                                    {editingTotal ? (
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <input
-                                                type="date"
-                                                aria-label={tr('partOfTheFamilySince')}
-                                                value={enrollmentDraft}
-                                                onChange={e => setEnrollmentDraft(e.target.value)}
-                                                className="min-w-0 flex-1 rounded-lg bg-gray-800 text-white p-2 border border-gray-600 focus:border-primary outline-none"
-                                            />
-                                            <button type="button" onClick={saveEnrollmentDate} disabled={savingEnrollment} aria-label={tr('saveEnrollment')} title={tr('saveEnrollment')} className="p-2 rounded-lg bg-primary text-white disabled:opacity-60">
-                                                <Save className="w-5 h-5" />
-                                            </button>
-                                            <button type="button" onClick={() => { setEditingEnrollment(false); setEnrollmentDraft(student.enrollment_date || '') }} disabled={savingEnrollment} aria-label={tr('cancelEnrollment')} title={tr('cancelEnrollment')} className="p-2 rounded-lg bg-gray-700 text-white disabled:opacity-60">
-                                                <X className="w-5 h-5" />
-                                            </button>
+                                            <input type="number" min={0} max={999999} step={1} inputMode="numeric" value={totalDraft}
+                                                onChange={e => setTotalDraft(e.target.value)} aria-label={tr('lessonTotal')}
+                                                className="min-w-0 w-24 flex-1 rounded-lg bg-gray-800 text-white p-2 border border-gray-600 outline-none" />
+                                            <button type="button" onClick={saveLessonTotal} disabled={savingTotal} aria-label={tr('saveLessonTotal')} title={tr('saveLessonTotal')} className="p-2 rounded-lg bg-primary text-white disabled:opacity-60"><Save className="w-5 h-5" /></button>
+                                            <button type="button" onClick={() => setEditingTotal(false)} disabled={savingTotal} aria-label={tr('cancelEnrollment')} title={tr('cancelEnrollment')} className="p-2 rounded-lg bg-gray-700 text-white disabled:opacity-60"><X className="w-5 h-5" /></button>
                                         </div>
                                     ) : (
-                                        <p className="text-xl font-black">{student.enrollment_date
-                                            ? new Date(`${student.enrollment_date}T00:00:00`).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' })
-                                            : tr('notProvided')}</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-4xl font-black text-primary">{student.shared_lessons_total ?? '–'}</span>
+                                            <span className="text-xs font-bold text-gray-400 lowercase tracking-normal italic">{tr('sharedLessons')}</span>
+                                        </div>
                                     )}
-                                </div>
-                                <div className="space-y-2">
-                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tr('milestonesAchieved')}</span>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-4xl font-black text-primary">12</span>
-                                        <span className="text-xs font-bold text-gray-400 lowercase tracking-normal italic">{tr('sharedLessons')}</span>
-                                    </div>
                                 </div>
                                 <div className="pt-8 border-t border-white/5 space-y-4">
                                     <div className="flex items-center gap-3">
@@ -437,8 +441,8 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{tr('upcomingLesson')}</span>
                                     </div>
                                     <div className="bg-white/5 p-5 rounded-2xl border border-white/5 group-hover:border-primary/20 transition-all">
-                                        <p className="font-black text-lg">{tr('nextTuesday')}</p>
-                                        <p className="text-primary text-sm font-bold">{tr('400PMSharp')}</p>
+                                        <p className="font-black text-lg">{nextLesson ? nextLesson.toLocaleDateString(locale, {weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'Europe/Berlin'}) : tr('noUpcomingLesson')}</p>
+                                        {nextLesson && <p className="text-primary text-sm font-bold">{tr('lessonTime', {time: nextLesson.toLocaleTimeString(locale, {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Berlin'})})}</p>}
                                     </div>
                                 </div>
                             </div>

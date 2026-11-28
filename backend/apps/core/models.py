@@ -450,6 +450,7 @@ class Student(models.Model):
 
     # Progress tracking
     total_lessons = models.IntegerField(default=0)
+    shared_lessons_delta = models.IntegerField(default=0)
     last_lesson_date = models.DateField(null=True, blank=True)
 
     # Notes

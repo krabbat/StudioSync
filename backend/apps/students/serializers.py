@@ -80,6 +80,28 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     teacher = serializers.SerializerMethodField()
     login_enabled = serializers.SerializerMethodField()
     login_email = serializers.SerializerMethodField()
+    contract_start_date = serializers.SerializerMethodField()
+    shared_lessons_total = serializers.SerializerMethodField()
+    next_lesson = serializers.SerializerMethodField()
+
+    def _history(self, obj):
+        from apps.students.lesson_history import history_response
+        if not hasattr(self, "_profile_history"):
+            self._profile_history = {}
+        if obj.pk not in self._profile_history:
+            self._profile_history[obj.pk] = history_response(obj)
+        return self._profile_history[obj.pk]
+
+    def get_contract_start_date(self, obj):
+        value = self._history(obj)["contract_start_date"]
+        return value.isoformat() if value else None
+
+    def get_shared_lessons_total(self, obj):
+        return self._history(obj)["shared_lessons_total"]
+
+    def get_next_lesson(self, obj):
+        value = self._history(obj)["next_lesson"]
+        return value.isoformat() if value else None
 
     def get_login_email(self, obj):
         actor = getattr(self.context.get("request"), "user", None)

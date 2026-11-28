@@ -171,6 +171,26 @@ class StudentViewSet(viewsets.ModelViewSet):
             serializer.save(student=student)
         return Response({"contract": serializer.data})
 
+    @action(detail=True, methods=["post"], url_path="lesson-history")
+    @transaction.atomic
+    def lesson_history(self, request, pk=None):
+        """Set the displayed lifetime total without modifying annual quotas or invoices."""
+        if request.user.role != "admin":
+            raise PermissionDenied("Nur Administratoren dürfen die Gesamtstundenzahl ändern.")
+        from rest_framework import serializers
+        from apps.students.lesson_history import completed_lessons, contract_start, history_response
+
+        student = Student.objects.select_for_update().get(pk=self.get_object().pk)
+        start = contract_start(student)
+        if not start:
+            raise ValidationError("Für die Gesamtstundenzahl ist ein Vertrag erforderlich.")
+        total = serializers.IntegerField(min_value=0, max_value=999999).run_validation(
+            request.data.get("shared_lessons_total")
+        )
+        student.shared_lessons_delta = total - completed_lessons(student, start)
+        student.save(update_fields=["shared_lessons_delta", "updated_at"])
+        return Response(history_response(student))
+
     @action(detail=True, methods=["get", "post"], url_path="lesson-account")
     def lesson_account(self, request, pk=None):
         """Current or selected contract-year overview and administrator corrections."""

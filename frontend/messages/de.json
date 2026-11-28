@@ -519,6 +519,16 @@
     "passwordMismatch": "Die Passwörter stimmen nicht überein."
   },
   "StudentProfile": {
+    "lessonTotal": "Unterrichtsstunden seit Vertragsbeginn",
+    "editLessonTotal": "Gesamtstundenzahl bearbeiten",
+    "saveLessonTotal": "Gesamtstundenzahl speichern",
+    "invalidLessonTotal": "Bitte eine ganze Zahl ab 0 eingeben.",
+    "lessonTotalSaved": "Gesamtstundenzahl gespeichert.",
+    "lessonTotalSaveFailed": "Gesamtstundenzahl konnte nicht gespeichert werden.",
+    "noUpcomingLesson": "Kein Termin geplant",
+    "lessonTime": "{time} Uhr",
+    "openPhoto": "Foto vergrößern",
+    "photoPopupBlocked": "Bitte Pop-ups für StudioSync erlauben.",
     "profileAccess": "Schülerprofil",
     "gatheringTheStudentDetails": "Schülerdaten werden geladen…",
     "returnToStudentRoster": "Zurück zur Schülerliste",

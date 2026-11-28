@@ -519,6 +519,16 @@
     "passwordMismatch": "Passwords do not match."
   },
   "StudentProfile": {
+    "lessonTotal": "Lessons since contract start",
+    "editLessonTotal": "Edit total lessons",
+    "saveLessonTotal": "Save total lessons",
+    "invalidLessonTotal": "Enter a whole number of zero or greater.",
+    "lessonTotalSaved": "Total lessons saved.",
+    "lessonTotalSaveFailed": "Could not save total lessons.",
+    "noUpcomingLesson": "No upcoming lesson",
+    "lessonTime": "{time}",
+    "openPhoto": "Enlarge photo",
+    "photoPopupBlocked": "Please allow pop-ups for StudioSync.",
     "profileAccess": "Profile Access",
     "gatheringTheStudentDetails": "Gathering the student details...",
     "returnToStudentRoster": "Return to Student Roster",
