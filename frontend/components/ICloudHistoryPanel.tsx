@@ -10,7 +10,7 @@ type CalendarChoice = { name: string; url: string }
 type SearchMode = 'exact' | 'partial'
 type DateCount = { date: string; count: number }
 type TitleMatch = { title: string; count: number; first_date: string; dates: DateCount[] }
-type Result = { title: string; mode: SearchMode; calendar_name: string; count: number; first_date: string | null; dates: DateCount[]; matches: TitleMatch[] }
+type Result = { title: string; mode: SearchMode; from_date: string | null; calendar_name: string; count: number; first_date: string | null; dates: DateCount[]; matches: TitleMatch[] }
 const field = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm'
 
 export default function ICloudHistoryPanel({ students, studentsLoading, studentsError, syncCalendarUrl }: {
@@ -18,6 +18,7 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
 }) {
     const [title, setTitle] = useState('')
     const [mode, setMode] = useState<SearchMode>('exact')
+    const [fromDate, setFromDate] = useState('')
     const [selectedTitles, setSelectedTitles] = useState<string[]>([])
     const [calendars, setCalendars] = useState<CalendarChoice[]>([])
     const [calendarUrl, setCalendarUrl] = useState('')
@@ -61,8 +62,8 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
         if (!calendarUrl) return
         setResult(null); setSelectedTitles([]); setQueryError(''); setBusy('query')
         try {
-            const { data } = await api.post<Result>('/core/calendar/icloud/history/', { title: title.trim(), calendar_url: calendarUrl, mode })
-            if (!Array.isArray(data.matches)) throw new Error('Historische Trefferliste fehlt')
+            const { data } = await api.post<Result>('/core/calendar/icloud/history/', { title: title.trim(), calendar_url: calendarUrl, mode, from_date: fromDate || null })
+            if (!Array.isArray(data.matches) || (fromDate && data.from_date !== fromDate)) throw new Error('Historische Trefferliste fehlt')
             setResult(data)
             // Partial-name results may include other pupils; require explicit selection.
             setSelectedTitles(mode === 'exact' ? data.matches.map(match => match.title) : [])
@@ -118,6 +119,16 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
                 </label>
             )}
         </fieldset>
+        <div className="space-y-1">
+            <label className="block text-sm font-medium" htmlFor="icloud-history-from-date">Ab Datum (optional)</label>
+            <div className="flex items-center gap-2">
+                <input id="icloud-history-from-date" type="date" className={field + ' max-w-xs min-w-0'} value={fromDate}
+                    disabled={busy !== null} onChange={e => {setFromDate(e.target.value);setResult(null);setSelectedTitles([]);setQueryError('')}} />
+                {fromDate && <button type="button" className="shrink-0 text-xs text-indigo-700 underline" disabled={busy !== null}
+                    onClick={() => {setFromDate('');setResult(null);setSelectedTitles([]);setQueryError('')}}>Datum zurücksetzen</button>}
+            </div>
+            <p className="text-xs text-gray-500">Leer lassen für die gesamte Historie. Mit Datum werden nur Termine ab diesem Tag einschließlich berücksichtigt.</p>
+        </div>
         <button type="button" disabled={!title.trim() || !calendarUrl || calendarsLoading || busy !== null} onClick={() => void query()}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {busy === 'query' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Abfragen
@@ -133,6 +144,7 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
         {queryError && <p className="text-sm text-red-700" role="alert">{queryError}</p>}
         {result && <div className="space-y-3 border-t pt-3">
             <p className="text-sm"><strong>{result.count}</strong> vergangene Termine für „{result.title}“ gefunden{result.calendar_name ? ' in „' + result.calendar_name + '“' : ''}.</p>
+            {result.from_date && <p className="text-xs text-amber-700">Auswertung ab {germanDate(result.from_date)}. Bei der Übernahme wird auch der Vertragsbeginn auf den ersten ausgewählten Termin in diesem Zeitraum gesetzt.</p>}
             {result.matches.length > 0 && <fieldset className="space-y-1">
                 <legend className="mb-1 text-sm font-semibold">Terminnamen auswählen</legend>
                 {result.mode === 'partial' && <p className="text-xs text-gray-500">Nur die zum Schüler gehörenden Terminnamen markieren.</p>}

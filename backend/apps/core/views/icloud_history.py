@@ -1,6 +1,6 @@
 """Read-only historical occurrence count in the configured Apple calendar."""
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import date, datetime
 import logging
 
 from django.utils import timezone
@@ -18,7 +18,7 @@ from apps.lessons.icloud_notes import normal
 LOG = logging.getLogger(__name__)
 
 
-def historical_matches(calendar, title, now=None, *, mode="exact"):
+def historical_matches(calendar, title, now=None, *, mode="exact", from_date=None):
     now = now or timezone.now()
     low = datetime(1900, 1, 1, tzinfo=LOCAL_TZ)
     matches = {}
@@ -52,9 +52,14 @@ def historical_matches(calendar, title, now=None, *, mode="exact"):
             # title, not the title of its original series.
             if not title_matches(occurrence["title"]):
                 continue
+            # Compare the actual (possibly moved) occurrence date in Berlin,
+            # not the original recurrence ID or the UTC calendar day.
+            actual_day = occurrence["start"].astimezone(LOCAL_TZ).date()
+            if from_date is not None and actual_day < from_date:
+                continue
             matches[(uid, occurrence["rid"])] = (
                 occurrence["title"].strip(),
-                occurrence["start"].astimezone(LOCAL_TZ).date().isoformat(),
+                actual_day.isoformat(),
             )
     grouped = defaultdict(Counter)
     counts = Counter()
@@ -85,6 +90,17 @@ class ICloudHistoryView(_AdminICloudView):
         mode = request.data.get("mode", "exact")
         if mode not in ("exact", "partial"):
             return Response({"detail": "Ungültiger Suchmodus."}, status=400)
+        raw_date = request.data.get("from_date")
+        from_date = None
+        if raw_date not in (None, ""):
+            try:
+                if not isinstance(raw_date, str):
+                    raise ValueError
+                from_date = date.fromisoformat(raw_date)
+                if from_date.isoformat() != raw_date:
+                    raise ValueError
+            except (ValueError, TypeError):
+                return Response({"detail": "Bitte ein gültiges Startdatum eingeben."}, status=400)
         try:
             source = str(request.data.get("calendar_url") or "").strip()
             if not source:
@@ -97,9 +113,10 @@ class ICloudHistoryView(_AdminICloudView):
                 calendar = next((row for row in _discover(client) if row["url"] == target), None)
                 if calendar is None:
                     raise ICloudSetupError("Der ausgewählte iCloud-Kalender wurde nicht gefunden.")
-                found = historical_matches(client.calendar(url=target), title, mode=mode)
+                found = historical_matches(client.calendar(url=target), title, mode=mode, from_date=from_date)
             dates = found["dates"]
-            return Response({"title": title, "mode": mode, "calendar_name": calendar.get("name", ""),
+            return Response({"title": title, "mode": mode, "from_date": from_date.isoformat() if from_date else None,
+                             "calendar_name": calendar.get("name", ""),
                              **found, "count": sum(row["count"] for row in dates),
                              "first_date": dates[0]["date"] if dates else None})
         except ICloudSetupError as exc:

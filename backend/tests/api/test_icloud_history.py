@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -77,13 +77,24 @@ def test_history_api_is_read_only_and_admin_only(authenticated_client, teacher_a
         assert authenticated_client.post(endpoint, {"title": "Test Schüler", "calendar_url": url}, format="json").status_code == 400
         assert authenticated_client.post(endpoint, {"title": "Test Schüler", "calendar_url": source + "unknown/"}, format="json").status_code == 400
         result = authenticated_client.post(endpoint, {"title": "Test Schüler", "calendar_url": source}, format="json")
+        filtered = authenticated_client.post(endpoint, {"title": "Test", "calendar_url": source,
+            "mode": "partial", "from_date": "2024-11-16"}, format="json")
+        invalid = authenticated_client.post(endpoint, {"title": "Test", "calendar_url": source,
+            "from_date": "2024-02-30"}, format="json")
     assert result.status_code == 200, result.data
     assert result.data["count"] == 3
     assert result.data["calendar_name"] == "Standard"
     assert result.data["mode"] == "exact"
     assert result.data["matches"] == [{"title": "Test Schüler", "count": 3,
         "first_date": "2024-11-01", "dates": result.data["dates"]}]
-    client.calendar.assert_called_once_with(url=source)
+    assert client.calendar.call_count == 2
+    assert all(call.kwargs == {"url": source} for call in client.calendar.call_args_list)
+    assert filtered.status_code == 200, filtered.data
+    assert filtered.data["from_date"] == "2024-11-16"
+    assert filtered.data["first_date"] == "2024-11-16"
+    assert filtered.data["count"] == 2
+    assert filtered.data["matches"][0]["count"] == 2
+    assert invalid.status_code == 400
     assert result.data["first_date"] == "2024-11-01"
     assert ICloudCalendarSeries.objects.count() == 0
     assert teacher_authenticated_client.post(endpoint, {"title": "Test Schüler"}, format="json").status_code == 403
@@ -143,3 +154,15 @@ def test_partial_title_search_groups_actual_titles_and_deduplicates():
     ]
     assert sum(d["count"] for d in partial["dates"]) == 4
     assert historical_matches(calendar, "unbekannt", now, mode="partial")["matches"] == []
+
+
+@pytest.mark.parametrize("mode, title", [("exact", "Test Schüler"), ("partial", "Test")])
+def test_history_start_date_inclusive_uses_moved_occurrence_date(mode, title):
+    calendar, now = fixture_calendar()
+    result = historical_matches(calendar, title, now, mode=mode, from_date=date(2024, 11, 16))
+    assert result["dates"] == [{"date": "2024-11-16", "count": 1}, {"date": "2024-11-29", "count": 1}]
+    assert result["matches"][0]["first_date"] == "2024-11-16"
+    assert result["matches"][0]["count"] == 2
+    assert historical_matches(calendar, title, now, mode=mode, from_date=date(2024, 12, 1)) == {
+        "dates": [], "matches": [],
+    }
