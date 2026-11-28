@@ -199,3 +199,56 @@ def test_duplicate_slots_with_different_uids_are_counted_once_but_distinct_times
     assert [row["start"] for row in rows if row["date"] == "2024-11-01"] == [
         "2024-11-01T15:00:00+01:00", "2024-11-01T17:00:00+01:00",
     ]
+
+
+@pytest.mark.parametrize("excluded_original", [True, False])
+def test_history_preserves_local_weekly_time_across_dst_and_matches_moved_recurrence(excluded_original):
+    # Match iCalendar 5's pytz-decoded data: a winter master at 17:00,
+    # a May exception moved from May 21 to May 14 at 17:00 summer time.
+    import pytz
+
+    berlin = pytz.timezone("Europe/Berlin")
+    def local(month, day, hour=17):
+        return berlin.localize(datetime(2026, month, day, hour))
+
+    now = local(11, 28)
+    data = Calendar()
+    data.add("prodid", "-//Test//")
+    data.add("version", "2.0")
+    master = Event()
+    master.add("uid", "dst-series@example.org")
+    master.add("summary", "Test Schüler")
+    master.add("dtstamp", now)
+    master.add("dtstart", local(1, 8))
+    master.add("dtend", local(1, 8) + timedelta(minutes=45))
+    master.add("rrule", {"freq": "weekly", "until": datetime(2026, 11, 19, 22, 59, 59, tzinfo=pytz.UTC)})
+    if excluded_original:
+        master.add("exdate", local(5, 14))
+    # A deleted summer occurrence must not reappear due to an offset mismatch.
+    master.add("exdate", local(6, 4))
+    data.add_component(master)
+    moved = Event()
+    moved.add("uid", "dst-series@example.org")
+    moved.add("summary", "Test Schüler")
+    moved.add("dtstamp", now)
+    moved.add("recurrence-id", local(5, 21))
+    moved.add("dtstart", local(5, 14))
+    moved.add("dtend", local(5, 14) + timedelta(minutes=45))
+    data.add_component(moved)
+    resource = MagicMock()
+    resource.data = data.to_ical()
+    calendar = MagicMock()
+    calendar.events.return_value = [resource]
+    result = historical_matches(calendar, "Test Schüler", now)
+    days = {row["date"]: row["count"] for row in result["dates"]}
+    rows = result["matches"][0]["occurrences"]
+    assert days["2026-05-14"] == 1
+    assert "2026-05-21" not in days
+    assert "2026-06-04" not in days
+    assert all(row["start"][11:16] == "17:00" for row in rows)
+    assert {row["start"] for row in rows if row["date"] in ("2026-01-08", "2026-05-14", "2026-11-19")} == {
+        "2026-01-08T17:00:00+01:00",
+        "2026-05-14T17:00:00+02:00",
+        "2026-11-19T17:00:00+01:00",
+    }
+    assert result["duplicate_count"] == (0 if excluded_original else 1)

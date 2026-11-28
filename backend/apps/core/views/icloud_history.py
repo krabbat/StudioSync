@@ -43,7 +43,7 @@ def historical_matches(calendar, title, now=None, *, mode="exact", from_date=Non
             continue
         _, master, _ = _master_and_overrides(raw)
         uid = str(master["UID"])
-        for occurrence in _expand(raw, now=now, low=low, high=now):
+        for occurrence in _expand(raw, now=now, low=low, high=now, historical_wall_clock=True):
             if occurrence["cancelled"] or not occurrence["start"] or not occurrence["end"]:
                 continue
             if occurrence["end"] > now or occurrence["end"] <= occurrence["start"]:

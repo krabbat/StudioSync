@@ -7,7 +7,7 @@ bulk_create/QuerySet.update bypass the standard post_save signal.
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone as utc_timezone
 from hashlib import sha256
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import json
 import re
 import uuid
@@ -152,7 +152,7 @@ def _master_and_overrides(content):
     }
 
 
-def _expand(content, now=None, *, low=None, high=None):
+def _expand(content, now=None, *, low=None, high=None, historical_wall_clock=False):
     _, master, overrides = _master_and_overrides(content)
     start = _dt(master["DTSTART"].dt)
     if start is None:
@@ -167,7 +167,24 @@ def _expand(content, now=None, *, low=None, high=None):
     original_starts = []
     rule = master.get("RRULE")
     if rule:
-        recurrence = rrulestr(_raw(rule.to_ical()), dtstart=start)
+        recurrence_start = start
+        if historical_wall_clock:
+            # icalendar 5 decodes TZID into a localized pytz datetime.
+            # dateutil repeats its fixed initial UTC offset across DST changes.
+            # Use the named IANA zone instead so recurring local times and
+            # recurrence IDs/EXDATEs agree with Apple's actual occurrences.
+            # Keep this opt-in until existing live-sync recurrence IDs have
+            # been audited: changing their keys can orphan linked lessons.
+            zone_name = getattr(start.tzinfo, "zone", None)
+            if not zone_name:
+                zone_name = master["DTSTART"].params.get("TZID")
+            if zone_name:
+                try:
+                    recurrence_start = start.astimezone(ZoneInfo(str(zone_name)))
+                except (ZoneInfoNotFoundError, ValueError):
+                    # Custom VTIMEZONE definitions may not exist in IANA.
+                    pass
+        recurrence = rrulestr(_raw(rule.to_ical()), dtstart=recurrence_start)
         original_starts = list(recurrence.between(low, high, inc=True))
     elif low <= start <= high:
         original_starts = [start]
