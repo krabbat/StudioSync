@@ -141,6 +141,18 @@ class AdditionalGuardianSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20)
     email = InternationalEmailField(required=False, allow_blank=True, default="")
 
+    def validate(self, attrs):
+        # A supplied list replaces all additional guardians, even on a PATCH.
+        # DRF skips required fields in nested serializers when the root is
+        # partial, so explicitly require each complete contact here.
+        missing = {key: "Dieses Feld ist erforderlich."
+                   for key in ("first_name", "last_name", "phone")
+                   if key not in attrs}
+        if missing:
+            raise serializers.ValidationError(missing)
+        attrs.setdefault("email", "")
+        return attrs
+
 
 class StudentCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating students with nested user data"""

@@ -119,7 +119,14 @@ def test_additional_guardians_persist_and_are_family_billing_candidates(authenti
     assert [c["billing"]["recipient_name"] for c in row["guardian_sources"]] == ["Anna Test", "Max Test", "Eva Test"]
     assert row["guardian_sources"][1]["billing"]["recipient_email"] == "max@example.org"
     assert row["guardian_sources"][2]["billing"]["recipient_email"] == ""
-    assert authenticated_client.patch(endpoint, {"additional_guardians": [{"first_name": "Invalid"}]}, format="json").status_code == 400
+    assert student.additional_guardians[1]["email"] == ""
+    invalid = authenticated_client.patch(endpoint, {"additional_guardians": [{"first_name": "Invalid"}]}, format="json")
+    assert invalid.status_code == 400, invalid.data
+    assert "last_name" in invalid.data["additional_guardians"][0]
+    assert "phone" in invalid.data["additional_guardians"][0]
+    student.refresh_from_db()
+    assert len(student.additional_guardians) == 2
+    assert student.additional_guardians[0]["first_name"] == "Max"
     assert authenticated_client.patch(endpoint, {"phone": "030123459"}, format="json").status_code == 200
     student.refresh_from_db()
     assert len(student.additional_guardians) == 2
