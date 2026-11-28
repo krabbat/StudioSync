@@ -3,6 +3,7 @@
 import { useTranslations, useLocale } from 'next-intl'
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
+import { Dialog, DialogPanel, DialogTitle, DialogBackdrop } from '@headlessui/react'
 import {
     ArrowLeft, User, Mail, Phone, Music,
     Calendar, Edit, Trash2, Clock, GraduationCap,
@@ -25,6 +26,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     const router = useRouter()
     const [student, setStudent] = useState<any>(null)
     const [loading, setLoading] = useState(true)
+    const [photoOpen, setPhotoOpen] = useState(false)
     const [editingTotal, setEditingTotal] = useState(false)
     const [totalDraft, setTotalDraft] = useState('')
     const [savingTotal, setSavingTotal] = useState(false)
@@ -129,26 +131,27 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
     const nextLesson = student.next_lesson ? new Date(student.next_lesson) : null
     const photoUrl = proxyFileUrl(student.avatar || student.user?.avatar)
 
-    const openPhoto = () => {
-        if (!photoUrl) return
-        const popup = window.open('', '_blank', `popup=yes,width=${window.screen.availWidth},height=${window.screen.availHeight},left=0,top=0`)
-        if (!popup) {
-            toast.error(tr('photoPopupBlocked'))
-            return
-        }
-        popup.opener = null
-        popup.document.title = tr('studentPhoto', { name: fullName })
-        popup.document.body.style.cssText = 'margin:0;background:#111;display:flex;align-items:center;justify-content:center;width:100vw;height:100vh;overflow:hidden'
-        const image = popup.document.createElement('img')
-        image.src = photoUrl
-        image.alt = tr('studentPhoto', { name: fullName })
-        image.style.cssText = 'width:100%;height:100%;object-fit:contain'
-        popup.document.body.appendChild(image)
-        popup.focus()
-    }
 
     return (
         <div className="min-h-screen bg-gray-50/50 p-6 md:p-12">
+            <Dialog open={photoOpen && Boolean(photoUrl)} onClose={setPhotoOpen} className="relative z-[100]">
+                <DialogBackdrop transition className="fixed inset-0 bg-black/85 backdrop-blur-md duration-200 ease-out data-closed:opacity-0" />
+                <div className="fixed inset-0 flex items-center justify-center p-3 sm:p-5">
+                    <DialogPanel transition className="flex max-h-[calc(100dvh-1.5rem)] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl bg-neutral-950 text-white shadow-2xl ring-1 ring-white/10 duration-200 ease-out data-closed:scale-95 data-closed:opacity-0 sm:max-h-[calc(100dvh-2.5rem)] sm:max-w-[calc(100vw-2.5rem)]">
+                        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 px-4 py-2">
+                            <DialogTitle className="min-w-0 truncate text-sm font-semibold">{fullName}</DialogTitle>
+                            <button type="button" data-autofocus onClick={() => setPhotoOpen(false)} aria-label={tr('closePhoto')} title={tr('closePhoto')}
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+                        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2 sm:p-3">
+                            {photoUrl && <img src={photoUrl} alt={tr('studentPhoto', { name: fullName })}
+                                className="block h-auto w-auto max-h-[calc(100dvh-7rem)] max-w-full object-contain" />}
+                        </div>
+                    </DialogPanel>
+                </div>
+            </Dialog>
             <div className="max-w-5xl mx-auto space-y-10">
                 {/* Navigation & Actions */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -185,7 +188,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                         <div className="absolute bottom-6 left-10 md:left-12 p-2 bg-white rounded-[2.5rem] shadow-2xl transition-transform duration-500 group-hover:scale-105">
                             <div className="w-36 h-36 rounded-[2rem] bg-gray-100 flex items-center justify-center border-4 border-white overflow-hidden shadow-inner">
                                 {student.avatar || student.user?.avatar ? (
-                                    <button type="button" onClick={openPhoto} title={tr('openPhoto')} aria-label={tr('openPhoto')} className="w-full h-full cursor-zoom-in">
+                                    <button type="button" onClick={() => { if (photoUrl) setPhotoOpen(true) }} aria-haspopup="dialog" title={tr('openPhoto')} aria-label={tr('openPhoto')} className="w-full h-full cursor-zoom-in">
                                         <img src={photoUrl || undefined} alt={tr('studentPhoto', { name: fullName })} className="w-full h-full object-cover" />
                                     </button>
                                 ) : (

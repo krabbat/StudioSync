@@ -528,7 +528,7 @@
     "noUpcomingLesson": "Kein Termin geplant",
     "lessonTime": "{time} Uhr",
     "openPhoto": "Foto vergrößern",
-    "photoPopupBlocked": "Bitte Pop-ups für StudioSync erlauben.",
+    "closePhoto": "Foto schließen",
     "profileAccess": "Schülerprofil",
     "gatheringTheStudentDetails": "Schülerdaten werden geladen…",
     "returnToStudentRoster": "Zurück zur Schülerliste",
