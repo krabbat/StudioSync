@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { refreshAccessToken } from './tokenRefresh.mjs'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
 
@@ -31,26 +32,18 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true
 
+            const failedAccess = String(originalRequest.headers?.Authorization || '').replace(/^Bearer /i, '')
             try {
-                const refreshToken = localStorage.getItem('refreshToken')
-                if (!refreshToken) {
-                    throw new Error('No refresh token')
-                }
-
-                const response = await axios.post(`${API_URL}/auth/token/refresh`, {
-                    refresh: refreshToken
-                })
-
-                const { access } = response.data
-                localStorage.setItem('accessToken', access)
-
-                api.defaults.headers.common['Authorization'] = `Bearer ${access}`
+                const access = await refreshAccessToken(failedAccess)
+                originalRequest.headers.Authorization = `Bearer ${access}`
                 return api(originalRequest)
-            } catch (refreshError) {
-                // Logout user if refresh fails
-                localStorage.removeItem('accessToken')
-                localStorage.removeItem('refreshToken')
-                window.location.href = '/login'
+            } catch (refreshError: any) {
+                // A network/server error is not a reason to destroy a valid session.
+                if (refreshError?.status === 401 || refreshError?.status === 403) {
+                    localStorage.removeItem('accessToken')
+                    localStorage.removeItem('refreshToken')
+                    window.location.href = '/login'
+                }
                 return Promise.reject(refreshError)
             }
         }

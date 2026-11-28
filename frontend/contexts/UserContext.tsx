@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { refreshAccessToken } from '@/services/tokenRefresh.mjs'
 
 export type UserRole = 'admin' | 'teacher' | 'student' | 'parent'
 
@@ -69,27 +70,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
             // If token expired, try refreshing before giving up
             if (res.status === 401) {
-                const refreshToken = localStorage.getItem('refreshToken')
-                if (refreshToken) {
-                    try {
-                        const refreshRes = await fetch(`${API_URL}/auth/token/refresh/`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ refresh: refreshToken })
-                        })
-                        if (refreshRes.ok) {
-                            const { access } = await refreshRes.json()
-                            localStorage.setItem('accessToken', access)
-                            // Retry with new token
-                            res = await fetch(`${API_URL}/auth/me/`, {
-                                headers: { 'Authorization': `Bearer ${access}` },
-                                credentials: 'include'
-                            })
-                        }
-                    } catch (refreshErr) {
-                        console.error('Token refresh failed:', refreshErr)
-                    }
-                }
+                const access = await refreshAccessToken(token)
+                res = await fetch(`${API_URL}/auth/me/`, {
+                    headers: { 'Authorization': `Bearer ${access}` },
+                    credentials: 'include'
+                })
             }
 
             if (res.ok) {
@@ -101,11 +86,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 localStorage.removeItem('refreshToken')
                 setCurrentUser(null)
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Auth check failed:', error)
-            localStorage.removeItem('accessToken')
-            localStorage.removeItem('refreshToken')
-            setCurrentUser(null)
+            if (error?.status === 401 || error?.status === 403) {
+                localStorage.removeItem('accessToken')
+                localStorage.removeItem('refreshToken')
+                setCurrentUser(null)
+            }
         } finally {
             setIsLoading(false)
         }
