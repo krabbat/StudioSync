@@ -152,7 +152,7 @@ def _master_and_overrides(content):
     }
 
 
-def _expand(content, now=None):
+def _expand(content, now=None, *, low=None, high=None):
     _, master, overrides = _master_and_overrides(content)
     start = _dt(master["DTSTART"].dt)
     if start is None:
@@ -162,7 +162,8 @@ def _expand(content, now=None):
     if duration <= timedelta(0):
         return []
     now = now or timezone.now()
-    low, high = now - timedelta(days=WINDOW_BEFORE), now + timedelta(days=WINDOW_AFTER)
+    low = low if low is not None else now - timedelta(days=WINDOW_BEFORE)
+    high = high if high is not None else now + timedelta(days=WINDOW_AFTER)
     original_starts = []
     rule = master.get("RRULE")
     if rule:
@@ -217,7 +218,7 @@ def _expand(content, now=None):
             altered_end = _dt(override["DTEND"].dt) if override.get("DTEND") else altered + duration
             result[rid] = {
                 "rid": rid, "start": altered, "end": altered_end,
-                "cancelled": _raw(override.get("STATUS", "")).upper() == "CANCELLED",
+                "cancelled": rid in excluded or _raw(override.get("STATUS", "")).upper() == "CANCELLED",
                 "title": _raw(override.get("SUMMARY", master.get("SUMMARY", ""))),
                 "location": _raw(override.get("LOCATION", master.get("LOCATION", ""))),
                 "description": _raw(override.get("DESCRIPTION", master.get("DESCRIPTION", ""))),

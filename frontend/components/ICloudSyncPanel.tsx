@@ -1,15 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Archive, RotateCcw } from 'lucide-react'
+import ICloudHistoryPanel from '@/components/ICloudHistoryPanel'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
 
 type LinkedSeries = {
     id: string; uid: string; title: string; student: string | null;
-    student_name: string; error: string; occurrences: number
+    student_name: string; error: string; occurrences: number; requires_assignment: boolean; dismissed: boolean
 }
-type StudentChoice = { id: string; name: string }
+type StudentChoice = { id: string; name: string; contract_start_date: string | null }
 type SyncPayload = {
     imported: number; exported: number; cancelled?: number; unassigned: number; conflicts: number;
     students: StudentChoice[]; series: LinkedSeries[]
@@ -76,8 +77,24 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
         }
     }
 
-    const pending = rows.filter(item => !item.student)
-    const problems = rows.filter(item => item.student && item.error)
+    const [noticeBusy, setNoticeBusy] = useState<string | null>(null)
+    const notice = async (item: LinkedSeries, action: 'dismiss' | 'restore') => {
+        setNoticeBusy(item.id)
+        try {
+            const { data } = await api.post<{ series: LinkedSeries[]; students: StudentChoice[] }>(
+                '/core/calendar/icloud/series/' + item.id + '/notice/', { action })
+            setRows(data.series || [])
+            setStudents(data.students || [])
+        } catch {
+            toast.error('Meldung konnte nicht geändert werden.')
+        } finally { setNoticeBusy(null) }
+    }
+    const pending = rows.filter(item => !item.dismissed && item.requires_assignment)
+    const problems = rows.filter(item => !item.dismissed && !item.requires_assignment && item.error)
+    const archived = rows.filter(item => item.dismissed)
+    const archiveButton = (item: LinkedSeries) => <button type="button" disabled={noticeBusy !== null}
+        onClick={() => void notice(item, 'dismiss')} title="Meldung archivieren" aria-label={'Meldung archivieren: ' + item.title}
+        className="inline-flex items-center gap-1 text-xs text-gray-600 rounded border border-gray-300 px-2 py-1 bg-white"><Archive className="h-3.5 w-3.5" /> Archivieren</button>
 
     return (
         <div className="mt-5 space-y-4 border-t border-gray-200 pt-5">
@@ -103,6 +120,9 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                 </div>
             )}
 
+            {enabled && <ICloudHistoryPanel students={students} />}
+            <details className="space-y-3 rounded-lg border border-gray-200 p-3">
+                <summary className="cursor-pointer text-sm font-semibold text-gray-700">Synchronisationsmeldungen ({pending.length + problems.length})</summary>
             {pending.length > 0 && (
                 <div className="space-y-3">
                     <p className="text-sm font-semibold text-amber-800">
@@ -110,7 +130,9 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                     </p>
                     {pending.map(item => (
                         <div key={item.id} className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                            <p className="text-sm font-semibold text-gray-900">{item.title || 'Ohne Titel'}</p>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-sm font-semibold text-gray-900">{item.title || 'Ohne Titel'}</p>{archiveButton(item)}
+                            </div>
                             <p className="text-xs text-gray-600">{item.uid}</p>
                             <div className="flex flex-wrap gap-2">
                                 <select value={choices[item.id] || ''}
@@ -141,7 +163,9 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                     </p>
                     {problems.map(item => (
                         <div key={item.id} className="mt-3 space-y-2">
-                            <p className="whitespace-pre-line"><strong>{item.title}:</strong> {item.error}</p>
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                                <p className="whitespace-pre-line"><strong>{item.title}:</strong> {item.error}</p>{archiveButton(item)}
+                            </div>
                             {item.error.includes('Konflikt:') && (
                                 <div className="flex flex-wrap gap-2">
                                     <button type="button" disabled={resolving !== null || assigning !== null}
@@ -161,6 +185,16 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                 </div>
             )}
 
+            {pending.length + problems.length === 0 && <p className="text-xs text-gray-500">Keine offenen Meldungen.</p>}
+            </details>
+            {archived.length > 0 && <details className="rounded-lg border border-gray-200 p-3 space-y-2">
+                <summary className="cursor-pointer text-sm font-medium text-gray-600">Archivierte Meldungen ({archived.length})</summary>
+                {archived.map(item => <div key={item.id} className="flex items-center justify-between gap-2 text-sm border-t pt-2">
+                    <div><strong>{item.title}</strong><p className="text-xs text-gray-500">{item.error}</p></div>
+                    <button type="button" disabled={noticeBusy !== null} onClick={() => void notice(item, 'restore')}
+                        className="inline-flex items-center gap-1 text-xs rounded border px-2 py-1"><RotateCcw className="h-3.5 w-3.5" /> Wiederherstellen</button>
+                </div>)}
+            </details>}
             {rows.length > 0 && (
                 <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
                     <span>{rows.length} verknüpfte Kalender-Serien / Termine</span>

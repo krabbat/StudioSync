@@ -48,8 +48,9 @@ from apps.core.views.home_assistant import HomeAssistantConnectionView
 from apps.core.views.icloud_calendar import ICloudCalendarListView, ICloudCalendarWriteTestView
 from apps.core.views.icloud_sync import (
     ICloudSyncView, ICloudSeriesView, ICloudSeriesAssignView, ICloudSeriesCreateView,
-    ICloudSeriesResolveView,
+    ICloudSeriesResolveView, ICloudSeriesNoticeView,
 )
+from apps.core.views.icloud_history import ICloudHistoryView
 from config.routers import OptionalSlashRouter
 
 router = OptionalSlashRouter()
@@ -83,6 +84,8 @@ urlpatterns = (
         re_path(r"^calendar/icloud/calendars/?$", ICloudCalendarListView.as_view(), name="icloud-calendars"),
         re_path(r"^calendar/icloud/test/?$", ICloudCalendarWriteTestView.as_view(), name="icloud-write-test"),
         re_path(r"^calendar/icloud/sync/?$", ICloudSyncView.as_view(), name="icloud-sync"),
+        re_path(r"^calendar/icloud/history/?$", ICloudHistoryView.as_view(), name="icloud-history"),
+        re_path(r"^calendar/icloud/series/(?P<series_id>[0-9a-fA-F-]{36})/notice/?$", ICloudSeriesNoticeView.as_view(), name="icloud-series-notice"),
         re_path(r"^calendar/icloud/series/?$", ICloudSeriesView.as_view(), name="icloud-series"),
         re_path(r"^calendar/icloud/series/create/?$", ICloudSeriesCreateView.as_view(), name="icloud-series-create"),
         re_path(r"^calendar/icloud/series/(?P<series_id>[0-9a-fA-F-]{36})/assign/?$", ICloudSeriesAssignView.as_view(), name="icloud-series-assign"),

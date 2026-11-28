@@ -7,7 +7,7 @@ from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework import status
 from rest_framework.response import Response
 
-from apps.core.models import Student, Teacher
+from apps.core.models import Student, Teacher, TeachingContract
 from apps.core.views.icloud_calendar import _AdminICloudView, ICloudSetupError
 from apps.lessons.icloud_sync import (
     LOCAL_TZ, _default_teacher, _raw, _hash, _lesson_signature,
@@ -24,6 +24,11 @@ def _studio(request):
     return request.user.owned_studios.order_by("id").first()
 
 
+def _notice_key(series):
+    return _hash("|".join((series.title, series.last_error, series.remote_hash,
+                          str(series.student_id or ""), str(bool(series.group_booking)))))
+
+
 def _series_payload(user):
     studio = user.owned_studios.order_by("id").first()
     students = Student.objects.filter(studio=studio).select_related("user").order_by(
@@ -34,9 +39,13 @@ def _series_payload(user):
     series = ICloudCalendarSeries.objects.filter(
         user=user, studio=studio, calendar_url=target
     ).select_related("student__user", "teacher__user").order_by("title")
+    starts = dict(TeachingContract.objects.filter(student__studio=studio).values_list(
+        "student_id", "contract_start_date"
+    ))
     return {
         "students": [
-            {"id": str(student.id), "name": student.user.get_full_name()}
+            {"id": str(student.id), "name": student.user.get_full_name(),
+             "contract_start_date": starts[student.id].isoformat() if student.id in starts else None}
             for student in students
         ],
         "series": [
@@ -48,6 +57,8 @@ def _series_payload(user):
                 "student_name": item.student.user.get_full_name() if item.student else item.group_booking.get("name", ""),
                 "teacher": str(item.teacher_id) if item.teacher_id else None,
                 "error": item.last_error,
+                "requires_assignment": not item.student_id and not item.group_booking and item.last_error == "Schüler zuordnen",
+                "dismissed": bool(item.dismissed_notice and item.dismissed_notice == _notice_key(item)),
                 "occurrences": item.occurrences.count(),
             }
             for item in series
@@ -57,6 +68,21 @@ def _series_payload(user):
 
 class ICloudSeriesView(_AdminICloudView):
     def get(self, request):
+        return Response(_series_payload(request.user))
+
+
+class ICloudSeriesNoticeView(_AdminICloudView):
+    def post(self, request, series_id):
+        series = ICloudCalendarSeries.objects.filter(
+            id=series_id, user=request.user, studio=_studio(request),
+        ).first()
+        if not series:
+            return Response({"detail": "Terminserie nicht gefunden."}, status=404)
+        action = request.data.get("action")
+        if action not in ("dismiss", "restore"):
+            return Response({"detail": "Unbekannte Aktion."}, status=400)
+        series.dismissed_notice = _notice_key(series) if action == "dismiss" else ""
+        series.save(update_fields=["dismissed_notice"])
         return Response(_series_payload(request.user))
 
 

@@ -467,6 +467,7 @@ class ICloudCalendarSeries(models.Model):
         related_name="icloud_series"
     )
     last_error = models.TextField(blank=True)
+    dismissed_notice = models.CharField(max_length=64, blank=True, default="")
     last_synced_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
