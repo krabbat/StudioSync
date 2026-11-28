@@ -1,18 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Search } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import api from '@/services/api'
 
 type StudentChoice = { id: string; name: string; contract_start_date: string | null }
-type Result = { title: string; count: number; first_date: string | null; dates: { date: string; count: number }[] }
+type CalendarChoice = { name: string; url: string }
+type Result = { title: string; calendar_name: string; count: number; first_date: string | null; dates: { date: string; count: number }[] }
 const field = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm'
 
-export default function ICloudHistoryPanel({ students, studentsLoading, studentsError }: {
-    students: StudentChoice[]; studentsLoading: boolean; studentsError: boolean
+export default function ICloudHistoryPanel({ students, studentsLoading, studentsError, syncCalendarUrl }: {
+    students: StudentChoice[]; studentsLoading: boolean; studentsError: boolean; syncCalendarUrl?: string
 }) {
     const [title, setTitle] = useState('')
+    const [calendars, setCalendars] = useState<CalendarChoice[]>([])
+    const [calendarUrl, setCalendarUrl] = useState('')
+    const [calendarsLoading, setCalendarsLoading] = useState(false)
+    const [calendarError, setCalendarError] = useState('')
+    const loadCalendars = useCallback(async () => {
+        setCalendarsLoading(true); setCalendarError('')
+        try {
+            const { data } = await api.get<{ calendars: CalendarChoice[] }>('/core/calendar/icloud/calendars/')
+            const sync = (syncCalendarUrl || '').replace(/\/$/, '')
+            const choices = (data.calendars || []).filter(c => c.url.replace(/\/$/, '') !== sync)
+            setCalendars(choices)
+            setCalendarUrl(previous => {
+                if (choices.some(c => c.url === previous)) return previous
+                const standard = choices.filter(c => ['standard', 'standardkalender'].includes(c.name.trim().toLowerCase()))
+                return standard.length === 1 ? standard[0].url : ''
+            })
+        } catch (e: any) {
+            setCalendarError(e?.response?.data?.detail || 'Apple-Kalender konnten nicht geladen werden.')
+            setCalendars([]); setCalendarUrl('')
+        } finally { setCalendarsLoading(false) }
+    }, [syncCalendarUrl])
+    useEffect(() => { void loadCalendars() }, [loadCalendars])
     const [result, setResult] = useState<Result | null>(null)
     const [studentId, setStudentId] = useState('')
     const [queryError, setQueryError] = useState('')
@@ -24,9 +47,10 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
     const currentStart = saved?.studentId === studentId ? saved.start : student?.contract_start_date
     const germanDate = (date: string) => date.split('-').reverse().join('.')
     const query = async () => {
+        if (!calendarUrl) return
         setResult(null); setQueryError(''); setBusy('query')
         try {
-            const { data } = await api.post<Result>('/core/calendar/icloud/history/', { title: title.trim() })
+            const { data } = await api.post<Result>('/core/calendar/icloud/history/', { title: title.trim(), calendar_url: calendarUrl })
             setResult(data)
         } catch (e: any) {
             const status = e?.response?.status
@@ -54,10 +78,23 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
     return <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
         <h4 className="text-sm font-semibold">Bisherige Unterrichtsstunden aus Apple-Kalender</h4>
         <p className="text-xs text-gray-500">Liest vergangene, nicht abgesagte Termine mit genau diesem Namen. Serien und verschobene Einzeltermine werden berücksichtigt. Der Apple-Kalender wird nicht verändert.</p>
+        <div className="space-y-1">
+            <label className="block text-sm font-medium">Ursprünglicher Apple-Kalender
+                <select className={field + ' mt-1'} value={calendarUrl} disabled={busy !== null || calendarsLoading}
+                    onChange={e => {setCalendarUrl(e.target.value);setResult(null);setQueryError('')}}>
+                    <option value="">{calendarsLoading ? 'Kalender werden geladen…' : 'Kalender auswählen'}</option>
+                    {calendars.map(c => <option key={c.url} value={c.url}>{c.name}</option>)}
+                </select>
+            </label>
+            <button type="button" className="text-xs text-indigo-700 underline" disabled={calendarsLoading || busy !== null}
+                onClick={() => {setResult(null);void loadCalendars()}}>Kalenderliste aktualisieren</button>
+            {calendarError && <p className="text-sm text-red-700" role="alert">{calendarError}</p>}
+            <p className="text-xs text-gray-500">Nur lesender Zugriff. Der Synchronisationskalender MUSart Unterricht bleibt unverändert.</p>
+        </div>
         <label className="block text-sm font-medium">Termin-Name
             <input className={field + ' mt-1'} value={title} maxLength={500} disabled={busy !== null} onChange={e => {setTitle(e.target.value);setResult(null);setQueryError('')}} />
         </label>
-        <button type="button" disabled={!title.trim() || busy !== null} onClick={() => void query()}
+        <button type="button" disabled={!title.trim() || !calendarUrl || calendarsLoading || busy !== null} onClick={() => void query()}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {busy === 'query' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Abfragen
         </button>
@@ -71,7 +108,7 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
         {!studentsError && !studentsLoading && !students.length && <p className="text-xs text-gray-500">Keine Schüler vorhanden.</p>}
         {queryError && <p className="text-sm text-red-700" role="alert">{queryError}</p>}
         {result && <div className="space-y-3 border-t pt-3">
-            <p className="text-sm"><strong>{result.count}</strong> vergangene Termine für „{result.title}“ gefunden.</p>
+            <p className="text-sm"><strong>{result.count}</strong> vergangene Termine für „{result.title}“ gefunden{result.calendar_name ? ' in „' + result.calendar_name + '“' : ''}.</p>
             <p className="text-sm">Erster Unterrichtstermin: <strong>{firstDate ? germanDate(firstDate) : 'Kein Termin gefunden'}</strong></p>
             {result.dates.length > 0 && <details className="text-xs text-gray-600"><summary className="cursor-pointer">Gefundene Termine anzeigen</summary>
                 <div className="max-h-48 overflow-y-auto mt-2">{result.dates.map(d => <div key={d.date}>{d.date.split('-').reverse().join('.')}{d.count > 1 ? ' (' + d.count + ' Termine)' : ''}</div>)}</div>

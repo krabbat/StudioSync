@@ -16,7 +16,7 @@ type SyncPayload = {
     students: StudentChoice[]; series: LinkedSeries[]
 }
 
-export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
+export default function ICloudSyncPanel({ enabled, syncCalendarUrl }: { enabled: boolean; syncCalendarUrl?: string }) {
     const [rows, setRows] = useState<LinkedSeries[]>([])
     const [students, setStudents] = useState<StudentChoice[]>([])
     const [studentsLoading, setStudentsLoading] = useState(true)
@@ -126,7 +126,7 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                 </div>
             )}
 
-            {enabled && <ICloudHistoryPanel students={students} studentsLoading={studentsLoading} studentsError={studentsError} />}
+            {enabled && <ICloudHistoryPanel students={students} studentsLoading={studentsLoading} studentsError={studentsError} syncCalendarUrl={syncCalendarUrl} />}
             <details className="space-y-3 rounded-lg border border-gray-200 p-3">
                 <summary className="cursor-pointer text-sm font-semibold text-gray-700">Synchronisationsmeldungen ({pending.length + problems.length})</summary>
             {pending.length > 0 && (

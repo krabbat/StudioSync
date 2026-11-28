@@ -174,7 +174,7 @@ export default function ICloudCalendarSettings() {
                         <CheckCircle2 className="h-4 w-4" /> iCloud-Kalender ist für lesenden und schreibenden Zugriff bereit.
                     </p>
                 )}
-                <ICloudSyncPanel enabled={Boolean(saved.icloud_app_password_set && saved.icloud_calendar_url)} />
+                <ICloudSyncPanel enabled={Boolean(saved.icloud_app_password_set && saved.icloud_calendar_url)} syncCalendarUrl={saved.icloud_calendar_url} />
             </div>
         </section>
     )

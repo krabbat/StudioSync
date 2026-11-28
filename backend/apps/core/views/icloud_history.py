@@ -58,13 +58,19 @@ class ICloudHistoryView(_AdminICloudView):
         if not title or len(title) > 500:
             return Response({"detail": "Bitte einen gültigen Terminnamen eingeben."}, status=400)
         try:
-            target = _allowed_calendar_url(_settings(request.user).get("icloud_calendar_url") or "")
+            source = str(request.data.get("calendar_url") or "").strip()
+            if not source:
+                raise ICloudSetupError("Bitte den ursprünglichen Apple-Kalender für die historische Abfrage auswählen.")
+            target = _allowed_calendar_url(source)
+            if target.rstrip("/") == str(_settings(request.user).get("icloud_calendar_url") or "").rstrip("/"):
+                raise ICloudSetupError("Bitte einen anderen Kalender als den laufenden MUSart-Synchronisationskalender auswählen.")
             username, password = _credentials(request.user)
             with _connect(username, password) as client:
-                if target not in {row["url"] for row in _discover(client)}:
-                    raise ICloudSetupError("Der iCloud-Kalender wurde nicht gefunden.")
+                calendar = next((row for row in _discover(client) if row["url"] == target), None)
+                if calendar is None:
+                    raise ICloudSetupError("Der ausgewählte iCloud-Kalender wurde nicht gefunden.")
                 dates = historical_dates(client.calendar(url=target), title)
-            return Response({"title": title, "dates": dates, "count": sum(row["count"] for row in dates),
+            return Response({"title": title, "calendar_name": calendar.get("name", ""), "dates": dates, "count": sum(row["count"] for row in dates),
                              "first_date": dates[0]["date"] if dates else None})
         except ICloudSetupError as exc:
             return Response({"detail": str(exc)}, status=400)

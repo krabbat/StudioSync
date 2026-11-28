@@ -61,6 +61,7 @@ def test_history_api_is_read_only_and_admin_only(authenticated_client, teacher_a
         "icloud_calendar_url": url,
     }}
     admin_user.save(update_fields=["preferences"])
+    source = "https://p12-caldav.icloud.com/123/calendars/standard/"
     calendar, now = fixture_calendar()
     client = MagicMock()
     client.calendar.return_value = calendar
@@ -68,11 +69,18 @@ def test_history_api_is_read_only_and_admin_only(authenticated_client, teacher_a
     context.__enter__.return_value = client
     endpoint = "/api/core/calendar/icloud/history/"
     with patch("apps.core.views.icloud_history._connect", return_value=context), patch(
-        "apps.core.views.icloud_history._discover", return_value=[{"url": url}]
+        "apps.core.views.icloud_history._discover", return_value=[
+            {"url": url, "name": "MUSart Unterricht"}, {"url": source, "name": "Standard"}
+        ]
     ), patch("apps.core.views.icloud_history.timezone.now", return_value=now):
-        result = authenticated_client.post(endpoint, {"title": "Test Schüler"}, format="json")
+        assert authenticated_client.post(endpoint, {"title": "Test Schüler"}, format="json").status_code == 400
+        assert authenticated_client.post(endpoint, {"title": "Test Schüler", "calendar_url": url}, format="json").status_code == 400
+        assert authenticated_client.post(endpoint, {"title": "Test Schüler", "calendar_url": source + "unknown/"}, format="json").status_code == 400
+        result = authenticated_client.post(endpoint, {"title": "Test Schüler", "calendar_url": source}, format="json")
     assert result.status_code == 200, result.data
     assert result.data["count"] == 3
+    assert result.data["calendar_name"] == "Standard"
+    client.calendar.assert_called_once_with(url=source)
     assert result.data["first_date"] == "2024-11-01"
     assert ICloudCalendarSeries.objects.count() == 0
     assert teacher_authenticated_client.post(endpoint, {"title": "Test Schüler"}, format="json").status_code == 403
