@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from icalendar import Calendar, Event
 
-from apps.core.views.icloud_history import historical_dates
+from apps.core.views.icloud_history import historical_dates, historical_matches
 from apps.lessons.icloud_sync import LOCAL_TZ
 from apps.lessons.models import ICloudCalendarSeries
 
@@ -80,6 +80,9 @@ def test_history_api_is_read_only_and_admin_only(authenticated_client, teacher_a
     assert result.status_code == 200, result.data
     assert result.data["count"] == 3
     assert result.data["calendar_name"] == "Standard"
+    assert result.data["mode"] == "exact"
+    assert result.data["matches"] == [{"title": "Test Schüler", "count": 3,
+        "first_date": "2024-11-01", "dates": result.data["dates"]}]
     client.calendar.assert_called_once_with(url=source)
     assert result.data["first_date"] == "2024-11-01"
     assert ICloudCalendarSeries.objects.count() == 0
@@ -106,3 +109,37 @@ def test_notice_archive_restore_does_not_delete_series(authenticated_client, adm
     series.save(update_fields=["last_error"])
     result = authenticated_client.get("/api/core/calendar/icloud/series/")
     assert result.data["series"][0]["dismissed"] is False
+
+
+def test_partial_title_search_groups_actual_titles_and_deduplicates():
+    calendar, now = fixture_calendar()
+    data = Calendar.from_ical(calendar.events.return_value[0].data)
+    # Rename a moved occurrence independently of the series master.
+    for event in data.walk("VEVENT"):
+        if event.get("RECURRENCE-ID") and not event.get("STATUS"):
+            event["SUMMARY"] = "Test Schüler – Klavier"
+    calendar.events.return_value[0].data = data.to_ical()
+    other = Calendar()
+    other.add("prodid", "-//Test//")
+    other.add("version", "2.0")
+    event = Event()
+    event.add("uid", "other@example.org")
+    event.add("summary", "Test Andere Person")
+    event.add("dtstamp", now)
+    event.add("dtstart", now - timedelta(days=3))
+    event.add("dtend", now - timedelta(days=3) + timedelta(minutes=45))
+    other.add_component(event)
+    resource = MagicMock()
+    resource.data = other.to_ical()
+    calendar.events.return_value += [resource, resource]
+    exact = historical_matches(calendar, "TEST SCHÜLER", now)
+    assert sum(d["count"] for d in exact["dates"]) == 2
+    assert historical_matches(calendar, "Test", now)["matches"] == []
+    partial = historical_matches(calendar, "test", now, mode="partial")
+    assert [(g["title"], g["count"], g["first_date"]) for g in partial["matches"]] == [
+        ("Test Andere Person", 1, "2024-11-28"),
+        ("Test Schüler", 2, "2024-11-01"),
+        ("Test Schüler – Klavier", 1, "2024-11-16"),
+    ]
+    assert sum(d["count"] for d in partial["dates"]) == 4
+    assert historical_matches(calendar, "unbekannt", now, mode="partial")["matches"] == []

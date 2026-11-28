@@ -7,13 +7,18 @@ import api from '@/services/api'
 
 type StudentChoice = { id: string; name: string; contract_start_date: string | null }
 type CalendarChoice = { name: string; url: string }
-type Result = { title: string; calendar_name: string; count: number; first_date: string | null; dates: { date: string; count: number }[] }
+type SearchMode = 'exact' | 'partial'
+type DateCount = { date: string; count: number }
+type TitleMatch = { title: string; count: number; first_date: string; dates: DateCount[] }
+type Result = { title: string; mode: SearchMode; calendar_name: string; count: number; first_date: string | null; dates: DateCount[]; matches: TitleMatch[] }
 const field = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm'
 
 export default function ICloudHistoryPanel({ students, studentsLoading, studentsError, syncCalendarUrl }: {
     students: StudentChoice[]; studentsLoading: boolean; studentsError: boolean; syncCalendarUrl?: string
 }) {
     const [title, setTitle] = useState('')
+    const [mode, setMode] = useState<SearchMode>('exact')
+    const [selectedTitles, setSelectedTitles] = useState<string[]>([])
     const [calendars, setCalendars] = useState<CalendarChoice[]>([])
     const [calendarUrl, setCalendarUrl] = useState('')
     const [calendarsLoading, setCalendarsLoading] = useState(false)
@@ -41,21 +46,30 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
     const [queryError, setQueryError] = useState('')
     const [busy, setBusy] = useState<'query' | 'save' | null>(null)
     const student = students.find(s => s.id === studentId)
-    const firstDate = result?.first_date || result?.dates[0]?.date || null
-    const total = result?.count || 0
+    const selectedMatches = (result?.matches || []).filter(match => selectedTitles.includes(match.title))
+    const countsByDay = new Map<string, number>()
+    for (const match of selectedMatches) {
+        for (const day of match.dates) countsByDay.set(day.date, (countsByDay.get(day.date) || 0) + day.count)
+    }
+    const selectedDates = Array.from(countsByDay, ([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date))
+    const firstDate = selectedDates[0]?.date || null
+    const total = selectedDates.reduce((sum, day) => sum + day.count, 0)
     const [saved, setSaved] = useState<{ studentId: string; start: string } | null>(null)
     const currentStart = saved?.studentId === studentId ? saved.start : student?.contract_start_date
     const germanDate = (date: string) => date.split('-').reverse().join('.')
     const query = async () => {
         if (!calendarUrl) return
-        setResult(null); setQueryError(''); setBusy('query')
+        setResult(null); setSelectedTitles([]); setQueryError(''); setBusy('query')
         try {
-            const { data } = await api.post<Result>('/core/calendar/icloud/history/', { title: title.trim(), calendar_url: calendarUrl })
+            const { data } = await api.post<Result>('/core/calendar/icloud/history/', { title: title.trim(), calendar_url: calendarUrl, mode })
+            if (!Array.isArray(data.matches)) throw new Error('Historische Trefferliste fehlt')
             setResult(data)
+            // Partial-name results may include other pupils; require explicit selection.
+            setSelectedTitles(mode === 'exact' ? data.matches.map(match => match.title) : [])
         } catch (e: any) {
             const status = e?.response?.status
             const detail = e?.response?.data?.detail
-            const message = typeof detail === 'string' ? detail : status === 404
+            const message = e?.message === 'Historische Trefferliste fehlt' ? 'Bitte das Backend auf die aktuelle Version aktualisieren.' : typeof detail === 'string' ? detail : status === 404
                 ? 'Die Kalenderabfrage ist im laufenden Backend nicht verfügbar (HTTP 404).'
                 : status ? 'Kalenderabfrage fehlgeschlagen (HTTP ' + status + ').'
                     : 'Kalenderabfrage fehlgeschlagen: Keine Antwort vom Server.'
@@ -77,7 +91,7 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
     }
     return <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
         <h4 className="text-sm font-semibold">Bisherige Unterrichtsstunden aus Apple-Kalender</h4>
-        <p className="text-xs text-gray-500">Liest vergangene, nicht abgesagte Termine mit genau diesem Namen. Serien und verschobene Einzeltermine werden berücksichtigt. Der Apple-Kalender wird nicht verändert.</p>
+        <p className="text-xs text-gray-500">Liest vergangene, nicht abgesagte Termine nach exaktem Namen oder Teilnamen. Serien und verschobene Einzeltermine werden berücksichtigt. Der Apple-Kalender wird nicht verändert.</p>
         <div className="space-y-1">
             <label className="block text-sm font-medium">Ursprünglicher Apple-Kalender
                 <select className={field + ' mt-1'} value={calendarUrl} disabled={busy !== null || calendarsLoading}
@@ -94,6 +108,16 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
         <label className="block text-sm font-medium">Termin-Name
             <input className={field + ' mt-1'} value={title} maxLength={500} disabled={busy !== null} onChange={e => {setTitle(e.target.value);setResult(null);setQueryError('')}} />
         </label>
+        <fieldset className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <legend className="mb-2 font-medium">Suchmodus</legend>
+            {([{ value: 'exact', label: 'Exakter Terminname' }, { value: 'partial', label: 'Teilname' }] as const).map(option =>
+                <label key={option.value} className="flex min-h-9 cursor-pointer items-center gap-2">
+                    <input type="radio" name="icloud-history-mode" value={option.value} checked={mode === option.value}
+                        disabled={busy !== null} onChange={() => {setMode(option.value);setResult(null);setSelectedTitles([]);setQueryError('')}} />
+                    {option.label}
+                </label>
+            )}
+        </fieldset>
         <button type="button" disabled={!title.trim() || !calendarUrl || calendarsLoading || busy !== null} onClick={() => void query()}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {busy === 'query' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Abfragen
@@ -109,15 +133,33 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
         {queryError && <p className="text-sm text-red-700" role="alert">{queryError}</p>}
         {result && <div className="space-y-3 border-t pt-3">
             <p className="text-sm"><strong>{result.count}</strong> vergangene Termine für „{result.title}“ gefunden{result.calendar_name ? ' in „' + result.calendar_name + '“' : ''}.</p>
-            <p className="text-sm">Erster Unterrichtstermin: <strong>{firstDate ? germanDate(firstDate) : 'Kein Termin gefunden'}</strong></p>
-            {result.dates.length > 0 && <details className="text-xs text-gray-600"><summary className="cursor-pointer">Gefundene Termine anzeigen</summary>
-                <div className="max-h-48 overflow-y-auto mt-2">{result.dates.map(d => <div key={d.date}>{d.date.split('-').reverse().join('.')}{d.count > 1 ? ' (' + d.count + ' Termine)' : ''}</div>)}</div>
+            {result.matches.length > 0 && <fieldset className="space-y-1">
+                <legend className="mb-1 text-sm font-semibold">Terminnamen auswählen</legend>
+                {result.mode === 'partial' && <p className="text-xs text-gray-500">Nur die zum Schüler gehörenden Terminnamen markieren.</p>}
+                <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+                    {result.matches.map(match => <label key={match.title} className="flex min-h-12 cursor-pointer items-center gap-3 px-3 py-2 text-sm">
+                        <input type="checkbox" className="h-5 w-5 shrink-0 accent-primary" checked={selectedTitles.includes(match.title)}
+                            disabled={busy !== null} onChange={e => {
+                                const checked = e.target.checked
+                                setSelectedTitles(previous => checked ? [...previous, match.title] : previous.filter(title => title !== match.title))
+                            }} />
+                        <span className="min-w-0 flex-1 break-words">{match.title}<span className="block text-xs text-gray-500">Seit {germanDate(match.first_date)}</span></span>
+                        <span className="shrink-0 font-semibold tabular-nums">{match.count}</span>
+                    </label>)}
+                </div>
+            </fieldset>}
+            <div className="rounded-lg bg-gray-50 p-3 space-y-1 text-sm">
+                <p>Ausgewählte Unterrichtsstunden: <strong>{total}</strong></p>
+                <p>Erster ausgewählter Unterrichtstermin: <strong>{firstDate ? germanDate(firstDate) : '–'}</strong></p>
+            </div>
+            {selectedDates.length > 0 && <details className="text-xs text-gray-600"><summary className="cursor-pointer">Ausgewählte Termine anzeigen</summary>
+                <div className="max-h-48 overflow-y-auto mt-2">{selectedDates.map(d => <div key={d.date}>{germanDate(d.date)}{d.count > 1 ? ' (' + d.count + ' Termine)' : ''}</div>)}</div>
             </details>}
             {student && (currentStart ? <p className="text-sm text-gray-600">Bisheriger Vertragsbeginn: {germanDate(currentStart)}. {firstDate && <>Neuer Vertragsbeginn: <strong>{germanDate(firstDate)}</strong>, Gesamtstundenzahl: <strong>{total}</strong>.</>}</p> : <p className="text-sm text-amber-700">Bitte zuerst einen Vertrag mit Unterrichtskonditionen hinterlegen.</p>)}
-            {!total && <p className="text-xs text-gray-500">Keine passenden Termine. Die bisherigen Daten werden nicht überschrieben.</p>}
+            {!total && <p className="text-xs text-gray-500">{result.count ? 'Bitte mindestens einen passenden Terminnamen auswählen.' : 'Keine passenden Termine.'} Die bisherigen Daten werden nicht überschrieben.</p>}
         </div>}
         <button type="button" disabled={!student?.contract_start_date || !result || !total || !firstDate || busy !== null || studentsLoading || studentsError} onClick={() => void apply()}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Vertragsbeginn und Gesamtstundenzahl übernehmen</button>
-        <p className="text-xs text-gray-500">Übernimmt den ersten gefundenen Termin als Vertragsbeginn und alle gefundenen vergangenen Termine als Gesamtstundenzahl. Der Vertragsjahresbeginn bleibt unverändert. Bei Gruppentiteln bitte die tatsächliche Teilnahme des gewählten Schülers prüfen.</p>
+        <p className="text-xs text-gray-500">Übernimmt den ersten ausgewählten Termin als Vertragsbeginn und die Summe der ausgewählten vergangenen Termine als Gesamtstundenzahl. Der Vertragsjahresbeginn bleibt unverändert. Bei Gruppentiteln bitte die tatsächliche Teilnahme des gewählten Schülers prüfen.</p>
     </div>
 }
