@@ -158,6 +158,8 @@
     "positionPaid": "Bezahlt: {amount}",
     "discard": "Entwurf verwerfen",
     "confirmDiscard": "Diesen unversendeten Rechnungsentwurf verwerfen? Die Monatsbeiträge können danach neu abgerechnet werden.",
+    "deleteInvoice": "Rechnung löschen",
+    "confirmDeleteIssued": "Diese bereits versendete Rechnung löschen? Die E-Mail beim Empfänger bleibt erhalten. Die Monatsbeiträge können danach neu abgerechnet werden.",
     "share": "Eigener Rechnungsanteil",
     "familyInvoice": "Familienrechnung",
     "addressHint": "Gemeinsame Rechnungsanschrift: Familienanschrift.",

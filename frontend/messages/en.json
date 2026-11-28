@@ -158,6 +158,8 @@
     "positionPaid": "Paid: {amount}",
     "discard": "Discard draft",
     "confirmDiscard": "Discard this unsent draft? The monthly fees can then be billed again.",
+    "deleteInvoice": "Delete invoice",
+    "confirmDeleteIssued": "Delete this already emailed invoice? The recipient's email will remain. The monthly fees can then be billed again.",
     "share": "Student's invoice share",
     "familyInvoice": "Family invoice",
     "addressHint": "Shared invoice address: family address.",

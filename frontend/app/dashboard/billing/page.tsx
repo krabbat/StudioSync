@@ -314,9 +314,9 @@ export default function BillingPage() {
             setViewingInvoice(previous => previous?.id === invoiceId ? null : previous)
             toast.success(tr('messageInvoiceDeletedSuccessfully'))
             refetchInvoices()
-        } catch (error) {
-            console.error('Failed to delete invoice', error)
-            toast.error(tr('messageFailedToDeleteInvoice'))
+        } catch (error: any) {
+            const detail = error.response?.data?.detail
+            toast.error(typeof detail === 'string' ? detail : tr('messageFailedToDeleteInvoice'))
         }
     }
 

@@ -230,3 +230,32 @@ def test_automatic_family_month_sends_once(studio, student, admin_user):
     assert invoice.sent_at and invoice.total_amount == Decimal("200.00")
     assert BillingRun.objects.get(studio=studio, kind="monthly").items.get().state == "sent"
     assert len(mail.outbox) == 1 and mail.outbox[0].to == ["family@example.org"]
+
+
+@pytest.mark.django_db
+def test_admin_can_delete_unpaid_sent_family_invoice_and_release_months(authenticated_client,
+        teacher_authenticated_client, studio, student, admin_user):
+    family, month = setup_collective_family(studio, student, admin_user)
+    endpoint = "/api/billing/invoices/generate-month/"
+    payload = {"family": str(family.pk), "month": str(month), "send_now": True}
+    with patch("apps.billing.invoice_delivery.assert_public_host"), patch(
+        "apps.billing.invoice_delivery.get_connection", return_value=EmailBackend()
+    ):
+        response = authenticated_client.post(endpoint, payload, format="json")
+        assert response.status_code == 200, response.data
+        row = response.data["invoices"][0]
+        assert row["email_sent"]
+        pk = row["id"]
+        url = f"/api/billing/invoices/{pk}/"
+        assert teacher_authenticated_client.delete(url).status_code == 403
+        assert authenticated_client.delete(url).status_code == 204
+        assert not Invoice.objects.filter(pk=pk).exists()
+        assert not TuitionMonth.objects.filter(invoice_id=pk).exists()
+        assert not TuitionMonth.objects.filter(student__family=family, month=month).exists()
+        # No mail is sent as a side effect of deletion.
+        assert len(mail.outbox) == 1
+        recreated = authenticated_client.post(endpoint, {**payload, "send_now": False}, format="json")
+        assert recreated.status_code == 200, recreated.data
+        assert len(recreated.data["invoices"]) == 1
+        assert not recreated.data["invoices"][0]["email_sent"]
+        assert len(mail.outbox) == 1

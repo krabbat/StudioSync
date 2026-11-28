@@ -75,10 +75,10 @@ export default function FamilyBillingPanel({familyId,individualBilling,members}:
         catch{toast.error(t('actionError'))}finally{setBusy(false)}
     }
     const discard=async(i:Invoice)=>{
-        if(!window.confirm(t('confirmDiscard')))return
+        if(!window.confirm(t(i.email_sent?'confirmDeleteIssued':'confirmDiscard')))return
         setBusy(true)
         try{await api.delete('/billing/invoices/'+i.id+'/');await load();toast.success(t('saved'))}
-        catch{toast.error(t('actionError'))}finally{setBusy(false)}
+        catch(e:any){const detail=e?.response?.data?.detail;toast.error(typeof detail==='string'?detail:t('actionError'))}finally{setBusy(false)}
     }
     const pdf=async(i:Invoice)=>{
         try {
@@ -104,7 +104,7 @@ export default function FamilyBillingPanel({familyId,individualBilling,members}:
                 {i.status!=='cancelled'&&<Button variant="outline" disabled={busy} onClick={()=>void action(i.id,'send')}>{t(i.email_sent?'resend':'send')}</Button>}
                 {i.status!=='cancelled'&&i.payment_status!=='paid'&&<Button variant="outline" disabled={busy} onClick={()=>void action(i.id,'mark-paid')}>{t('markPaid')}</Button>}
                 {i.line_items.some(l=>l.student)&&i.status!=='cancelled'&&i.payment_status!=='paid'&&<Button variant="outline" disabled={busy} onClick={()=>{setPaymentId(i.id);setAllocations({})}}>{t('partialPayment')}</Button>}
-                {i.status==='draft'&&!i.email_sent&&Number(i.payment_remaining)===Number(i.total_amount)&&<Button variant="outline" disabled={busy} onClick={()=>void discard(i)}>{t('discard')}</Button>}
+                {i.status!=='paid'&&i.status!=='partial'&&i.payment_status!=='paid'&&Number(i.payment_remaining)===Number(i.total_amount)&&<Button variant="outline" disabled={busy} onClick={()=>void discard(i)}>{t(i.email_sent?'deleteInvoice':'discard')}</Button>}
                 {i.payment_status==='paid'&&<Button variant="outline" disabled={busy} onClick={()=>void action(i.id,'mark-pending')}>{t('markPending')}</Button>}
             </div>
             {paymentId===i.id&&<div className="border-t pt-3 space-y-2">

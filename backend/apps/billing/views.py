@@ -291,8 +291,13 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             if hasattr(invoice, "block_bill"):
                 raise ValidationError({"detail": "Blockrechnungen sind mit den Unterrichtseinheiten verknüpft und dürfen nicht gelöscht werden."})
             if invoice.tuition_months.exists():
-                if invoice.sent_at or invoice.status != "draft" or invoice.payments.exists() or invoice.amount_paid:
-                    raise ValidationError({"code":"tuition_invoice_protected"})
+                # Unpaid monthly invoices may be removed even after dispatch,
+                # as with manual single-student invoices. Never erase payments.
+                if (invoice.payments.exists() or invoice.amount_paid
+                        or invoice.status in ("paid", "partial")
+                        or invoice.line_items.filter(payment_allocations__isnull=False).exists()):
+                    raise ValidationError({"code": "tuition_invoice_protected",
+                        "detail": "Rechnung mit verbuchten Zahlungen kann nicht gelöscht werden."})
                 invoice.tuition_months.all().delete()
                 invoice.delete()
                 return Response(status=204)
