@@ -204,7 +204,7 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                             <div className="space-y-4">
                                 <div className="flex items-center gap-4 flex-wrap">
-                                    <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight uppercase leading-none">
+                                    <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-none">
                                         {fullName}
                                     </h1>
                                     {student.is_active ? (
