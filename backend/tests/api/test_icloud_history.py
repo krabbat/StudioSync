@@ -85,8 +85,11 @@ def test_history_api_is_read_only_and_admin_only(authenticated_client, teacher_a
     assert result.data["count"] == 3
     assert result.data["calendar_name"] == "Standard"
     assert result.data["mode"] == "exact"
-    assert result.data["matches"] == [{"title": "Test Schüler", "count": 3,
-        "first_date": "2024-11-01", "dates": result.data["dates"]}]
+    match = result.data["matches"][0]
+    assert {key: value for key, value in match.items() if key != "occurrences"} == {
+        "title": "Test Schüler", "count": 3, "first_date": "2024-11-01", "dates": result.data["dates"]}
+    assert len(match["occurrences"]) == 3
+    assert result.data["duplicate_count"] == 0
     assert client.calendar.call_count == 2
     assert all(call.kwargs == {"url": source} for call in client.calendar.call_args_list)
     assert filtered.status_code == 200, filtered.data
@@ -164,5 +167,35 @@ def test_history_start_date_inclusive_uses_moved_occurrence_date(mode, title):
     assert result["matches"][0]["first_date"] == "2024-11-16"
     assert result["matches"][0]["count"] == 2
     assert historical_matches(calendar, title, now, mode=mode, from_date=date(2024, 12, 1)) == {
-        "dates": [], "matches": [],
+        "dates": [], "matches": [], "duplicate_count": 0,
     }
+
+
+def test_duplicate_slots_with_different_uids_are_counted_once_but_distinct_times_remain():
+    calendar, now = fixture_calendar()
+    start = datetime(2024, 11, 1, 15, tzinfo=LOCAL_TZ)
+    for uid, when in [("copy@example.org", start), ("extra@example.org", start + timedelta(hours=2))]:
+        data = Calendar()
+        data.add("prodid", "-//Test//")
+        data.add("version", "2.0")
+        event = Event()
+        event.add("uid", uid)
+        event.add("summary", "Test Schüler")
+        event.add("dtstamp", now)
+        event.add("dtstart", when)
+        event.add("dtend", when + timedelta(minutes=45))
+        data.add_component(event)
+        resource = MagicMock()
+        resource.data = data.to_ical()
+        calendar.events.return_value.append(resource)
+    result = historical_matches(calendar, "Test Schüler", now)
+    assert result["duplicate_count"] == 1
+    assert result["dates"] == [
+        {"date": "2024-11-01", "count": 2},
+        {"date": "2024-11-16", "count": 1},
+        {"date": "2024-11-29", "count": 1},
+    ]
+    rows = result["matches"][0]["occurrences"]
+    assert [row["start"] for row in rows if row["date"] == "2024-11-01"] == [
+        "2024-11-01T15:00:00+01:00", "2024-11-01T17:00:00+01:00",
+    ]

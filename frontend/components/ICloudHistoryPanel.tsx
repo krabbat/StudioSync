@@ -9,8 +9,9 @@ type StudentChoice = { id: string; name: string; contract_start_date: string | n
 type CalendarChoice = { name: string; url: string }
 type SearchMode = 'exact' | 'partial'
 type DateCount = { date: string; count: number }
-type TitleMatch = { title: string; count: number; first_date: string; dates: DateCount[] }
-type Result = { title: string; mode: SearchMode; from_date: string | null; calendar_name: string; count: number; first_date: string | null; dates: DateCount[]; matches: TitleMatch[] }
+type Occurrence = { date: string; start: string; end: string }
+type TitleMatch = { title: string; count: number; first_date: string; dates: DateCount[]; occurrences?: Occurrence[] }
+type Result = { title: string; mode: SearchMode; from_date: string | null; calendar_name: string; count: number; first_date: string | null; dates: DateCount[]; matches: TitleMatch[]; duplicate_count?: number }
 const field = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm'
 
 export default function ICloudHistoryPanel({ students, studentsLoading, studentsError, syncCalendarUrl }: {
@@ -53,11 +54,20 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
         for (const day of match.dates) countsByDay.set(day.date, (countsByDay.get(day.date) || 0) + day.count)
     }
     const selectedDates = Array.from(countsByDay, ([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date))
+    const occurrencesByDay = new Map<string, { title: string; start: string; end: string }[]>()
+    for (const match of selectedMatches) {
+        for (const occurrence of match.occurrences || []) {
+            const rows = occurrencesByDay.get(occurrence.date) || []
+            rows.push({ title: match.title, start: occurrence.start, end: occurrence.end })
+            occurrencesByDay.set(occurrence.date, rows)
+        }
+    }
     const firstDate = selectedDates[0]?.date || null
     const total = selectedDates.reduce((sum, day) => sum + day.count, 0)
     const [saved, setSaved] = useState<{ studentId: string; start: string } | null>(null)
     const currentStart = saved?.studentId === studentId ? saved.start : student?.contract_start_date
     const germanDate = (date: string) => date.split('-').reverse().join('.')
+    const germanTime = (value: string) => new Date(value).toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' })
     const query = async () => {
         if (!calendarUrl) return
         setResult(null); setSelectedTitles([]); setQueryError(''); setBusy('query')
@@ -136,6 +146,7 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
         {queryError && <p className="text-sm text-red-700" role="alert">{queryError}</p>}
         {result && <div className="space-y-3 border-t pt-3">
             <p className="text-sm"><strong>{result.count}</strong> vergangene Termine für „{result.title}“ gefunden{result.calendar_name ? ' in „' + result.calendar_name + '“' : ''}.</p>
+            {!!result.duplicate_count && <p className="text-xs text-gray-600">{result.duplicate_count} doppelte Einträge mit identischem Namen, Beginn und Ende wurden nicht mitgezählt.</p>}
             {result.from_date && <p className="text-xs text-amber-700">Auswertung ab {germanDate(result.from_date)}. Bei der Übernahme wird auch der Vertragsbeginn auf den ersten ausgewählten Termin in diesem Zeitraum gesetzt.</p>}
             {result.matches.length > 0 && <fieldset className="space-y-1">
                 <legend className="mb-1 text-sm font-semibold">Terminnamen auswählen</legend>
@@ -157,7 +168,11 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
                 <p>Erster ausgewählter Unterrichtstermin: <strong>{firstDate ? germanDate(firstDate) : '–'}</strong></p>
             </div>
             {selectedDates.length > 0 && <details className="text-xs text-gray-600"><summary className="cursor-pointer">Ausgewählte Termine anzeigen</summary>
-                <div className="max-h-48 overflow-y-auto mt-2">{selectedDates.map(d => <div key={d.date}>{germanDate(d.date)}{d.count > 1 ? ' (' + d.count + ' Termine)' : ''}</div>)}</div>
+                <div className="max-h-64 overflow-y-auto mt-2 divide-y divide-gray-100">{selectedDates.map(d => <div key={d.date} className="py-1">
+                    <div className={d.count > 1 ? 'font-semibold text-amber-700' : ''}>{germanDate(d.date)}{d.count > 1 ? ' (' + d.count + ' Termine)' : ''}</div>
+                    {(occurrencesByDay.get(d.date) || []).sort((a,b)=>a.start.localeCompare(b.start)).map((o,i) =>
+                        <div key={i} className="pl-3">{germanTime(o.start)}–{germanTime(o.end)} Uhr{o.title ? ' · ' + o.title : ''}</div>)}
+                </div>)}</div>
             </details>}
             {!total && <p className="text-xs text-gray-500">{result.count ? 'Bitte mindestens einen passenden Terminnamen auswählen.' : 'Keine passenden Termine.'} Die bisherigen Daten werden nicht überschrieben.</p>}
         </div>}

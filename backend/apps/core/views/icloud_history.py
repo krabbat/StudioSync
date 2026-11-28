@@ -11,7 +11,7 @@ from apps.core.views.icloud_calendar import (
     _AdminICloudView, _allowed_calendar_url, _connect, _credentials, _discover,
     _settings, ICloudSetupError,
 )
-from apps.lessons.icloud_sync import LOCAL_TZ, _expand, _master_and_overrides, _raw
+from apps.lessons.icloud_sync import LOCAL_TZ, _expand, _key, _master_and_overrides, _raw
 from apps.lessons.icloud_notes import normal
 
 
@@ -60,21 +60,41 @@ def historical_matches(calendar, title, now=None, *, mode="exact", from_date=Non
             matches[(uid, occurrence["rid"])] = (
                 occurrence["title"].strip(),
                 actual_day.isoformat(),
+                occurrence["start"],
+                occurrence["end"],
             )
     grouped = defaultdict(Counter)
+    details = defaultdict(list)
     counts = Counter()
-    for event_title, day in matches.values():
+    # Apple may contain copies of the same appointment with different UIDs
+    # (for example after importing or editing a series). Only coalesce the
+    # same normalized title AND the same absolute start and end.
+    # Separate lessons on the same day remain separate.
+    seen_slots = set()
+    duplicate_count = 0
+    for event_title, day, start, end in matches.values():
+        slot = (normal(event_title), _key(start), _key(end))
+        if slot in seen_slots:
+            duplicate_count += 1
+            continue
+        seen_slots.add(slot)
         grouped[event_title][day] += 1
         counts[day] += 1
+        details[event_title].append({
+            "date": day,
+            "start": start.astimezone(LOCAL_TZ).isoformat(),
+            "end": end.astimezone(LOCAL_TZ).isoformat(),
+        })
 
     def dates_for(counter):
         return [{"date": day, "count": counter[day]} for day in sorted(counter)]
 
     groups = [
-        {"title": name, "count": sum(days.values()), "first_date": min(days), "dates": dates_for(days)}
+        {"title": name, "count": sum(days.values()), "first_date": min(days), "dates": dates_for(days),
+         "occurrences": sorted(details[name], key=lambda item: (item["start"], item["end"]))}
         for name, days in sorted(grouped.items(), key=lambda item: (normal(item[0]), item[0]))
     ]
-    return {"dates": dates_for(counts), "matches": groups}
+    return {"dates": dates_for(counts), "matches": groups, "duplicate_count": duplicate_count}
 
 
 def historical_dates(calendar, title, now=None):
