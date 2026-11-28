@@ -3,6 +3,7 @@ from collections import Counter
 from datetime import datetime
 
 from django.utils import timezone
+from icalendar import Calendar
 from rest_framework.response import Response
 
 from apps.core.views.icloud_calendar import (
@@ -21,10 +22,10 @@ def historical_dates(calendar, title, now=None):
     for item in calendar.events():
         item.load()
         raw = _raw(item.data)
-        _, master, overrides = _master_and_overrides(raw)
-        master_matches = normal(master.get("SUMMARY")) == wanted
-        if not master_matches and not any(normal(e.get("SUMMARY")) == wanted for e in overrides.values()):
+        data = Calendar.from_ical(raw)
+        if not any(e.name == "VEVENT" and normal(e.get("SUMMARY")) == wanted for e in data.walk()):
             continue
+        _, master, _ = _master_and_overrides(raw)
         uid = str(master["UID"])
         for occurrence in _expand(raw, now=now, low=low, high=now):
             if occurrence["cancelled"] or not occurrence["start"] or not occurrence["end"]:
