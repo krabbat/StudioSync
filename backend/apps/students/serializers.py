@@ -54,20 +54,9 @@ class StudentListSerializer(serializers.ModelSerializer):
         return "active" if obj.is_active else "inactive"
 
     def get_next_lesson(self, obj):
-        # This might be N+1 if not careful, but okay for MVP with small lists
-        from apps.lessons.models import Lesson
-
-        next_l = (
-            Lesson.objects.filter(
-                student=obj, status="scheduled", scheduled_start__gte=timezone.now()
-            )
-            .order_by("scheduled_start")
-            .first()
-        )
-
-        if next_l:
-            return next_l.scheduled_start
-        return None
+        from apps.students.lesson_history import next_lesson
+        value = next_lesson(obj)
+        return value.isoformat() if value else None
 
 
 class StudentDetailSerializer(serializers.ModelSerializer):

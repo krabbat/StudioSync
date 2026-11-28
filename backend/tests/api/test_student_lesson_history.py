@@ -33,6 +33,8 @@ def test_profile_history_contract_count_edit_and_next_appointment(authenticated_
     absent = lesson(-2, kind="group", direct=False)
     LessonParticipant.objects.create(lesson=absent, student=student, name_snapshot="Test", status="student_cancelled")
     lesson(1, "cancelled")
+    excluded = lesson(1, "scheduled", kind="group", direct=False)
+    LessonParticipant.objects.create(lesson=excluded, student=student, name_snapshot="Test", status="student_cancelled")
     upcoming = lesson(2, "scheduled", kind="group", direct=False)
     LessonParticipant.objects.create(lesson=upcoming, student=student, name_snapshot="Test")
     lesson(3, "scheduled")
@@ -44,6 +46,12 @@ def test_profile_history_contract_count_edit_and_next_appointment(authenticated_
     assert response.data["shared_lessons_total"] == 2
     from datetime import datetime
     assert datetime.fromisoformat(response.data["next_lesson"]) == upcoming.scheduled_start
+    listing = authenticated_client.get("/api/students/")
+    assert listing.status_code == 200, listing.data
+    rows = listing.data["results"] if isinstance(listing.data, dict) else listing.data
+    listed = next(row for row in rows if str(row["id"]) == str(student.pk))
+    assert listed["next_lesson"] == response.data["next_lesson"]
+    assert datetime.fromisoformat(listed["next_lesson"]) == upcoming.scheduled_start
     before = lesson_account_response(student)["summary"]
     edit = authenticated_client.post(url + "lesson-history/", {"shared_lessons_total": 100}, format="json")
     assert edit.status_code == 200, edit.data
@@ -100,3 +108,31 @@ def test_import_history_updates_contract_start_and_total_atomically(authenticate
     student.refresh_from_db()
     assert contract.contract_start_date == imported_start
     assert student.shared_lessons_delta == 74
+
+
+@pytest.mark.django_db
+def test_list_next_lesson_for_family_participant_without_direct_booking(authenticated_client, studio, teacher, student):
+    from apps.core.models import Family
+    from datetime import datetime
+
+    family = Family.objects.create(studio=studio, name="Testfamilie")
+    student.family = family
+    student.save(update_fields=["family"])
+    when = timezone.now() + timedelta(days=2)
+    appointment = Lesson.objects.create(
+        studio=studio, teacher=teacher, teaching_family=family, lesson_type="group",
+        scheduled_start=when, scheduled_end=when + timedelta(minutes=45), status="scheduled",
+    )
+    participant = LessonParticipant.objects.create(lesson=appointment, student=student, name_snapshot="Test")
+
+    def listed_next():
+        response = authenticated_client.get("/api/students/")
+        assert response.status_code == 200, response.data
+        rows = response.data["results"] if isinstance(response.data, dict) else response.data
+        return next(row for row in rows if str(row["id"]) == str(student.pk))["next_lesson"]
+
+    assert datetime.fromisoformat(listed_next()) == when
+    assert listed_next() == authenticated_client.get(f"/api/students/{student.pk}/").data["next_lesson"]
+    participant.status = "student_cancelled"
+    participant.save(update_fields=["status"])
+    assert listed_next() is None
