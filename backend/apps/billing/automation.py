@@ -70,39 +70,28 @@ def save_settings(studio, data):
     return settings_payload(studio)
 
 
-def test_snapshot(invoice):
-    snapshot = invoice_snapshot(invoice)
-    snapshot["invoice_number"] = "TEST-" + snapshot["invoice_number"]
-    snapshot["notes"] = "TESTRECHNUNG – keine Zahlungsaufforderung. " + snapshot.get("notes", "")
-    snapshot["test_only"] = True
-    return snapshot
-
-
 def prepare_test_items(run):
-    # Reuse the real monthly grouping, calculations and validation. The savepoint
-    # is rolled back BEFORE sending anything. No production invoice or monthly
-    # allocation survives; only the separate test-run items persist.
-    previews = []
-    with transaction.atomic():
-        invoices, skipped = generate_month(run.studio_id, run.service_month)
-        for invoice in invoices:
-            snapshot = test_snapshot(invoice)
-            missing = missing_billing_fields(invoice, snapshot)
-            recipient = snapshot.get("recipient_email", "").strip()
-            error = ""
-            if missing:
-                error = "Fehlende Rechnungsdaten: " + ", ".join(missing)
-            elif recipient.rsplit("@", 1)[-1].casefold() != "musart.de":
-                error = "Testversand ausschließlich an @musart.de."
-            previews.append({
-                "number": snapshot["invoice_number"], "recipient": recipient,
-                "amount": invoice.total_amount, "snapshot": snapshot,
-                "pdf_document": None if error else render_invoice_pdf(snapshot),
-                "state": "error" if error else ("pending" if run.send else "draft"),
-                "error": error,
-            })
-        transaction.set_rollback(True)
-    BillingRunItem.objects.bulk_create([BillingRunItem(run=run, **data) for data in previews])
+    # Real invoice rows, using the same grouping and line items, but without
+    # consuming any production tuition allocation.
+    invoices, skipped = generate_month(run.studio_id, run.service_month, monthly_test=True)
+    for invoice in invoices:
+        snapshot = invoice_snapshot(invoice)
+        recipient = snapshot.get("recipient_email", "").strip()
+        missing = missing_billing_fields(invoice, snapshot)
+        error = ""
+        if missing:
+            error = "Fehlende Rechnungsdaten: " + ", ".join(missing)
+        elif recipient.rsplit("@", 1)[-1].casefold() != "musart.de":
+            error = "Testversand ausschließlich an @musart.de."
+        if error:
+            BillingRunItem.objects.create(run=run, number=invoice.invoice_number,
+                recipient=recipient, amount=invoice.total_amount, state="error", error=error)
+            invoice.delete()
+            continue
+        BillingRunItem.objects.create(
+            run=run, invoice=invoice, number=invoice.invoice_number,
+            recipient=recipient, amount=invoice.total_amount,
+            state="pending" if run.send else "draft")
     return skipped
 
 
@@ -219,7 +208,8 @@ def deliver_item(pk):
         item.state = "attempted"
         item.save(update_fields=["state"])
     try:
-        if item.run.kind == "test":
+        if item.run.kind == "test" and not item.invoice_id and item.snapshot and item.pdf_document:
+            # Compatibility for isolated test items queued before migration.
             deliver_test(item)
         else:
             if not item.invoice_id:

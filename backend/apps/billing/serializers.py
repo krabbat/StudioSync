@@ -33,7 +33,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     is_overdue = serializers.BooleanField(read_only=True)
     test_only = serializers.SerializerMethodField()
     def get_test_only(self, obj):
-        return bool(getattr(getattr(obj, "block_bill", None), "test_only", False))
+        return obj.monthly_test or bool(getattr(getattr(obj, "block_bill", None), "test_only", False))
 
     pdf_available = serializers.SerializerMethodField()
     email_sent = serializers.SerializerMethodField()
@@ -126,6 +126,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "id",
             "invoice_number",
             "test_only",
+            "monthly_test",
             "status",
             "issue_date",
             "due_date",
@@ -160,6 +161,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "invoice_number",
+            "monthly_test",
             "family",
             "subtotal",
             "total_amount",
@@ -219,7 +221,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Status 'versendet' darf nur durch erfolgreichen E-Mail-Versand entstehen."
             )
-        if (instance.tuition_months.exists() or hasattr(instance, "block_bill")) and validated_data:
+        if (instance.monthly_test or instance.tuition_months.exists() or hasattr(instance, "block_bill")) and validated_data:
             raise serializers.ValidationError("Tuition allocations are immutable.")
         if instance.sent_at and set(validated_data) - {"status"}:
             raise serializers.ValidationError(

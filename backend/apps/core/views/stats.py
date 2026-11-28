@@ -103,7 +103,7 @@ class DashboardStatsView(APIView):
                 revenue_month = (
                     Invoice.objects.filter(
                         studio=studio, status="paid", issue_date__gte=start_of_month.date()
-                    ).exclude(block_bill__test_only=True).aggregate(total=Sum("total_amount"))["total"]
+                    ).exclude(block_bill__test_only=True).filter(monthly_test=False).aggregate(total=Sum("total_amount"))["total"]
                     or 0
                 )
 
@@ -329,7 +329,7 @@ class DashboardAnalyticsView(APIView):
                 studio=studio,
                 status="paid", created_at__gte=six_months_ago
             )
-            .exclude(block_bill__test_only=True)
+            .exclude(block_bill__test_only=True).filter(monthly_test=False)
             .annotate(month=TruncMonth("created_at"))
             .values("month")
             .annotate(total_revenue=Sum("total_amount"))

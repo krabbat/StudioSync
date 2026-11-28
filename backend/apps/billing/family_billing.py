@@ -16,14 +16,14 @@ from .payment_status import berlin_today
 def existing_period(student, start, end):
     """Includes legacy manually created single-student invoices and new allocations."""
     return (TuitionMonth.objects.filter(student=student, month__range=(start, end)).exists()
-            or Invoice.objects.filter(student=student, service_month__lte=end)
+            or Invoice.objects.filter(student=student, service_month__lte=end, monthly_test=False)
             .exclude(status="cancelled")
             .filter(Q(service_month_end__gte=start) |
                     Q(service_month_end__isnull=True, service_month__gte=start)).exists())
 
 
 @transaction.atomic
-def generate_month(studio_id, month, family_id=None):
+def generate_month(studio_id, month, family_id=None, *, monthly_test=False):
     """Serialize with manual creation; one charge per student and month.
 
     Contract starts during the month are flagged for manual review, not prorated
@@ -60,7 +60,7 @@ def generate_month(studio_id, month, family_id=None):
     for (kind, key), members in groups.items():
         family = families[key] if kind == "family" else None
         today = berlin_today()
-        invoice = Invoice.objects.create(studio=studio, family=family,
+        invoice = Invoice.objects.create(studio=studio, family=family, monthly_test=monthly_test,
             student=None if family else members[0], service_month=month,
             issue_date=today, due_date=today+timedelta(days=7), status="draft")
         for student in members:
@@ -68,7 +68,8 @@ def generate_month(studio_id, month, family_id=None):
             item = InvoiceLineItem.objects.create(invoice=invoice, student=student,
                 student_name_snapshot=name, description=f"{lesson_subject(student)} – {name}",
                 quantity=Decimal("1"), unit_price=student.teaching_contract.monthly_amount)
-            TuitionMonth.objects.create(student=student, month=month, invoice=invoice, line_item=item)
+            if not monthly_test:
+                TuitionMonth.objects.create(student=student, month=month, invoice=invoice, line_item=item)
         invoice.calculate_totals()
         # Line items and student/month allocations are frozen; recipient details freeze at issue.
         created.append(invoice)

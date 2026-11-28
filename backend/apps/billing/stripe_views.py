@@ -220,7 +220,7 @@ class StripeWebhookView(views.APIView):
         invoice_id = session.get("client_reference_id")
         if invoice_id:
             try:
-                invoice = Invoice.objects.get(id=invoice_id)
+                invoice = Invoice.objects.get(id=invoice_id, monthly_test=False)
                 # Avoid duplicates
                 if invoice.status != "paid":
                     invoice.status = "paid"

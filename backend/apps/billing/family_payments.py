@@ -15,7 +15,7 @@ def line_paid(line):
 
 def book_allocated_payment(invoice, raw_allocations, method, actor, manual_full=False):
     """Call inside transaction with invoice row locked."""
-    if invoice.status == "cancelled" or not invoice.tuition_months.exists():
+    if invoice.status == "cancelled" or not (invoice.monthly_test or invoice.tuition_months.exists()):
         raise ValidationError({"code": "invalid_invoice"})
     if method not in {"bank_transfer", "paypal", "cash"}:
         raise ValidationError({"code": "invalid_method"})

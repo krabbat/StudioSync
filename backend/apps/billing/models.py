@@ -77,6 +77,7 @@ class Invoice(models.Model):
     )
 
     # Invoice details
+    monthly_test = models.BooleanField(default=False, editable=False)
     invoice_number = models.CharField(max_length=50, unique=True, db_index=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
 
@@ -146,6 +147,8 @@ class Invoice(models.Model):
             # Do not expose the number of issued invoices or students.
             for _ in range(10):
                 candidate = f"{timezone.localdate(timezone=ZoneInfo('Europe/Berlin')):%Y%m%d}-{secrets.randbelow(10**10):010d}"
+                if self.monthly_test:
+                    candidate = "TEST-" + candidate
                 if not type(self).objects.filter(invoice_number=candidate).exists():
                     self.invoice_number = candidate
                     break

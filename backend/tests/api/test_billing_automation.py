@@ -97,7 +97,7 @@ def test_block_test_guard_and_access(authenticated_client, student_authenticated
 
 
 @pytest.mark.django_db
-def test_scheduled_test_run_uses_real_grouping_without_production_rows(authenticated_client, studio, student, admin_user):
+def test_scheduled_test_run_persists_admin_invoice(authenticated_client, student_authenticated_client, studio, student, admin_user):
     today, month = setup_student(studio, student, admin_user, payment="bank_transfer")
     family = Family.objects.create(studio=studio, name="Testfamilie", billing_recipient_name="Testeltern",
         billing_email="familie@musart.de", address_line1="Testweg 3", postal_code="15738", city="Zeuthen")
@@ -123,19 +123,32 @@ def test_scheduled_test_run_uses_real_grouping_without_production_rows(authentic
     item = run.items.get()
     assert item.amount == Decimal("200.00")
     assert item.recipient == "familie@musart.de"
-    assert bytes(item.pdf_document).startswith(b"%PDF")
-    assert item.snapshot["test_only"] is True
-    assert not Invoice.objects.exists()
+    invoice = item.invoice
+    assert invoice.monthly_test and invoice.invoice_number.startswith("TEST-")
+    assert invoice.total_amount == Decimal("200.00")
     assert not TuitionMonth.objects.exists()
-    with patch("apps.billing.invoice_delivery.assert_public_host"), patch("apps.billing.automation.get_connection", return_value=EmailBackend()):
+    with patch("apps.billing.invoice_delivery.assert_public_host"), patch("apps.billing.invoice_delivery.get_connection", return_value=EmailBackend()):
         run_billing_automation()
         run_billing_automation()
     item.refresh_from_db()
     assert item.state == "sent"
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == ["familie@musart.de"]
-    assert not Invoice.objects.exists()
+    invoice.refresh_from_db()
+    assert invoice.sent_at and invoice.document_snapshot["test_only"]
+    assert bytes(invoice.pdf_document).startswith(b"%PDF")
     assert not TuitionMonth.objects.exists()
+    url = f"/api/billing/invoices/{invoice.pk}/"
+    assert authenticated_client.get(url).data["monthly_test"]
+    assert student_authenticated_client.get(url).status_code == 404
+    from apps.billing.payment_status import payment_totals
+    assert payment_totals(Invoice.objects.filter(studio=studio))["pending"] == Decimal("200.00")
+    assert authenticated_client.post(url + "mark-paid/").status_code == 200
+    invoice.refresh_from_db()
+    assert invoice.amount_paid == Decimal("200.00")
+    assert authenticated_client.delete(url).status_code == 204
+    assert not Invoice.objects.filter(pk=invoice.pk).exists()
+    assert len(generate_month(studio.pk, month)[0]) == 1
     assert not BillingAutomation.objects.get(studio=studio).test_enabled
 
 

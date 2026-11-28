@@ -39,6 +39,7 @@ interface Invoice {
     id: string
     invoice_number: string
     test_only?: boolean
+    monthly_test?: boolean
     total_amount: number | string
     balance_due: number | string
     payment_status: 'pending' | 'paid' | 'overdue' | 'cancelled'
@@ -282,6 +283,10 @@ export default function BillingPage() {
     }
 
     const handleShareInvoice = async (invoice: Invoice) => {
+        if (invoice.monthly_test) {
+            toast.error('Testrechnungen dürfen nur intern per E-Mail versendet werden.')
+            return
+        }
         if (invoice.status === 'draft' || invoice.status === 'cancelled') {
             toast.error('Bitte die Rechnung zuerst ausstellen.')
             return
@@ -387,15 +392,15 @@ export default function BillingPage() {
 
     // Calculate totals
     const paidAmount = typedInvoices
-        .filter(i => !i.test_only && i.payment_status !== 'cancelled')
+        .filter(i => (!i.test_only || i.monthly_test) && i.payment_status !== 'cancelled')
         .reduce((sum, i) => sum + Number(i.payment_received || 0), 0)
 
     const pendingAmount = typedInvoices
-        .filter(i => !i.test_only && i.payment_status === 'pending')
+        .filter(i => (!i.test_only || i.monthly_test) && i.payment_status === 'pending')
         .reduce((sum, i) => sum + Number(i.payment_remaining || 0), 0)
 
     const overdueAmount = typedInvoices
-        .filter(i => !i.test_only && i.payment_status === 'overdue')
+        .filter(i => (!i.test_only || i.monthly_test) && i.payment_status === 'overdue')
         .reduce((sum, i) => sum + Number(i.payment_remaining || 0), 0)
 
     // Filter invoices
@@ -474,6 +479,7 @@ export default function BillingPage() {
 
             {activeTab === 'invoices' && (
                 <>
+                    {typedInvoices.some(i => i.monthly_test) && <p className="text-sm text-amber-700">Die Abrechnungssummen enthalten Testrechnungen. Diese sind mit TEST- gekennzeichnet.</p>}
                     {/* Stats Overview */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                         <div className="bg-white p-5 sm:p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
