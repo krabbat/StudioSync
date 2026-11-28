@@ -441,8 +441,13 @@ export default function StudentProfilePage({ params: paramsPromise }: { params: 
                                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{tr('upcomingLesson')}</span>
                                     </div>
                                     <div className="bg-white/5 p-5 rounded-2xl border border-white/5 group-hover:border-primary/20 transition-all">
-                                        <p className="font-black text-lg">{nextLesson ? nextLesson.toLocaleDateString(locale, {weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'Europe/Berlin'}) : tr('noUpcomingLesson')}</p>
-                                        {nextLesson && <p className="text-primary text-sm font-bold">{tr('lessonTime', {time: nextLesson.toLocaleTimeString(locale, {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Berlin'})})}</p>}
+                                        {nextLesson ? (
+                                            <>
+                                                <p className="font-semibold text-sm text-gray-400">{nextLesson.toLocaleDateString(locale, {weekday:'long', timeZone:'Europe/Berlin'})}</p>
+                                                <p className="font-black text-lg whitespace-nowrap tabular-nums">{nextLesson.toLocaleDateString(locale, {day:'2-digit', month:'2-digit', year:'numeric', timeZone:'Europe/Berlin'})}</p>
+                                                <p className="text-primary text-sm font-bold">{tr('lessonTime', {time: nextLesson.toLocaleTimeString(locale, {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Berlin'})})}</p>
+                                            </>
+                                        ) : <p className="font-black text-lg">{tr('noUpcomingLesson')}</p>}
                                     </div>
                                 </div>
                             </div>
