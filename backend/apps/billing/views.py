@@ -6,6 +6,9 @@ from django.http import HttpResponse
 from django.utils import timezone
 from zoneinfo import ZoneInfo
 from uuid import UUID
+import logging
+
+LOG = logging.getLogger(__name__)
 
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -148,7 +151,23 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         except (ValueError, TypeError):
             raise ValidationError({"code": "invalid_month"})
         invoices, skipped = generate_month(studio.pk, month, family_id)
-        return Response({"invoices": self.get_serializer(invoices, many=True).data, "skipped": skipped})
+        # Generate and commit all allocations first. Only then send the newly
+        # created invoices, never existing invoices from an earlier run.
+        errors = {}
+        if request.data.get("send_now") is True:
+            for invoice in invoices:
+                try:
+                    send_invoice(invoice.pk)
+                except InvoiceDeliveryError as exc:
+                    errors[str(invoice.pk)] = str(exc)
+                except Exception:
+                    LOG.exception("Manual monthly invoice dispatch failed for %s", invoice.pk)
+                    errors[str(invoice.pk)] = "Versandstatus unklar; bitte manuell prüfen."
+                invoice.refresh_from_db()
+        data = self.get_serializer(invoices, many=True).data
+        for row in data:
+            row["email_error"] = errors.get(str(row["id"]), "")
+        return Response({"invoices": data, "skipped": skipped})
 
     @action(detail=True, methods=["get"], url_path="pdf")
     def pdf(self, request, pk=None):

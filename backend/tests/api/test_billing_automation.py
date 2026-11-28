@@ -152,3 +152,81 @@ def test_monthly_job_idempotent_draft_only(studio, student, admin_user):
     assert Invoice.objects.filter(service_month=month, status="draft").count() == 1
     assert TuitionMonth.objects.filter(month=month).count() == 1
     assert BillingRun.objects.filter(kind="monthly", studio=studio).count() == 1
+
+
+def setup_collective_family(studio, student, admin_user, *, email="family@example.org"):
+    _, month = setup_student(studio, student, admin_user, payment="bank_transfer")
+    family = Family.objects.create(studio=studio, name="Testfamilie", billing_recipient_name="Testeltern",
+        billing_email=email, address_line1="Testweg 3", postal_code="15738", city="Zeuthen")
+    student.family = family
+    student.save(update_fields=["family"])
+    sibling_user = User.objects.create_user(email="family-sibling@example.org", password="SafeStudent123!",
+        role="student", first_name="Sibling", last_name="Test", is_approved=True)
+    sibling = Student.objects.create(user=sibling_user, studio=studio, family=family)
+    TeachingContract.objects.create(student=sibling, contract_start_date=month, contract_year_start=month,
+        lesson_minutes=45, monthly_amount=Decimal("65.00"))
+    return family, month
+
+
+@pytest.mark.django_db
+def test_manual_family_month_creates_and_sends_once(authenticated_client, studio, student, admin_user):
+    family, month = setup_collective_family(studio, student, admin_user)
+    payload = {"family": str(family.pk), "month": str(month), "send_now": True}
+    endpoint = "/api/billing/invoices/generate-month/"
+    with patch("apps.billing.invoice_delivery.assert_public_host"), patch(
+        "apps.billing.invoice_delivery.get_connection", return_value=EmailBackend()
+    ):
+        response = authenticated_client.post(endpoint, payload, format="json")
+        assert response.status_code == 200, response.data
+        row = response.data["invoices"][0]
+        assert row["email_sent"] and not row["email_error"]
+        invoice = Invoice.objects.get(pk=row["id"])
+        assert invoice.family_id == family.pk and not invoice.student_id
+        assert invoice.total_amount == Decimal("200.00")
+        assert invoice.sent_at and bytes(invoice.pdf_document).startswith(b"%PDF")
+        assert len(mail.outbox) == 1 and mail.outbox[0].to == ["family@example.org"]
+        assert mail.outbox[0].attachments[0][2] == "application/pdf"
+        assert authenticated_client.post(endpoint, payload, format="json").data["invoices"] == []
+    assert len(mail.outbox) == 1
+
+
+@pytest.mark.django_db
+def test_manual_family_failed_delivery_preserves_draft_and_no_duplicate(authenticated_client, studio, student, admin_user):
+    family, month = setup_collective_family(studio, student, admin_user)
+    payload = {"family": str(family.pk), "month": str(month), "send_now": True}
+    endpoint = "/api/billing/invoices/generate-month/"
+    with patch("apps.billing.invoice_delivery.assert_public_host"), patch(
+        "apps.billing.invoice_delivery.get_connection", side_effect=OSError("SMTP unavailable")
+    ):
+        response = authenticated_client.post(endpoint, payload, format="json")
+        assert response.status_code == 200, response.data
+        row = response.data["invoices"][0]
+        assert not row["email_sent"] and row["email_error"]
+        invoice = Invoice.objects.get(pk=row["id"])
+        assert invoice.status == "draft" and not invoice.sent_at
+        assert TuitionMonth.objects.filter(invoice=invoice).count() == 2
+        assert authenticated_client.post(endpoint, payload, format="json").data["invoices"] == []
+    with patch("apps.billing.invoice_delivery.assert_public_host"), patch(
+        "apps.billing.invoice_delivery.get_connection", return_value=EmailBackend()
+    ):
+        assert authenticated_client.post(f"/api/billing/invoices/{invoice.pk}/send/").status_code == 200
+    invoice.refresh_from_db()
+    assert invoice.sent_at and len(mail.outbox) == 1
+
+
+@pytest.mark.django_db
+def test_automatic_family_month_sends_once(studio, student, admin_user):
+    family, month = setup_collective_family(studio, student, admin_user)
+    BillingAutomation.objects.create(studio=studio, monthly_enabled=True, monthly_from=month,
+        monthly_day=1, monthly_time=time(0), monthly_send=True)
+    at = datetime.combine(month, time(0), tzinfo=BERLIN)
+    prepare_due_runs(studio.pk, at)
+    with patch("apps.billing.invoice_delivery.assert_public_host"), patch(
+        "apps.billing.invoice_delivery.get_connection", return_value=EmailBackend()
+    ):
+        run_billing_automation()
+        run_billing_automation()
+    invoice = Invoice.objects.get(family=family, service_month=month)
+    assert invoice.sent_at and invoice.total_amount == Decimal("200.00")
+    assert BillingRun.objects.get(studio=studio, kind="monthly").items.get().state == "sent"
+    assert len(mail.outbox) == 1 and mail.outbox[0].to == ["family@example.org"]

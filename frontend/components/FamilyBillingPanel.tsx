@@ -24,6 +24,7 @@ export default function FamilyBillingPanel({familyId,individualBilling,members}:
     const [loading,setLoading]=useState(true)
     const [failed,setFailed]=useState(false)
     const [skipped,setSkipped]=useState<{student:string;code:string}[]>([])
+    const [deliveryErrors,setDeliveryErrors]=useState<Record<string,string>>({})
     const load=useCallback(async()=>{
         setLoading(true);setFailed(false)
         try {
@@ -36,17 +37,34 @@ export default function FamilyBillingPanel({familyId,individualBilling,members}:
         if(!/^\d{4}-\d{2}$/.test(month))return
         setBusy(true)
         try {
-            const {data}=await api.post('/billing/invoices/generate-month/',{family:familyId,month:month+'-01'})
+            const {data}=await api.post('/billing/invoices/generate-month/',{family:familyId,month:month+'-01',send_now:true})
             setSkipped(data.skipped||[])
-            toast.success(t('generated',{count:data.invoices.length}))
+            const rows: (Invoice & {email_error?:string})[] = data.invoices || []
+            const sent=rows.filter(i=>i.email_sent).length
+            const unsent=rows.filter(i=>!i.email_sent)
+            setDeliveryErrors(old=>({...old,...Object.fromEntries(unsent.map(i=>[i.id,i.email_error||t('deliveryUnknown')]))}))
+            if(unsent.length) toast.error(t('generationDeliveryError',{sent,failed:unsent.length}),{duration:7500})
+            else if(sent) toast.success(t('generatedSent',{count:sent}))
+            else toast.success(t('nothingGenerated'))
             await load()
-        } catch {toast.error(t('generationError'))} finally {setBusy(false)}
+        } catch (e:any) {toast.error(e?.response?.data?.detail||t('generationError'))} finally {setBusy(false)}
     }
     const action=async(id:string,kind:'send'|'mark-paid'|'mark-pending')=>{
         if(!window.confirm(t(kind==='send'?'confirmSend':kind==='mark-paid'?'confirmPaid':'confirmPending')))return
         setBusy(true)
-        try {await api.post('/billing/invoices/'+id+'/'+kind+'/');await load();toast.success(t('saved'))}
-        catch {toast.error(t('actionError'))} finally {setBusy(false)}
+        try {
+            const {data}=await api.post('/billing/invoices/'+id+'/'+kind+'/')
+            if(kind==='send') {
+                setDeliveryErrors(old=>{const next={...old};delete next[id];return next})
+                toast.success(data.detail||t('sent'))
+            } else toast.success(t('saved'))
+            await load()
+        } catch (e:any) {
+            const detail=e?.response?.data?.detail
+            const message=typeof detail==='string'?detail:t('actionError')
+            if(kind==='send')setDeliveryErrors(old=>({...old,[id]:message}))
+            toast.error(message)
+        } finally {setBusy(false)}
     }
     const book=async(i:Invoice)=>{
         if(!window.confirm(t('confirmPartial')))return
@@ -79,6 +97,8 @@ export default function FamilyBillingPanel({familyId,individualBilling,members}:
             <div className="flex flex-wrap justify-between gap-3"><strong>{i.invoice_number} · {i.student_name}</strong><span>{i.service_month?.slice(0,7)} · {money(i.total_amount)}</span></div>
             {i.line_items.map(l=><div key={l.id} className="flex justify-between text-sm text-gray-600"><span>{l.description}</span><span>{money(l.total_price)}{l.student&&<small className="block text-right">{t('positionPaid',{amount:money(l.allocated_paid)})}</small>}</span></div>)}
             <p className="text-sm">{t('outstanding')}: {money(i.payment_remaining)} · {t(i.payment_status==='paid'?'paid':i.payment_status==='cancelled'?'cancelled':i.payment_status==='overdue'?'overdue':'pending')}</p>
+            <p className="text-sm">{i.email_sent?t('sent'):t('notSent')}</p>
+            {deliveryErrors[i.id]&&<p role="alert" className="text-sm text-red-700">{deliveryErrors[i.id]}</p>}
             <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={()=>void pdf(i)}>PDF</Button>
                 {i.status!=='cancelled'&&<Button variant="outline" disabled={busy} onClick={()=>void action(i.id,'send')}>{t(i.email_sent?'resend':'send')}</Button>}
