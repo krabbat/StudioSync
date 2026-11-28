@@ -13,3 +13,10 @@ test('student names retain their original spelling instead of CSS uppercasing ß
     assert.doesNotMatch(listName[1], /\buppercase\b/)
     assert.doesNotMatch(profileName[1], /\buppercase\b/)
 })
+
+
+test('student email is displayed without forced uppercase', () => {
+    const email = list.match(/<span className="([^"]+)">\{student\.email\}<\/span>/)
+    assert.ok(email)
+    assert.doesNotMatch(email[1], /\buppercase\b/)
+})

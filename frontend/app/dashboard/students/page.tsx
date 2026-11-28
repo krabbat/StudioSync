@@ -324,7 +324,7 @@ export default function StudentsPage() {
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="font-black text-gray-900 tracking-tighter leading-tight">{student.name}</span>
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{student.email}</span>
+                                                <span className="text-[10px] font-bold text-gray-400 tracking-widest">{student.email}</span>
                                             </div>
                                         </div>
                                     </td>
