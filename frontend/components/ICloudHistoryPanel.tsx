@@ -133,14 +133,6 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {busy === 'query' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Abfragen
         </button>
-        <label className="block text-sm font-medium">Vertragsbeginn und Gesamtstundenzahl übernehmen für
-            <select className={field + ' mt-1'} value={studentId} disabled={busy !== null || studentsLoading || studentsError} onChange={e => setStudentId(e.target.value)}>
-                <option value="">{studentsLoading ? 'Schüler werden geladen…' : 'Schüler auswählen'}</option>
-                {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-        </label>
-        {studentsError && <p className="text-sm text-red-700" role="alert">Schülerliste konnte nicht geladen werden. Bitte Übersicht aktualisieren.</p>}
-        {!studentsError && !studentsLoading && !students.length && <p className="text-xs text-gray-500">Keine Schüler vorhanden.</p>}
         {queryError && <p className="text-sm text-red-700" role="alert">{queryError}</p>}
         {result && <div className="space-y-3 border-t pt-3">
             <p className="text-sm"><strong>{result.count}</strong> vergangene Termine für „{result.title}“ gefunden{result.calendar_name ? ' in „' + result.calendar_name + '“' : ''}.</p>
@@ -167,9 +159,19 @@ export default function ICloudHistoryPanel({ students, studentsLoading, students
             {selectedDates.length > 0 && <details className="text-xs text-gray-600"><summary className="cursor-pointer">Ausgewählte Termine anzeigen</summary>
                 <div className="max-h-48 overflow-y-auto mt-2">{selectedDates.map(d => <div key={d.date}>{germanDate(d.date)}{d.count > 1 ? ' (' + d.count + ' Termine)' : ''}</div>)}</div>
             </details>}
-            {student && (currentStart ? <p className="text-sm text-gray-600">Bisheriger Vertragsbeginn: {germanDate(currentStart)}. {firstDate && <>Neuer Vertragsbeginn: <strong>{germanDate(firstDate)}</strong>, Gesamtstundenzahl: <strong>{total}</strong>.</>}</p> : <p className="text-sm text-amber-700">Bitte zuerst einen Vertrag mit Unterrichtskonditionen hinterlegen.</p>)}
             {!total && <p className="text-xs text-gray-500">{result.count ? 'Bitte mindestens einen passenden Terminnamen auswählen.' : 'Keine passenden Termine.'} Die bisherigen Daten werden nicht überschrieben.</p>}
         </div>}
+        <div className="space-y-3 border-t pt-3">
+            <label className="block text-sm font-medium">Vertragsbeginn und Gesamtstundenzahl übernehmen für
+                <select className={field + ' mt-1'} value={studentId} disabled={busy !== null || studentsLoading || studentsError} onChange={e => setStudentId(e.target.value)}>
+                    <option value="">{studentsLoading ? 'Schüler werden geladen…' : 'Schüler auswählen'}</option>
+                    {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+            </label>
+            {studentsError && <p className="text-sm text-red-700" role="alert">Schülerliste konnte nicht geladen werden. Bitte Übersicht aktualisieren.</p>}
+            {!studentsError && !studentsLoading && !students.length && <p className="text-xs text-gray-500">Keine Schüler vorhanden.</p>}
+            {result && (student && (currentStart ? <p className="text-sm text-gray-600">Bisheriger Vertragsbeginn: {germanDate(currentStart)}. {firstDate && <>Neuer Vertragsbeginn: <strong>{germanDate(firstDate)}</strong>, Gesamtstundenzahl: <strong>{total}</strong>.</>}</p> : <p className="text-sm text-amber-700">Bitte zuerst einen Vertrag mit Unterrichtskonditionen hinterlegen.</p>)) }
+        </div>
         <button type="button" disabled={!student?.contract_start_date || !result || !total || !firstDate || busy !== null || studentsLoading || studentsError} onClick={() => void apply()}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Vertragsbeginn und Gesamtstundenzahl übernehmen</button>
         <p className="text-xs text-gray-500">Übernimmt den ersten ausgewählten Termin als Vertragsbeginn und die Summe der ausgewählten vergangenen Termine als Gesamtstundenzahl. Der Vertragsjahresbeginn bleibt unverändert. Bei Gruppentiteln bitte die tatsächliche Teilnahme des gewählten Schülers prüfen.</p>
