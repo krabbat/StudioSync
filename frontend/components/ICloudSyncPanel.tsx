@@ -19,12 +19,16 @@ type SyncPayload = {
 export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
     const [rows, setRows] = useState<LinkedSeries[]>([])
     const [students, setStudents] = useState<StudentChoice[]>([])
+    const [studentsLoading, setStudentsLoading] = useState(true)
+    const [studentsError, setStudentsError] = useState(false)
     const [assigning, setAssigning] = useState<string | null>(null)
     const [resolving, setResolving] = useState<string | null>(null)
     const [choices, setChoices] = useState<Record<string, string>>({})
     const [last, setLast] = useState<SyncPayload | null>(null)
 
     const list = useCallback(async () => {
+        setStudentsLoading(true)
+        setStudentsError(false)
         try {
             const { data } = await api.get<{ series: LinkedSeries[]; students: StudentChoice[] }>(
                 '/core/calendar/icloud/series/'
@@ -32,7 +36,9 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
             setRows(data.series || [])
             setStudents(data.students || [])
         } catch {
-            // Settings are optional until an Apple calendar has been configured.
+            setStudentsError(true)
+        } finally {
+            setStudentsLoading(false)
         }
     }, [])
 
@@ -120,7 +126,7 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                 </div>
             )}
 
-            {enabled && <ICloudHistoryPanel students={students} />}
+            {enabled && <ICloudHistoryPanel students={students} studentsLoading={studentsLoading} studentsError={studentsError} />}
             <details className="space-y-3 rounded-lg border border-gray-200 p-3">
                 <summary className="cursor-pointer text-sm font-semibold text-gray-700">Synchronisationsmeldungen ({pending.length + problems.length})</summary>
             {pending.length > 0 && (
@@ -195,7 +201,7 @@ export default function ICloudSyncPanel({ enabled }: { enabled: boolean }) {
                         className="inline-flex items-center gap-1 text-xs rounded border px-2 py-1"><RotateCcw className="h-3.5 w-3.5" /> Wiederherstellen</button>
                 </div>)}
             </details>}
-            {rows.length > 0 && (
+            {enabled && (
                 <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
                     <span>{rows.length} verknüpfte Kalender-Serien / Termine</span>
                     <button type="button" onClick={() => void list()}

@@ -48,6 +48,7 @@ def test_history_counts_actual_past_instances_without_writes():
         {"date": "2024-11-29", "count": 1},
     ]
     assert historical_dates(calendar, "Test", now) == []
+    calendar.events.return_value[0].load.assert_not_called()
     calendar.save_event.assert_not_called()
     calendar.events.return_value[0].delete.assert_not_called()
 

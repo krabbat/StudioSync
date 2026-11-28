@@ -1,6 +1,7 @@
 """Read-only historical occurrence count in the configured Apple calendar."""
 from collections import Counter
 from datetime import datetime
+import logging
 
 from django.utils import timezone
 from icalendar import Calendar
@@ -14,14 +15,24 @@ from apps.lessons.icloud_sync import LOCAL_TZ, _expand, _master_and_overrides, _
 from apps.lessons.icloud_notes import normal
 
 
+LOG = logging.getLogger(__name__)
+
+
 def historical_dates(calendar, title, now=None):
     now = now or timezone.now()
     low = datetime(1900, 1, 1, tzinfo=LOCAL_TZ)
     matches = {}
     wanted = normal(title)
     for item in calendar.events():
-        item.load()
-        raw = _raw(item.data)
+        # A calendar-query REPORT normally already includes the iCalendar
+        # payload. Avoid an additional HTTP GET for every historical event.
+        content = item.data
+        if not content:
+            item.load()
+            content = item.data
+        if not content:
+            raise ICloudSetupError("Ein Kalendereintrag konnte nicht vollständig gelesen werden.")
+        raw = _raw(content)
         data = Calendar.from_ical(raw)
         if not any(e.name == "VEVENT" and normal(e.get("SUMMARY")) == wanted for e in data.walk()):
             continue
@@ -57,4 +68,5 @@ class ICloudHistoryView(_AdminICloudView):
         except ICloudSetupError as exc:
             return Response({"detail": str(exc)}, status=400)
         except Exception:
-            return Response({"detail": "Kalenderabfrage nicht vollständig möglich. Es wurden keine Daten übernommen."}, status=502)
+            LOG.exception("Read-only iCloud history query failed")
+            return Response({"detail": "Kalenderabfrage nicht vollständig möglich (HTTP 502). Bitte Serverprotokoll prüfen. Es wurden keine Daten übernommen."}, status=502)
